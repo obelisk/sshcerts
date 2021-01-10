@@ -355,7 +355,7 @@ fn read_options(buf: &[u8]) -> Result<HashMap<String, String>> {
         // If we have a `string` option extract the value from the buffer,
         // otherwise we have a `flag` option which is the `empty` string.
         let value_buf = reader.read_bytes()?;
-        let value = if value_buf.is_empty() {
+        let value = if !value_buf.is_empty() {
             Reader::new(&value_buf).read_string()?
         } else {
             "".to_string()
