@@ -46,9 +46,9 @@ impl KeyType {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let kt = sshkeys::KeyType::from_name("ssh-rsa").unwrap();
-    /// assert_eq!(kt.kind, sshkeys::KeyTypeKind::Rsa);
+    /// # use rustica_sshkey::{KeyType, KeyTypeKind};
+    /// let kt = KeyType::from_name("ssh-rsa").unwrap();
+    /// assert_eq!(kt.kind, KeyTypeKind::Rsa);
     /// ```
     pub fn from_name(name: &str) -> Result<KeyType> {
         let kt = match name {

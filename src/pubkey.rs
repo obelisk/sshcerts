@@ -81,9 +81,9 @@ impl Curve {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let curve = sshkeys::Curve::from_identifier("nistp256").unwrap();
-    /// assert_eq!(curve.kind, sshkeys::CurveKind::Nistp256);
+    /// # use rustica_sshkey::{Curve, CurveKind};
+    /// let curve = Curve::from_identifier("nistp256").unwrap();
+    /// assert_eq!(curve.kind, CurveKind::Nistp256);
     /// ```
     pub fn from_identifier(id: &str) -> Result<Curve> {
         let curve = match id {
@@ -185,9 +185,9 @@ impl Fingerprint {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let fp = sshkeys::Fingerprint::compute(sshkeys::FingerprintKind::Sha256, "some data".as_bytes());
-    /// assert_eq!(fp.kind, sshkeys::FingerprintKind::Sha256);
+    /// # use rustica_sshkey::{Fingerprint, FingerprintKind};
+    /// let fp = Fingerprint::compute(FingerprintKind::Sha256, "some data".as_bytes());
+    /// assert_eq!(fp.kind, FingerprintKind::Sha256);
     /// assert_eq!(fp.hash, "EweZDmulyhRes16ZGCqb7EZTG8VN32VqYCx4D6AkDe4");
     /// ```
     pub fn compute<T: ?Sized + AsRef<[u8]>>(kind: FingerprintKind, data: &T) -> Fingerprint {
@@ -218,9 +218,9 @@ impl PublicKey {
     /// # Examples
     ///
     /// ```rust
-    /// # fn example() -> sshkeys::Result<()> {
-    /// let key = sshkeys::PublicKey::from_path("/path/to/id_ed25519.pub")?;
-    /// # Ok(())
+    /// # use rustica_sshkey::PublicKey;
+    /// # fn example() {
+    /// let key = PublicKey::from_path("/path/to/id_ed25519.pub");
     /// # }
     /// ```
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<PublicKey> {
@@ -235,8 +235,8 @@ impl PublicKey {
     /// # Examples
     ///
     /// ```rust
-    /// # use sshkeys;
-    /// let key = sshkeys::PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
+    /// # use rustica_sshkey::PublicKey;
+    /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
     /// let fp = key.fingerprint();
     /// assert_eq!(fp.hash, "ciQkdxjFUhk2E2vRkWJD9kB8pi+EneOkaCJJHNWzPC4");
     /// ```
@@ -282,7 +282,7 @@ impl PublicKey {
     /// # Example
     ///
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::PublicKey;
     /// let data = vec![0, 0, 0, 11, 115, 115, 104, 45,
     ///                 101, 100, 50, 53, 53, 49, 57,
     ///                 0, 0, 0, 32, 121, 27, 123, 184,
@@ -291,7 +291,7 @@ impl PublicKey {
     ///                 207, 47, 46, 28, 204, 70, 112,
     ///                 254, 200, 124, 155, 202, 221];
     ///
-    /// let key = sshkeys::PublicKey::from_bytes(&data).unwrap();
+    /// let key = PublicKey::from_bytes(&data).unwrap();
     /// let fp = key.fingerprint();
     /// assert_eq!(fp.hash, "ciQkdxjFUhk2E2vRkWJD9kB8pi+EneOkaCJJHNWzPC4");
     /// ```
@@ -351,8 +351,8 @@ impl PublicKey {
     /// # Example
     ///
     /// ```rust
-    /// # use sshkeys;
-    /// let key = sshkeys::PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
+    /// # use rustica_sshkey::PublicKey;
+    /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
     /// assert_eq!(key.bits(), 256);
     /// ```
     pub fn bits(&self) -> usize {
@@ -375,8 +375,8 @@ impl PublicKey {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let key = sshkeys::PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
+    /// # use rustica_sshkey::PublicKey;
+    /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
     /// assert_eq!(key.encode(), vec![0, 0, 0, 11, 115, 115, 104, 45, 101, 100, 50, 53, 53, 49, 57, 0, 0, 0, 32, 121, 27, 123, 184, 48, 199, 187, 52, 118, 80, 41, 16, 76, 233, 83, 35, 128, 62, 188, 207, 47, 46, 28, 204, 70, 112, 254, 200, 124, 155, 202, 221]);
     /// ```
     pub fn encode(&self) -> Vec<u8> {
@@ -406,12 +406,11 @@ impl PublicKey {
     /// # Example
     ///
     /// ```rust
-    /// # use sshkeys;
-    /// # fn example() -> sshkeys::Result<()> {
-    /// let key = sshkeys::PublicKey::from_path("/path/to/id_ed25519.pub")?;
+    /// # use rustica_sshkey::{FingerprintKind, PublicKey};
+    /// # fn example() {
+    /// let key = PublicKey::from_path("/path/to/id_ed25519.pub").unwrap();
     /// let fp = key.fingerprint();
     /// println!("{}", fp.hash);
-    /// # Ok(())
     /// # }
     /// ```
     pub fn fingerprint(&self) -> Fingerprint {
@@ -424,12 +423,11 @@ impl PublicKey {
     /// # Example
     ///
     /// ```rust
-    /// # use sshkeys;
-    /// # fn example() -> sshkeys::Result<()> {
-    /// let key = sshkeys::PublicKey::from_path("/path/to/id_ed25519.pub").unwrap();
-    /// let sha512fp = key.fingerprint_with(sshkeys::FingerprintKind::Sha512);
+    /// # use rustica_sshkey::{FingerprintKind, PublicKey};
+    /// # fn example() {
+    /// let key = PublicKey::from_path("/path/to/id_ed25519.pub").unwrap();
+    /// let sha512fp = key.fingerprint_with(FingerprintKind::Sha512);
     /// println!("{}", sha512fp.hash);
-    /// # Ok(())
     /// # }
     /// ```
     pub fn fingerprint_with(&self, kind: FingerprintKind) -> Fingerprint {
@@ -440,13 +438,12 @@ impl PublicKey {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::PublicKey;
     /// use std::fs::File;
-    /// # fn example() -> sshkeys::Result<()> {
-    /// let key = sshkeys::PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA...")?;
-    /// let mut file = File::create("/path/to/id_ed25519.pub")?;
+    /// # fn example() {
+    /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA...").unwrap();
+    /// let mut file = File::create("/path/to/id_ed25519.pub").unwrap();
     /// key.write(&mut file).unwrap();
-    /// # Ok(())
     /// # }
     /// ```
     pub fn write<W: io::Write>(&self, w: &mut W) -> io::Result<()> {

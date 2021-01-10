@@ -98,10 +98,10 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use sshkeys;
-    /// # fn example() -> sshkeys::Result<()> {
-    /// let cert = sshkeys::Certificate::from_path("/path/to/id_ed25519-cert.pub")?;
-    /// # Ok(())
+    /// # use rustica_sshkey::Certificate;
+    /// # fn example() {
+    ///     let cert = Certificate::from_path("/path/to/id_ed25519-cert.pub").unwrap();
+    ///     println!("{}", cert);
     /// # }
     /// ```
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Certificate> {
@@ -116,10 +116,10 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use sshkeys;
-    /// # fn example() -> sshkeys::Result<()> {
-    /// let cert = sshkeys::Certificate::from_string("ssh-rsa AAAAB3NzaC1yc2EAAAA...")?;
-    /// # Ok(())
+    /// # use rustica_sshkey::Certificate;
+    /// # fn example() {
+    ///     let cert = Certificate::from_string("ssh-rsa AAAAB3NzaC1yc2EAAAA...").unwrap();
+    ///     println!("{}", cert);
     /// # }
     /// ```
     pub fn from_string(s: &str) -> Result<Certificate> {
@@ -205,24 +205,29 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_sshkeys;
-    /// let cert = Certificate::new(
-    ///    pkey,
-    ///    0xFEFEFEFEFEFEFEFE,
-    ///    String::from("obelisk@exclave"),
-    ///    vec![String::from("obelisk2")],
-    ///    0,
-    ///    0xFFFFFFFFFFFFFFFF,
-    ///    HashMap::new(),
-    ///    extensions,
-    ///    test_pubkey,
-    ///    test_signer,
-    /// );
+    /// # use rustica_sshkey::{Certificate, PublicKey};
+    /// # use std::collections::HashMap;
+    /// fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
+    /// fn test_pubkey() -> Option<Vec<u8>> { None }
+    /// # fn example() {
+    ///   let cert = Certificate::new(
+    ///      PublicKey::from_string("AAA...").unwrap(),
+    ///      0xFEFEFEFEFEFEFEFE,
+    ///      String::from("obelisk@exclave"),
+    ///      vec![String::from("obelisk2")],
+    ///      0,
+    ///      0xFFFFFFFFFFFFFFFF,
+    ///      HashMap::new(),
+    ///      HashMap::new(),
+    ///      test_pubkey,
+    ///      test_signer,
+    ///   );
     /// 
-    /// match cert {
-    ///    Ok(cert) => println!("{}", cert),
-    ///    Err(e) => println!("Encountered an error while creating certificate: {}", e),
-    /// }
+    ///   match cert {
+    ///      Ok(cert) => println!("{}", cert),
+    ///      Err(e) => println!("Encountered an error while creating certificate: {}", e),
+    ///   }
+    /// # }
     /// ```
     #[allow(clippy::too_many_arguments)]
     pub fn new(
