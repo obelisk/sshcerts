@@ -15,7 +15,8 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// let writer = sshkeys::Writer::new();
+    /// # use rustica_sshkey::Writer;
+    /// let writer = Writer::new();
     /// ```
     pub fn new() -> Writer {
         Writer { inner: Vec::new() }
@@ -27,8 +28,8 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let mut writer = sshkeys::Writer::new();
+    /// # use rustica_sshkey::Writer;
+    /// let mut writer = Writer::new();
     /// writer.write_bytes(&[0, 0, 0, 42]);
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, vec![0, 0, 0, 4, 0, 0, 0, 42]);
@@ -45,8 +46,8 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let mut writer = sshkeys::Writer::new();
+    /// # use rustica_sshkey::Writer;
+    /// let mut writer = Writer::new();
     /// writer.write_string("a test string");
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, [0, 0, 0, 13, 97, 32, 116, 101, 115, 116, 32, 115, 116, 114, 105, 110, 103]);
@@ -59,9 +60,9 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let mut writer = sshkeys::Writer::new();
-    /// writer.write_u64(0xFFFFFFFFFFFFFFFF)
+    /// # use rustica_sshkey::Writer;
+    /// let mut writer = Writer::new();
+    /// writer.write_u64(0xFFFFFFFFFFFFFFFF);
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, [255, 255, 255, 255, 255, 255, 255, 255]);
     /// ```
@@ -74,9 +75,9 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let mut writer = sshkeys::Writer::new();
-    /// writer.write_u32(0xFFFFFFFF)
+    /// # use rustica_sshkey::Writer;
+    /// let mut writer = Writer::new();
+    /// writer.write_u32(0xFFFFFFFF);
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, [255, 255, 255, 255]);
     /// ```
@@ -92,8 +93,8 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let mut writer = sshkeys::Writer::new();
+    /// # use rustica_sshkey::Writer;
+    /// let mut writer = Writer::new();
     /// writer.write_mpint(&[1, 0, 1]);
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, [0, 0, 0, 3, 1, 0, 1]);
@@ -114,9 +115,10 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let mut writer = sshkeys::Writer::new();
-    /// writer.write_mpint(&vec![String::from("Test"), String::from("Test")]);
+    /// # use rustica_sshkey::Writer;
+    /// let mut writer = Writer::new();
+    /// 
+    /// writer.write_string_vec(&vec![String::from("Test"), String::from("Test")]);
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, [0, 0, 0, 16, 0, 0, 0, 4, 84, 101, 115, 116, 0, 0, 0, 4, 84, 101, 115, 116]);
     /// ```
@@ -133,11 +135,15 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
-    /// let mut writer = sshkeys::Writer::new();
-    /// writer.write_mpint(&vec![String::from("Test"), String::from("Test")]);
+    /// # use rustica_sshkey::Writer;
+    /// # use std::collections::HashMap;
+    /// 
+    /// let mut writer = Writer::new();
+    /// let mut example_map = HashMap::new();
+    /// example_map.insert(String::from("Test"), String::from(""));
+    /// writer.write_string_map(&example_map);
     /// let bytes = writer.into_bytes();
-    /// assert_eq!(bytes, [0, 0, 0, 16, 0, 0, 0, 4, 84, 101, 115, 116, 0, 0, 0, 4, 84, 101, 115, 116]);
+    /// assert_eq!(bytes, [0, 0, 0, 12, 0, 0, 0, 4, 84, 101, 115, 116, 0, 0, 0, 0]);
     /// ```
     pub fn write_string_map(&mut self, map: &HashMap<String, String>) {
         let total_length = map.iter().map(|x| x.0.len() + x.1.len()).fold(map.len()*8, |x, y| x + y) as u32;
@@ -176,7 +182,9 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// let mut writer = sshkeys::Writer::new();
+    /// # use rustica_sshkey::Writer;
+    /// 
+    /// let mut writer = Writer::new();
     /// writer.write_string("some data");
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, [0, 0, 0, 9, 115, 111, 109, 101, 32, 100, 97, 116, 97]);
@@ -190,7 +198,9 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// let mut writer = sshkeys::Writer::new();
+    /// # use rustica_sshkey::Writer;
+    /// 
+    /// let mut writer = Writer::new();
     /// writer.write_string("some data");
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, [0, 0, 0, 9, 115, 111, 109, 101, 32, 100, 97, 116, 97]);
