@@ -21,13 +21,13 @@ use super::reader::Reader;
 
 
 /// Represents the different types a certificate can be.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CertType {
     /// Represents a user certificate.
-    User,
+    User = 1,
 
     /// Represents a host certificate.
-    Host,
+    Host = 2,
 }
 
 impl fmt::Display for CertType {
@@ -239,6 +239,7 @@ impl Certificate {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         pubkey: PublicKey,
+        cert_type: CertType,
         serial: u64,
         key_id: String,
         principals: Vec<String>,
@@ -270,8 +271,8 @@ impl Certificate {
         // Write the serial number
         writer.write_u64(serial);
 
-        // Write that this is a user cert
-        writer.write_u32(0x1);
+        // Write what kind of cert this is
+        writer.write_u32(cert_type as u32);
 
         // Write the key id
         writer.write_string(&key_id);
@@ -315,7 +316,7 @@ impl Certificate {
             nonce: nonce.to_vec(),
             key: pubkey,
             serial,
-            cert_type: CertType::User,
+            cert_type,
             key_id,
             principals,
             valid_after,

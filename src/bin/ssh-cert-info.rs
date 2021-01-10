@@ -4,7 +4,7 @@ use std::fs;
 use rustica_sshkey::Certificate;
 
 fn help() {
-    println!("A simple SSH Cert Parser, written in Rust, based on Rustica's sshkey library");
+    println!("An SSH Cert Parser based on Rustica's sshkey library");
     println!("Usage: ssh-cert-info <path to file>");
 }
 

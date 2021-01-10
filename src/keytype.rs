@@ -1,7 +1,7 @@
 use super::error::{Error, ErrorKind, Result};
 use std::fmt;
 /// A type which represents the various kinds of keys.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum KeyTypeKind {
     /// Represents an RSA key type.
     Rsa,
@@ -23,7 +23,7 @@ pub enum KeyTypeKind {
 }
 
 /// `KeyType` represents the type of an OpenSSH key.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct KeyType {
     /// Name of the key type.
     pub name: &'static str,

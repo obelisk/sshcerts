@@ -11,7 +11,7 @@ use super::writer::Writer;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 
 /// A type which represents the different kinds a public key can be.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum PublicKeyKind {
     /// Represents an RSA public key.
     Rsa(RsaPublicKey),
@@ -25,7 +25,7 @@ pub enum PublicKeyKind {
 
 /// RSA public key.
 /// The format of RSA public keys is described in RFC 4253, section 6.6
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct RsaPublicKey {
     /// Exponent of key.
     pub e: Vec<u8>,
@@ -36,7 +36,7 @@ pub struct RsaPublicKey {
 
 /// ECDSA public key.
 /// The format of ECDSA public keys is described in RFC 5656, section 3.1.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct EcdsaPublicKey {
     /// The curve being used.
     pub curve: Curve,
@@ -47,14 +47,14 @@ pub struct EcdsaPublicKey {
 
 /// ED25519 public key.
 /// The format of ED25519 public keys is described in https://tools.ietf.org/html/draft-bjh21-ssh-ed25519-02
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Ed25519PublicKey {
     /// The public key.
     pub key: Vec<u8>,
 }
 
 /// Represents the different kinds of supported curves.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CurveKind {
     /// Represents a NIST P-256 curve.
     Nistp256,
@@ -67,7 +67,7 @@ pub enum CurveKind {
 }
 
 /// A type which represents a cryptographic curve.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Curve {
     /// The curve kind.
     pub kind: CurveKind,
@@ -107,7 +107,7 @@ impl Curve {
 }
 
 /// A type which represents an OpenSSH public key.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PublicKey {
     /// Key type.
     pub key_type: KeyType,
