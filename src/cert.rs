@@ -197,11 +197,10 @@ impl Certificate {
         Ok(cert)
     }
 
-
     /// Create a new SSH certificate from the provided values. It takes
     /// two function pointers to retrieve the signing public key as well
-    /// as a function to do the actual signing. This function is responsible
-    /// for hashing the data as no hashing is done in this function.
+    /// as a function to do the actual signing. This function pointed to is 
+    /// responsible for hashing the data as no hashing is done Certificate::new
     ///
     /// # Example
     ///
@@ -242,7 +241,6 @@ impl Certificate {
         // Write the cert type
         writer.write_string(format!("{}-cert-v01@openssh.com", pubkey.key_type.name).as_str());
         
-
         // Generate the nonce
         let mut nonce = [0x0u8; 32];
         let rng = SystemRandom::new();
