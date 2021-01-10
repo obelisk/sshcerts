@@ -90,6 +90,9 @@ pub struct Certificate {
 
     /// Associated comment, if any.
     pub comment: Option<String>,
+
+    /// The entire serialized certificate, used for exporting
+    pub serialized: Vec<u8>,
 }
 
 impl Certificate {
@@ -158,6 +161,7 @@ impl Certificate {
             n => return Err(Error::with_kind(ErrorKind::InvalidCertType(n))),
         };
 
+
         let key_id = reader.read_string()?;
         let principals = reader.read_bytes().and_then(|v| read_principals(&v))?;
         let valid_after = reader.read_u64()?;
@@ -174,6 +178,8 @@ impl Certificate {
 
         reader.set_offset(0).unwrap();
         let signed_bytes = reader.read_raw_bytes(signed_len).unwrap();
+
+        // Verify the certificate is properly signed
         verify_signature(&signature, &signed_bytes, &signature_key)?;
 
         let cert = Certificate {
@@ -192,6 +198,7 @@ impl Certificate {
             signature_key,
             signature,
             comment,
+            serialized: decoded,
         };
 
         Ok(cert)
@@ -239,12 +246,13 @@ impl Certificate {
         valid_before: u64,
         critical_options: HashMap<String, String>,
         extensions: HashMap<String, String>,
-        signature_pubkey: fn() -> Option<Vec<u8>>,
+        ca_pubkey: PublicKey,
         signer: fn(&[u8]) -> Option<Vec<u8>>,
     ) -> Result<Certificate> {
         let mut writer = super::Writer::new();
+        let kt_name = format!("{}-cert-v01@openssh.com", pubkey.key_type.name);
         // Write the cert type
-        writer.write_string(format!("{}-cert-v01@openssh.com", pubkey.key_type.name).as_str());
+        writer.write_string(kt_name.as_str());
         
         // Generate the nonce
         let mut nonce = [0x0u8; 32];
@@ -286,15 +294,8 @@ impl Certificate {
         // Write the unused reserved bytes
         writer.write_u32(0x0);
 
-        // Write the CA Public key
-        let ca_pubkey = match signature_pubkey() {
-            Some(pk) => match PublicKey::from_bytes(&pk) {
-                Ok(pk) => pk,
-                Err(e) => return Err(e),
-            },
-            None => return Err(Error::with_kind(ErrorKind::CertificateInvalidSignature)),
-        };
-        writer.write_pub_key(&ca_pubkey);
+        // Write the CA public key
+        writer.write_bytes(&ca_pubkey.encode());
 
         // Sign the data and write it to the cert
         let signature =  match signer(writer.as_bytes()) {
@@ -310,7 +311,7 @@ impl Certificate {
         writer.write_bytes(&signature);
 
         Ok(Certificate {
-            key_type: KeyType::from_name("ecdsa-sha2-nistp256").unwrap(),
+            key_type: KeyType::from_name(kt_name.as_str()).unwrap(),
             nonce: nonce.to_vec(),
             key: pubkey,
             serial,
@@ -325,6 +326,7 @@ impl Certificate {
             signature_key: ca_pubkey,
             signature,
             comment: None,
+            serialized: writer.into_bytes(),
         })
     }
 }
@@ -463,45 +465,49 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
 
 impl fmt::Display for Certificate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "Type: {} {}", self.key_type, self.cert_type).unwrap();
-        writeln!(f, "Public Key: {} {}:{}", self.key_type.short_name, self.key.fingerprint().kind, self.key.fingerprint().hash).unwrap();
-        writeln!(f, "Signing CA: {} {}:{} (using {})", self.signature_key.key_type.short_name, self.signature_key.fingerprint().kind, self.signature_key.fingerprint().hash, self.signature_key.key_type).unwrap();
-        writeln!(f, "Key ID: \"{}\"", self.key_id).unwrap();
-        writeln!(f, "Serial: {}", self.serial).unwrap();
-
-        if self.valid_before == 0xFFFFFFFFFFFFFFFF && self.valid_after == 0x0 {
-            writeln!(f, "Valid: forever").unwrap();
+        if !f.alternate() {
+            write!(f, "{} {} {}", "ecdsa-sha2-nistp256-cert-v01@openssh.com", base64::encode(&self.serialized), &self.key_id)
         } else {
-            writeln!(f, "Valid between: {} and {}", self.valid_after, self.valid_before).unwrap();
-        }
+            writeln!(f, "Type: {} {}", self.key_type, self.cert_type).unwrap();
+            writeln!(f, "Public Key: {} {}:{}", self.key_type.short_name, self.key.fingerprint().kind, self.key.fingerprint().hash).unwrap();
+            writeln!(f, "Signing CA: {} {}:{} (using {})", self.signature_key.key_type.short_name, self.signature_key.fingerprint().kind, self.signature_key.fingerprint().hash, self.signature_key.key_type).unwrap();
+            writeln!(f, "Key ID: \"{}\"", self.key_id).unwrap();
+            writeln!(f, "Serial: {}", self.serial).unwrap();
 
-        if self.principals.is_empty() {
-            writeln!(f, "Principals: (none)").unwrap();
-        } else {
-            writeln!(f, "Principals:").unwrap();
-            for principal in &self.principals {
-                writeln!(f, "\t{}", principal).unwrap();
+            if self.valid_before == 0xFFFFFFFFFFFFFFFF && self.valid_after == 0x0 {
+                writeln!(f, "Valid: forever").unwrap();
+            } else {
+                writeln!(f, "Valid between: {} and {}", self.valid_after, self.valid_before).unwrap();
             }
-        }
 
-        if self.critical_options.is_empty() {
-            writeln!(f, "Critical Options: (none)").unwrap();
-        } else {
-            writeln!(f, "Critical Options:").unwrap();
-            for (name, value) in &self.critical_options {
-                writeln!(f, "\t{} {}", name, value).unwrap();
+            if self.principals.is_empty() {
+                writeln!(f, "Principals: (none)").unwrap();
+            } else {
+                writeln!(f, "Principals:").unwrap();
+                for principal in &self.principals {
+                    writeln!(f, "\t{}", principal).unwrap();
+                }
             }
-        }
 
-        if self.extensions.is_empty() {
-            writeln!(f, "Extensions: (none)").unwrap();
-        } else {
-            writeln!(f, "Extensions:").unwrap();
-            for name in self.extensions.keys() {
-                writeln!(f, "\t{}", name).unwrap();
+            if self.critical_options.is_empty() {
+                writeln!(f, "Critical Options: (none)").unwrap();
+            } else {
+                writeln!(f, "Critical Options:").unwrap();
+                for (name, value) in &self.critical_options {
+                    writeln!(f, "\t{} {}", name, value).unwrap();
+                }
             }
-        }
 
-        write!(f, "")
+            if self.extensions.is_empty() {
+                writeln!(f, "Extensions: (none)").unwrap();
+            } else {
+                writeln!(f, "Extensions:").unwrap();
+                for name in self.extensions.keys() {
+                    writeln!(f, "\t{}", name).unwrap();
+                }
+            }
+
+            write!(f, "")
+        }
     }
 }

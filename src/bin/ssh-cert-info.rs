@@ -30,7 +30,7 @@ fn main() {
         }
         
         match Certificate::from_string(line) {
-            Ok(c) => println!("{}", c),
+            Ok(c) => println!("{:#}", c),
             Err(e) => {
                 println!("Line {}: Certificate not valid: {}", i, e);
             }

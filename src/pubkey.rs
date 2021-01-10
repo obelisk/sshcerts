@@ -298,7 +298,6 @@ impl PublicKey {
     pub fn from_bytes<T: ?Sized + AsRef<[u8]>>(data: &T) -> Result<PublicKey> {
         let mut reader = Reader::new(&data);
         let kt_name = reader.read_string()?;
-
         PublicKey::from_reader(&kt_name, &mut reader)
     }
 
