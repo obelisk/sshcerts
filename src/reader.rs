@@ -15,9 +15,9 @@ impl<'a> Reader<'a> {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 42];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let num = reader.read_u32().unwrap();
     /// assert_eq!(num, 42);
     /// ```
@@ -32,9 +32,9 @@ impl<'a> Reader<'a> {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 42];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let num = reader.read_u32().unwrap();
     /// assert_eq!(num, 42);
     /// reader.set_offset(0);
@@ -51,9 +51,9 @@ impl<'a> Reader<'a> {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 42];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let num = reader.read_u32().unwrap();
     /// assert_eq!(num, 42);
     /// assert_eq!(reader.get_offset(), 4);
@@ -69,9 +69,9 @@ impl<'a> Reader<'a> {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 13, 97, 32, 116, 101, 115, 116, 32, 115, 116, 114, 105, 110, 103];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let bytes = reader.read_bytes().unwrap();
     /// assert_eq!(bytes, [97, 32, 116, 101, 115, 116, 32, 115, 116, 114, 105, 110, 103]);
     /// ```
@@ -101,9 +101,9 @@ impl<'a> Reader<'a> {
     /// Reads `len` bytes from the wrapped buffer as raw data
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 13, 97, 32, 116, 101, 115, 116, 32, 115, 116, 114, 105, 110, 103];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let bytes = reader.read_raw_bytes(4).unwrap();
     /// assert_eq!(bytes, [0, 0, 0, 13]);
     /// ```
@@ -130,9 +130,9 @@ impl<'a> Reader<'a> {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 3, 1, 0, 1];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let mpint = reader.read_mpint().unwrap();
     /// assert_eq!(mpint, [1, 0, 1]);
     /// ```
@@ -151,9 +151,9 @@ impl<'a> Reader<'a> {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 13, 97, 32, 116, 101, 115, 116, 32, 115, 116, 114, 105, 110, 103];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let result = reader.read_string().unwrap();
     /// assert_eq!(result, "a test string");
     /// ```
@@ -168,9 +168,9 @@ impl<'a> Reader<'a> {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 42];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let num = reader.read_u32().unwrap();
     /// assert_eq!(num, 42);
     /// ```
@@ -194,9 +194,9 @@ impl<'a> Reader<'a> {
     ///
     /// # Example
     /// ```rust
-    /// # use sshkeys;
+    /// # use rustica_sshkey::Reader;
     /// let data = vec![0, 0, 0, 0, 0, 0, 0, 42];
-    /// let mut reader = sshkeys::Reader::new(&data);
+    /// let mut reader = Reader::new(&data);
     /// let num = reader.read_u64().unwrap();
     /// assert_eq!(num, 42);
     /// ```
