@@ -1,4 +1,4 @@
-/// Takes an ASN1 encode ECDSA signature and attempts to
+/// Takes an ASN1 encoded ECDSA signature and attempts to
 /// parse it into it's R and S constituent parts
 pub fn asn_der_to_r_s(buf: &[u8]) -> Option<(&[u8], &[u8])> {
     if buf.len() < 4 ||  buf[0] != 0x30 {
