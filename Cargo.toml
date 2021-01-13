@@ -3,6 +3,12 @@ name = "rustica-keys"
 version = "0.1.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
+license-file = "LICENSE"
+description = "A library for parsing, verifying, and creating SSH Certificates"
+repository = "https://github.com/obelisk/rustica-keys"
+homepage = "https://github.com/obelisk/rustica-keys"
+keywords = ["ssh", "yubikey", "certs", "certificates"]
+categories = ["authentication"]
 
 [dependencies]
 base64 = "0.12.1"
