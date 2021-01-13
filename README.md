@@ -3,6 +3,9 @@ Rustica Keys is the library the powers certificate parsing, creation, and signin
 
 The library also contains other key functionality for Yubikeys key management as Rustica only uses hardware devices to hold private keys. The Yubikey management module can be used to provision slot with keys that can never leave the device. When configuring Rustica for the first time, it's recommended you do this for user private keys, but the CA keys should be loaded on outside Rustica (for backup purposes).
 
+## API Stability
+The API for this crate should not be considered stable and expect breaking changes between versions.
+
 
 ## Security Warning
 No review has been done. I built it because I thought people could find it useful. Be wary about using this in production without doing a thorough code review.
