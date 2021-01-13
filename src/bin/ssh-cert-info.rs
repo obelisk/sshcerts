@@ -23,9 +23,8 @@ fn main() {
         }
     };
 
-    let mut i = 0;
-    for line in contents.split("\n").into_iter() {
-        if line.len() == 0 {
+    for (i, line) in contents.split('\n').into_iter().enumerate() {
+        if line.is_empty() {
             break
         }
         
@@ -35,6 +34,5 @@ fn main() {
                 println!("Line {}: Certificate not valid: {}", i, e);
             }
         };
-        i += 1;
     }
 }
