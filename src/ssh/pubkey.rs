@@ -81,7 +81,7 @@ impl Curve {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_sshkey::{Curve, CurveKind};
+    /// # use rustica_keys::ssh::{Curve, CurveKind};
     /// let curve = Curve::from_identifier("nistp256").unwrap();
     /// assert_eq!(curve.kind, CurveKind::Nistp256);
     /// ```
@@ -185,7 +185,7 @@ impl Fingerprint {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_sshkey::{Fingerprint, FingerprintKind};
+    /// # use rustica_keys::ssh::{Fingerprint, FingerprintKind};
     /// let fp = Fingerprint::compute(FingerprintKind::Sha256, "some data".as_bytes());
     /// assert_eq!(fp.kind, FingerprintKind::Sha256);
     /// assert_eq!(fp.hash, "EweZDmulyhRes16ZGCqb7EZTG8VN32VqYCx4D6AkDe4");
@@ -218,7 +218,7 @@ impl PublicKey {
     /// # Examples
     ///
     /// ```rust
-    /// # use rustica_sshkey::PublicKey;
+    /// # use rustica_keys::ssh::PublicKey;
     /// # fn example() {
     /// let key = PublicKey::from_path("/path/to/id_ed25519.pub");
     /// # }
@@ -235,7 +235,7 @@ impl PublicKey {
     /// # Examples
     ///
     /// ```rust
-    /// # use rustica_sshkey::PublicKey;
+    /// # use rustica_keys::ssh::PublicKey;
     /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
     /// let fp = key.fingerprint();
     /// assert_eq!(fp.hash, "ciQkdxjFUhk2E2vRkWJD9kB8pi+EneOkaCJJHNWzPC4");
@@ -282,7 +282,7 @@ impl PublicKey {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_sshkey::PublicKey;
+    /// # use rustica_keys::ssh::PublicKey;
     /// let data = vec![0, 0, 0, 11, 115, 115, 104, 45,
     ///                 101, 100, 50, 53, 53, 49, 57,
     ///                 0, 0, 0, 32, 121, 27, 123, 184,
@@ -350,7 +350,7 @@ impl PublicKey {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_sshkey::PublicKey;
+    /// # use rustica_keys::ssh::PublicKey;
     /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
     /// assert_eq!(key.bits(), 256);
     /// ```
@@ -374,7 +374,7 @@ impl PublicKey {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_sshkey::PublicKey;
+    /// # use rustica_keys::ssh::PublicKey;
     /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
     /// assert_eq!(key.encode(), vec![0, 0, 0, 11, 115, 115, 104, 45, 101, 100, 50, 53, 53, 49, 57, 0, 0, 0, 32, 121, 27, 123, 184, 48, 199, 187, 52, 118, 80, 41, 16, 76, 233, 83, 35, 128, 62, 188, 207, 47, 46, 28, 204, 70, 112, 254, 200, 124, 155, 202, 221]);
     /// ```
@@ -405,7 +405,7 @@ impl PublicKey {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_sshkey::{FingerprintKind, PublicKey};
+    /// # use rustica_keys::ssh::{FingerprintKind, PublicKey};
     /// # fn example() {
     /// let key = PublicKey::from_path("/path/to/id_ed25519.pub").unwrap();
     /// let fp = key.fingerprint();
@@ -422,7 +422,7 @@ impl PublicKey {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_sshkey::{FingerprintKind, PublicKey};
+    /// # use rustica_keys::ssh::{FingerprintKind, PublicKey};
     /// # fn example() {
     /// let key = PublicKey::from_path("/path/to/id_ed25519.pub").unwrap();
     /// let sha512fp = key.fingerprint_with(FingerprintKind::Sha512);
@@ -437,7 +437,7 @@ impl PublicKey {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_sshkey::PublicKey;
+    /// # use rustica_keys::ssh::PublicKey;
     /// use std::fs::File;
     /// # fn example() {
     /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA...").unwrap();

@@ -101,7 +101,7 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_sshkey::Certificate;
+    /// # use rustica_keys::Certificate;
     /// # fn example() {
     ///     let cert = Certificate::from_path("/path/to/id_ed25519-cert.pub").unwrap();
     ///     println!("{}", cert);
@@ -119,7 +119,7 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_sshkey::Certificate;
+    /// # use rustica_keys::Certificate;
     /// # fn example() {
     ///     let cert = Certificate::from_string("ssh-rsa AAAAB3NzaC1yc2EAAAA...").unwrap();
     ///     println!("{}", cert);
@@ -212,13 +212,15 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_sshkey::{Certificate, PublicKey};
+    /// # use rustica_keys::{Certificate, PublicKey};
+    /// # use rustica_keys::ssh::{CertType};
     /// # use std::collections::HashMap;
     /// fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
     /// fn test_pubkey() -> Option<Vec<u8>> { None }
     /// # fn example() {
     ///   let cert = Certificate::new(
     ///      PublicKey::from_string("AAA...").unwrap(),
+    ///      CertType::User,
     ///      0xFEFEFEFEFEFEFEFE,
     ///      String::from("obelisk@exclave"),
     ///      vec![String::from("obelisk2")],
@@ -226,7 +228,7 @@ impl Certificate {
     ///      0xFFFFFFFFFFFFFFFF,
     ///      HashMap::new(),
     ///      HashMap::new(),
-    ///      test_pubkey,
+    ///      PublicKey::from_string("AAA...").unwrap(),
     ///      test_signer,
     ///   );
     /// 

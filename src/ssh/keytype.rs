@@ -46,7 +46,7 @@ impl KeyType {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_sshkey::{KeyType, KeyTypeKind};
+    /// # use rustica_keys::ssh::{KeyType, KeyTypeKind};
     /// let kt = KeyType::from_name("ssh-rsa").unwrap();
     /// assert_eq!(kt.kind, KeyTypeKind::Rsa);
     /// ```
