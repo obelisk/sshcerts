@@ -467,7 +467,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
 impl fmt::Display for Certificate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if !f.alternate() {
-            write!(f, "{} {} {}", "ecdsa-sha2-nistp256-cert-v01@openssh.com", base64::encode(&self.serialized), &self.key_id)
+            write!(f, "{} {} {}", &self.key_type.name, base64::encode(&self.serialized), &self.key_id)
         } else {
             writeln!(f, "Type: {} {}", self.key_type, self.cert_type).unwrap();
             writeln!(f, "Public Key: {} {}:{}", self.key_type.short_name, self.key.fingerprint().kind, self.key.fingerprint().hash).unwrap();
