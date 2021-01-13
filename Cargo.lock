@@ -619,7 +619,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustica-sshkey"
+name = "rustica-keys"
 version = "0.1.0"
 dependencies = [
  "base64 0.12.3",

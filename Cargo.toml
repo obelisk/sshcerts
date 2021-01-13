@@ -1,5 +1,5 @@
 [package]
-name = "rustica-sshkey"
+name = "rustica-keys"
 version = "0.1.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"

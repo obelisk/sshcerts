@@ -1,7 +1,7 @@
 use std::env;
 use std::fs;
 
-use rustica_sshkey::ssh::Certificate;
+use rustica_keys::ssh::Certificate;
 
 fn help() {
     println!("An SSH Cert Parser based on Rustica's sshkey library");
