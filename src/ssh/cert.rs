@@ -39,6 +39,35 @@ impl fmt::Display for CertType {
     }
 }
 
+const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
+    ("permit-agent-forwarding", ""),
+    ("permit-port-forwarding", ""),
+    ("permit-pty", ""),
+    ("permit-user-rc", ""),
+    ("permit-X11-forwarding", ""),
+];
+
+/// Type that encapsulates the normal usage of the extensions field.
+#[derive(Debug)]
+pub enum Extensions {
+    /// Contains the five standard extensions: agent-forwarding, port-forwarding, pty, user-rc, X11-forwarding
+    Standard,
+    /// Allows a completely custom set of extensions to be passed in. This does not contain the standard
+    /// extensions
+    Custom(HashMap<String, String>)
+}
+
+/// Type that encapsulates the normal usage of the critical options field.
+/// I used a structure instead of an Option for consistency and possible future
+/// expansion into a ForceCommand type.
+#[derive(Debug)]
+pub enum CriticalOptions {
+    /// Don't use any critical options
+    None,
+    /// Allows a custom set of critical options. Does not contain any standard options.
+    Custom(HashMap<String, String>)
+}
+
 /// A type which represents an OpenSSH certificate key.
 /// Please refer to [PROTOCOL.certkeys] for more details about OpenSSH certificates.
 /// [PROTOCOL.certkeys]: https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.certkeys?annotate=HEAD
@@ -213,8 +242,7 @@ impl Certificate {
     ///
     /// ```rust
     /// # use rustica_keys::{Certificate, PublicKey};
-    /// # use rustica_keys::ssh::{CertType};
-    /// # use std::collections::HashMap;
+    /// # use rustica_keys::ssh::{CertType, CriticalOptions, Extensions};
     /// fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
     /// fn test_pubkey() -> Option<Vec<u8>> { None }
     /// # fn example() {
@@ -226,8 +254,8 @@ impl Certificate {
     ///      vec![String::from("obelisk2")],
     ///      0,
     ///      0xFFFFFFFFFFFFFFFF,
-    ///      HashMap::new(),
-    ///      HashMap::new(),
+    ///      CriticalOptions::None,
+    ///      Extensions::Standard,
     ///      PublicKey::from_string("AAA...").unwrap(),
     ///      test_signer,
     ///   );
@@ -247,8 +275,8 @@ impl Certificate {
         principals: Vec<String>,
         valid_after: u64,
         valid_before: u64,
-        critical_options: HashMap<String, String>,
-        extensions: HashMap<String, String>,
+        critical_options: CriticalOptions,
+        extensions: Extensions,
         ca_pubkey: PublicKey,
         signer: fn(&[u8]) -> Option<Vec<u8>>,
     ) -> Result<Certificate> {
@@ -289,10 +317,29 @@ impl Certificate {
         writer.write_u64(valid_before);
 
         // Write critical options
-        writer.write_string_map(&critical_options);
+        let critical_options = match critical_options {
+            CriticalOptions::None => {
+                writer.write_string_map(&HashMap::new());
+                HashMap::new()
+            },
+            CriticalOptions::Custom(co) => {
+                writer.write_string_map(&co);
+                co
+            },
+        };
 
-        // Write the extensions
-        writer.write_string_map(&extensions);
+        // Write extensions
+        let extensions = match extensions {
+            Extensions::Standard => {
+                let stdex = STANDARD_EXTENSIONS.iter().map(|x| (String::from(x.0), String::from(x.1))).collect();
+                writer.write_string_map(&stdex);
+                stdex
+            },
+            Extensions::Custom(co) => {
+                writer.write_string_map(&co);
+                co
+            },
+        };
 
         // Write the unused reserved bytes
         writer.write_u32(0x0);

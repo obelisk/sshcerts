@@ -62,7 +62,7 @@ mod reader;
 pub mod utils;
 mod writer;
 
-pub use self::cert::{CertType, Certificate};
+pub use self::cert::{CertType, Certificate, CriticalOptions, Extensions};
 pub use self::error::{Error, Result};
 pub use self::keytype::{KeyType, KeyTypeKind};
 pub use self::pubkey::{
