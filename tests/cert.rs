@@ -171,6 +171,20 @@ fn parse_ecdsa384_key_signed_by_ecdsa256_ca() {
     assert!(cert.is_ok());
 }
 
+#[test]
+fn parse_ed25519_key_signed_by_ed25519_ca() {
+    let cert = concat!(
+        "ssh-ed25519-cert-v01@openssh.com AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIK8bQbhlLJcUXYHcTA2FkU6qDvY4f9IXO3PMBMT",
+        "zR76hAAAAIB7fwcuszYuMUHSRn/Jgx0R5o8440VO5fuRzFwz6gBpv/v7+/v7+/v4AAAABAAAAD29iZWxpc2tAZXhjbGF2ZQAAABcAAAAHb2JlbGlzawAAAAhtaXR",
+        "jaGVsbAAAAAAAAAAA//////////8AAAAAAAAAggAAABVwZXJtaXQtWDExLWZvcndhcmRpbmcAAAAAAAAAF3Blcm1pdC1hZ2VudC1mb3J3YXJkaW5nAAAAAAAAABZ",
+        "wZXJtaXQtcG9ydC1mb3J3YXJkaW5nAAAAAAAAAApwZXJtaXQtcHR5AAAAAAAAAA5wZXJtaXQtdXNlci1yYwAAAAAAAAAAAAAAMwAAAAtzc2gtZWQyNTUxOQAAACB",
+        "F8fjQjhPiIQoIpSZUQJCrjBCqLOanQPT9T2VDzoYySAAAAFMAAAALc3NoLWVkMjU1MTkAAABAQQtSUBHzgzLEYLcuYmtZlVz2guW9141tmzSjWnDKrPv07r2W0BB",
+        "cMvF5LlgHwzQN3iY4gfCrfaUF6UW58P/ADg== obelisk@exclave.lan");
+
+    let cert = Certificate::from_string(cert);
+    assert!(cert.is_ok());
+}
+
 
 
 // Test PublicKey parsing
@@ -220,8 +234,6 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
 
     Some(encoded)
 }
-
-
 
 #[test]
 fn create_sign_parse_verify_ecdsa256() {

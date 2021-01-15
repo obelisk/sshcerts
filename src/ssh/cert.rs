@@ -9,6 +9,7 @@ use ring::signature::{
     ECDSA_P384_SHA384_FIXED,
     RSA_PKCS1_2048_8192_SHA256,
     RSA_PKCS1_2048_8192_SHA512,
+    ED25519,
     UnparsedPublicKey,
     RsaPublicKeyComponents};
 
@@ -452,14 +453,13 @@ fn read_principals(buf: &[u8]) -> Result<Vec<String>> {
 // ECDSA
 //  ecdsa-sha2-nistp256
 //  ecdsa-sha2-nistp384
-//  ecdsa-sha2-nistp521 (but this is unsupported in Ring so not supported)
+//  ecdsa-sha2-nistp521 (but this is unsupported in Ring so not supported here)
 //
 // RSA
 //  rsa-sha2-256
 //  rsa-sha2-512
 //
 // Ed25519
-//  Incomplete
 //
 // We then take the public key of the CA (immiediately preceeding the signature and part of the signed data)
 // and verify the signature accordingly. If the signature is not valid, this function errors.
@@ -506,8 +506,17 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
                 }
             }
         },
-        PublicKeyKind::Ed25519(_key) => {
-            Err(Error::with_kind(ErrorKind::CertificateInvalidSignature))
+        PublicKeyKind::Ed25519(key) => {
+            let alg = &ED25519;
+            let signature = reader.read_bytes()?;
+            let peer_public_key = UnparsedPublicKey::new(alg, &key.key);
+            match peer_public_key.verify(&signed_bytes, &signature) {
+                Ok(()) => Ok(signature_buf.to_vec()),
+                Err(e) => {
+                    println!("Error: {}", e);
+                    Err(Error::with_kind(ErrorKind::CertificateInvalidSignature))
+                }
+            }
         },
     }
 }
