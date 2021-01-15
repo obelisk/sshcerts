@@ -18,8 +18,7 @@ ring = "0.16.9"
 yubikey-piv = {version = "0.1.0", features = ["untested"]}
 
 [dev-dependencies]
-lazy_static = "*"
-hex = "*"
+hex = "0.4.2"
 
 [[bin]]
 name = "ssh-cert-info"

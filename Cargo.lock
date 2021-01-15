@@ -625,7 +625,6 @@ dependencies = [
  "base64 0.12.3",
  "byteorder",
  "hex",
- "lazy_static",
  "ring",
  "sha2",
  "yubikey-piv",
