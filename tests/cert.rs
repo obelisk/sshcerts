@@ -1,5 +1,6 @@
 use rustica_keys::ssh::Certificate;
 
+// Test different combinations of public key and cert type
 #[test]
 fn parse_rsa_key_signed_by_rsa_ca() {
     let cert = concat!(
@@ -90,4 +91,86 @@ fn parse_ecdsa_key_signed_by_ecdsa_ca() {
     let cert = cert.unwrap();
     assert_eq!(cert.key.fingerprint().hash, "calfKUhj4a4YcDOB3F0dPZrvzVAQHfw438eQcbk7Aw0");
     assert_eq!(cert.signature_key.fingerprint().hash, "Ch3IQ5MgZReoB1OFWwI3BhJi+1QILiHQaH7eVUbhg3M");
+}
+
+// Test PublicKey parsing
+
+#[test]
+fn parse_ecdsa_publickey() {
+    use rustica_keys::ssh::{PublicKey};
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(ssh_pubkey.fingerprint().hash, "BAJ7Md5+hfu6I6ojHoJpSNVXNRnxM8XfNnA8Pf1X/2I");
+}
+
+fn test_ecdsa_signer_ssh_pubkey() -> String {
+    String::from("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBNw/RHLOp3M1pu+ax7xzo3qsnyNKWNYFZqGUaxNYeduJoKNG+8b0257lwwOA9HkoDWLJpltvUIH7xrb3AEjGKQ8= obelisk@exclave.lan")
+}
+
+fn test_ecdsa_signer_ssh_pkey() -> Vec<u8> {
+    hex::decode(concat!(
+        "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02",
+        "0101042063b3b4925287d2d20fd53c297ef80cdcd438764d40999ba60f6f1b08",
+        "14e3b49ea14403420004dc3f4472cea77335a6ef9ac7bc73a37aac9f234a58d6",
+        "0566a1946b135879db89a0a346fbc6f4db9ee5c30380f479280d62c9a65b6f50",
+        "81fbc6b6f70048c6290f")).unwrap()
+}
+
+// Test signing and parsing work together
+fn test_ecdsa_signer(buf: &[u8]) -> Option<Vec<u8>> {
+    use ring::{rand, signature};
+    use rustica_keys::utils::signature_convert_asn1_ecdsa_to_ssh;
+
+    let pkcs8_bytes = test_ecdsa_signer_ssh_pkey();
+    let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
+    let rng = rand::SystemRandom::new();
+    let signature = key_pair.sign(&rng, buf).unwrap();
+
+    let sig_type = "ecdsa-sha2-nistp256";
+    let mut encoded: Vec<u8> = (sig_type.len() as u32).to_be_bytes().to_vec();
+    encoded.extend_from_slice(sig_type.as_bytes());
+    encoded.extend(signature_convert_asn1_ecdsa_to_ssh(&signature.as_ref()).unwrap());
+
+    Some(encoded)
+}
+
+#[test]
+fn create_sign_parse_verify() {
+    use rustica_keys::ssh::{Certificate, CertType, CriticalOptions, Extensions, PublicKey};
+    use std::collections::HashMap;
+
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+
+    let ca_pubkey = PublicKey::from_string(&test_ecdsa_signer_ssh_pubkey());
+    assert!(ca_pubkey.is_ok());
+
+    let ssh_pubkey = ssh_pubkey.unwrap();
+    let ca_pubkey = ca_pubkey.unwrap();
+
+    let user_cert = Certificate::new(
+        ssh_pubkey.clone(),
+        CertType::User,
+        0xFEFEFEFEFEFEFEFE,
+        String::from("key_id"),
+        vec![String::from("obelisk")],
+        0,
+        0xFFFFFFFFFFFFFFFF,
+        CriticalOptions::None,
+        Extensions::Standard,
+        ca_pubkey.clone(),
+        test_ecdsa_signer,
+    );
+
+    assert!(user_cert.is_ok());
+
+    let user_cert = user_cert.unwrap();
+    assert_eq!(user_cert.principals, vec!["obelisk"]);
+    assert_eq!(user_cert.critical_options, HashMap::new());
+    assert_eq!(user_cert.extensions.len(), 5);
+    assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
+    assert_eq!(user_cert.valid_after, 0);
+    assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 }

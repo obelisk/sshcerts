@@ -11,7 +11,7 @@ use crate::ssh::{
     PublicKeyKind,
 };
 
-use crate::ssh::utils::asn_der_to_r_s;
+use crate::utils::signature_convert_asn1_ecdsa_to_ssh;
 
 /// Pull the public key from the YubiKey and wrap it in a Rustica
 /// PublicKey object.
@@ -58,19 +58,12 @@ pub fn ssh_cert_signer(buf: &[u8], slot: SlotId) -> Option<Vec<u8>> {
             let sig_type = "ecdsa-sha2-nistp256";
             let mut encoded: Vec<u8> = (sig_type.len() as u32).to_be_bytes().to_vec();
             encoded.extend_from_slice(sig_type.as_bytes());
-            let (r,s) = match asn_der_to_r_s(&signature) {
-                Some((r,s)) => (r, s),
+            let sig_encoding = match signature_convert_asn1_ecdsa_to_ssh(&signature) {
+                Some(se) => se,
                 None => return None,
             };
-            let mut sig_encoding = vec![];
-            sig_encoding.extend_from_slice(&(r.len() as u32).to_be_bytes());
-            sig_encoding.extend_from_slice(r);
-            sig_encoding.extend_from_slice(&(s.len() as u32).to_be_bytes());
-            sig_encoding.extend_from_slice(s);
 
-            encoded.extend_from_slice(&(sig_encoding.len() as u32).to_be_bytes());
             encoded.extend(sig_encoding);
-
             Some(encoded)
         },
         Err(e) => {

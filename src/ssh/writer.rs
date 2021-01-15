@@ -146,12 +146,20 @@ impl Writer {
     /// assert_eq!(bytes, [0, 0, 0, 12, 0, 0, 0, 4, 84, 101, 115, 116, 0, 0, 0, 0]);
     /// ```
     pub fn write_string_map(&mut self, map: &HashMap<String, String>) {
-        let total_length = map.iter().map(|x| x.0.len() + x.1.len()).fold(map.len()*8, |x, y| x + y) as u32;
+        let total_length = map.iter()
+            .map(|x| x.0.len() + x.1.len() + if !x.1.is_empty() { 4 } else { 0 })
+            .fold(map.len() * 8, |x, y| x + y) as u32;
+
         self.write_u32(total_length);
 
         for (k,v) in map {
             self.write_string(k);
-            self.write_string(v);
+            if v.is_empty() {
+                self.write_u32(0x0);
+            } else {
+                self.write_u32(v.len() as u32 + 4);
+                self.write_string(v);
+            }
         }
     }
 

@@ -190,7 +190,6 @@ impl Certificate {
             n => return Err(Error::with_kind(ErrorKind::InvalidCertType(n))),
         };
 
-
         let key_id = reader.read_string()?;
         let principals = reader.read_bytes().and_then(|v| read_principals(&v))?;
         let valid_after = reader.read_u64()?;

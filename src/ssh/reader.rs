@@ -81,13 +81,11 @@ impl<'a> Reader<'a> {
         }
 
         let slice = &self.inner[self.offset..];
-
         if slice.len() < 4 {
             return Err(Error::with_kind(ErrorKind::InvalidFormat));
         }
 
         let size = BigEndian::read_u32(&slice[..4]) as usize;
-
         if slice.len() < size + 4 {
             return Err(Error::with_kind(ErrorKind::InvalidFormat));
         }

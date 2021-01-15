@@ -57,9 +57,6 @@ mod error;
 mod keytype;
 mod pubkey;
 mod reader;
-/// Utility functions for dealing with SSH certificates, signatures
-/// or conversions
-pub mod utils;
 mod writer;
 
 pub use self::cert::{CertType, Certificate, CriticalOptions, Extensions};
