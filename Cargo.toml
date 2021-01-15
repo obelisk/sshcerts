@@ -1,6 +1,6 @@
 [package]
 name = "rustica-keys"
-version = "0.2.1"
+version = "0.3.0-alpha"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"

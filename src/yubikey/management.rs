@@ -1,4 +1,4 @@
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha384};
 
 use yubikey_piv::{MgmKey, YubiKey};
 use yubikey_piv::policy::{PinPolicy, TouchPolicy};
@@ -15,6 +15,10 @@ pub enum Error {
     /// This occurs when the signature type requested does not match the key
     /// in the slot on the key
     WrongKeyType,
+    /// This occurs when you try to use a feature that should technically work
+    /// but is currently unimplemented or unsupported on the hardware connected.
+    /// For example, RSA signing will currently throw this error.
+    Unsupported,
     /// If the Yubikey throws an error we don't recognize, it's encapsulated
     /// and returned
     InternalYubiKeyError(yubikey_piv::error::Error),
@@ -42,10 +46,12 @@ pub fn fetch_pubkey(slot: SlotId) -> Result<PublicKeyInfo, Error> {
 /// to use as this means there is no backup of the key should it be lost.
 /// It is however provided as an easy method quickly get a YubiKey properly configured
 /// for use with Rustica.
-/// 
-/// It requires that a YubiKey object be passed in a long with a pin to make sure that
-/// it is configuring the correct one.
-pub fn provision(yk: &mut YubiKey, pin: &[u8], slot: SlotId, alg: AlgorithmId) -> Result<PublicKeyInfo, Error> {
+pub fn provision(pin: &[u8], slot: SlotId, alg: AlgorithmId) -> Result<PublicKeyInfo, Error> {
+    let mut yk = match YubiKey::open() {
+        Ok(yk) => yk,
+        Err(e) => return Err(Error::InternalYubiKeyError(e)),
+    };
+
     match yk.verify_pin(pin) {
         Ok(_) => (),
         Err(e) => {
@@ -62,7 +68,7 @@ pub fn provision(yk: &mut YubiKey, pin: &[u8], slot: SlotId, alg: AlgorithmId) -
         },
     }
 
-    let key_info = match yubikey_piv::key::generate(yk, slot, alg, PinPolicy::Never, TouchPolicy::Never) {
+    let key_info = match yubikey_piv::key::generate(&mut yk, slot, alg, PinPolicy::Never, TouchPolicy::Never) {
         Ok(ki) => ki,
         Err(e) => {
             println!("Error in provisioning new key: {}", e);
@@ -72,7 +78,7 @@ pub fn provision(yk: &mut YubiKey, pin: &[u8], slot: SlotId, alg: AlgorithmId) -
 
     // Generate a self-signed certificate for the new key.
     if let Err(e) = Certificate::generate_self_signed(
-        yk,
+        &mut yk,
         slot,
         [0u8; 20],
         None,
@@ -82,7 +88,7 @@ pub fn provision(yk: &mut YubiKey, pin: &[u8], slot: SlotId, alg: AlgorithmId) -
         return Err(Error::InternalYubiKeyError(e));
     }
 
-    configured(yk, slot)
+    configured(&mut yk, slot)
 }
 
 /// Take an data, an algorithm, and a slot and attempt to sign the data field
@@ -106,12 +112,22 @@ pub fn sign_data(data: &[u8], alg: AlgorithmId, slot: SlotId) -> Result<Vec<u8>,
         return Err(Error::WrongKeyType);
     }
 
-    let mut hasher = Sha256::new(); 
-    hasher.update(data);
+    let hash = match slot_alg {
+        AlgorithmId::EccP256 => {
+            let mut hasher = Sha256::new();
+            hasher.update(data);
+            hasher.finalize().to_vec()
+        },
+        AlgorithmId::EccP384 => {
+            let mut hasher = Sha384::new();
+            hasher.update(data);
+            hasher.finalize().to_vec()
+        }
+        _ => return Err(Error::Unsupported),
+    };
 
-    let hash = &hasher.finalize()[..];
 
-    match yk_sign_data(&mut yk, hash, alg, slot) {
+    match yk_sign_data(&mut yk, &hash[..], alg, slot) {
         Ok(sig) => Ok(sig.to_vec()),
         Err(e) => Err(Error::InternalYubiKeyError(e)),
     }

@@ -620,7 +620,7 @@ dependencies = [
 
 [[package]]
 name = "rustica-keys"
-version = "0.2.1"
+version = "0.3.0-alpha"
 dependencies = [
  "base64 0.12.3",
  "byteorder",

@@ -14,12 +14,12 @@ use crate::ssh::{
 
 use crate::utils::signature_convert_asn1_ecdsa_to_ssh;
 
-/// Pull the public key from the YubiKey and wrap it in a Rustica
-/// PublicKey object.
-pub fn ssh_cert_fetch_pubkey(slot: SlotId) -> Option<PublicKey> {
-    match fetch_pubkey(slot) {
+/// This function is used to convert the Yubikey PIV type, to the internal
+/// PublicKey type.
+pub fn convert_to_ssh_pubkey(pki: &PublicKeyInfo) -> Option<PublicKey> {
+    match pki {
         //Ok(hsm::PublicKeyInfo::Rsa { pubkey, .. }) => pubkey,
-        Ok(PublicKeyInfo::EcP256(pubkey)) => {
+        PublicKeyInfo::EcP256(pubkey) => {
             let key_type = KeyType::from_name("ecdsa-sha2-nistp256").unwrap();
             let curve = Curve::from_identifier("nistp256").unwrap();
             let kind = EcdsaPublicKey {
@@ -33,7 +33,7 @@ pub fn ssh_cert_fetch_pubkey(slot: SlotId) -> Option<PublicKey> {
                 comment: None,
             })
         },
-        Ok(PublicKeyInfo::EcP384(pubkey)) => {
+        PublicKeyInfo::EcP384(pubkey) => {
             let key_type = KeyType::from_name("ecdsa-sha2-nistp384").unwrap();
             let curve = Curve::from_identifier("nistp384").unwrap();
             let kind = EcdsaPublicKey {
@@ -47,6 +47,15 @@ pub fn ssh_cert_fetch_pubkey(slot: SlotId) -> Option<PublicKey> {
                 comment: None,
             })
         }
+        _ => None,
+    }
+}
+
+/// Pull the public key from the YubiKey and wrap it in a Rustica
+/// PublicKey object.
+pub fn ssh_cert_fetch_pubkey(slot: SlotId) -> Option<PublicKey> {
+    match fetch_pubkey(slot) {
+        Ok(pki) => convert_to_ssh_pubkey(&pki),
         _ => None,
     }
 }
