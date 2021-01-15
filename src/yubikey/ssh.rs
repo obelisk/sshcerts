@@ -5,6 +5,7 @@ use crate::yubikey::management::{fetch_pubkey, sign_data};
 
 use crate::ssh::{
     Curve,
+    CurveKind,
     EcdsaPublicKey,
     KeyType,
     PublicKey,
@@ -53,9 +54,25 @@ pub fn ssh_cert_fetch_pubkey(slot: SlotId) -> Option<PublicKey> {
 /// Sign the provided buffer of data and return it in an SSH Certificiate
 /// signature formatted byte vector
 pub fn ssh_cert_signer(buf: &[u8], slot: SlotId) -> Option<Vec<u8>> {
-    match sign_data(&buf, AlgorithmId::EccP256, slot) {
+    let pubkey = match ssh_cert_fetch_pubkey(slot) {
+        None => return None,
+        Some(pk) => pk,
+    };
+
+    let (alg, sig_type) = match pubkey.kind {
+        PublicKeyKind::Ecdsa(x) => {
+            match x.curve.kind {
+                CurveKind::Nistp256 => (AlgorithmId::EccP256, "ecdsa-sha2-nistp256"),
+                CurveKind::Nistp384 => (AlgorithmId::EccP384, "ecdsa-sha2-nistp384"),
+                CurveKind::Nistp521 => return None,
+            }
+        },
+        PublicKeyKind::Rsa(_) => return None,
+        PublicKeyKind::Ed25519(_) => return None,
+    };
+
+    match sign_data(&buf, alg, slot) {
         Ok(signature) => {
-            let sig_type = "ecdsa-sha2-nistp256";
             let mut encoded: Vec<u8> = (sig_type.len() as u32).to_be_bytes().to_vec();
             encoded.extend_from_slice(sig_type.as_bytes());
             let sig_encoding = match signature_convert_asn1_ecdsa_to_ssh(&signature) {
@@ -67,7 +84,7 @@ pub fn ssh_cert_signer(buf: &[u8], slot: SlotId) -> Option<Vec<u8>> {
             Some(encoded)
         },
         Err(e) => {
-            println!("Error: {:?}", e);
+            error!("SSH Cert Signer Error: {:?}", e);
             None
         },
     }

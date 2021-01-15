@@ -30,7 +30,7 @@ fn parse_rsa_key_signed_by_rsa_ca() {
 }
 
 #[test]
-fn parse_ecdsa_key_signed_by_rsa_ca() {
+fn parse_ecdsa256_key_signed_by_rsa_ca() {
     let cert = concat!(
     "ecdsa-sha2-nistp256-cert-v01@openssh.com AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgjeWGZiKdnaEOd/VZpzt",
     "ODa61rBFInlJyaiD1Wrey/p0AAAAIbmlzdHAyNTYAAABBBNrlezujx3k21+cb8kDo86oH220fnNFQmkR4mfN9pIq3t5J6AmPXqn2SWeO60hgc9fjZHL4wzFNARcU",
@@ -55,7 +55,7 @@ fn parse_ecdsa_key_signed_by_rsa_ca() {
 }
 
 #[test]
-fn parse_rsa_key_signed_by_ecdsa_ca() {
+fn parse_rsa_key_signed_by_ecdsa256_ca() {
     let cert = concat!(
     "ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgvKYUoYQRh64jtxcuQBn344N+Vf551B02clPEYFZUBQkAAAA",
     "DAQABAAABgQC3DH/PBs33u8Tiz1g+NNa806fNW2cEjgUedehBGeRAURFE33n4BgIn3F6Z3GN/319bHSjooMCeBYW2lPLdujTYZdpa6zEv/JzT9FANGN9/yOhYjQd",
@@ -76,7 +76,7 @@ fn parse_rsa_key_signed_by_ecdsa_ca() {
 }
 
 #[test]
-fn parse_ecdsa_key_signed_by_ecdsa_ca() {
+fn parse_ecdsa256_key_signed_by_ecdsa256_ca() {
     let cert = concat!(
     "ecdsa-sha2-nistp256-cert-v01@openssh.com AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAghZWs9kzFksOzb8D65r6",
     "hlgkhE/9XlybNXz63RkO+QcwAAAAIbmlzdHAyNTYAAABBBNrlezujx3k21+cb8kDo86oH220fnNFQmkR4mfN9pIq3t5J6AmPXqn2SWeO60hgc9fjZHL4wzFNARcU",
@@ -96,7 +96,7 @@ fn parse_ecdsa_key_signed_by_ecdsa_ca() {
 // Test PublicKey parsing
 
 #[test]
-fn parse_ecdsa_publickey() {
+fn parse_ecdsa256_publickey() {
     use rustica_keys::ssh::{PublicKey};
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
@@ -119,7 +119,7 @@ fn test_ecdsa_signer_ssh_pkey() -> Vec<u8> {
 }
 
 // Test signing and parsing work together
-fn test_ecdsa_signer(buf: &[u8]) -> Option<Vec<u8>> {
+fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
     use ring::{rand, signature};
     use rustica_keys::utils::signature_convert_asn1_ecdsa_to_ssh;
 
@@ -137,7 +137,7 @@ fn test_ecdsa_signer(buf: &[u8]) -> Option<Vec<u8>> {
 }
 
 #[test]
-fn create_sign_parse_verify() {
+fn create_sign_parse_verify_ecdsa256() {
     use rustica_keys::ssh::{Certificate, CertType, CriticalOptions, Extensions, PublicKey};
     use std::collections::HashMap;
 
@@ -161,7 +161,7 @@ fn create_sign_parse_verify() {
         CriticalOptions::None,
         Extensions::Standard,
         ca_pubkey.clone(),
-        test_ecdsa_signer,
+        test_ecdsa256_signer,
     );
 
     assert!(user_cert.is_ok());

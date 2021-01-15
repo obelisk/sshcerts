@@ -625,6 +625,7 @@ dependencies = [
  "base64 0.12.3",
  "byteorder",
  "hex",
+ "log",
  "ring",
  "sha2",
  "yubikey-piv",

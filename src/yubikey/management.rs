@@ -6,13 +6,21 @@ use yubikey_piv::key::{AlgorithmId, sign_data as yk_sign_data, SlotId};
 use yubikey_piv::certificate::{Certificate, PublicKeyInfo};
 
 
+/// Errors when interacting with the Yubikey.
 #[derive(Debug)]
 pub enum Error {
+    /// Generally this occurs when a slot is asked to return or process data
+    /// when it has no certificate or private key.
     Unprovisioned,
+    /// This occurs when the signature type requested does not match the key
+    /// in the slot on the key
     WrongKeyType,
+    /// If the Yubikey throws an error we don't recognize, it's encapsulated
+    /// and returned
     InternalYubiKeyError(yubikey_piv::error::Error),
 }
 
+/// Check to see that a provided Yubikey and slot is configured for signing
 pub fn configured(yk: &mut YubiKey, slot: SlotId) -> Result<PublicKeyInfo, Error> {
     match yubikey_piv::certificate::Certificate::read(yk, slot) {
         Ok(cert) => Ok(cert.subject_pki().clone()),
@@ -20,6 +28,8 @@ pub fn configured(yk: &mut YubiKey, slot: SlotId) -> Result<PublicKeyInfo, Error
     }
 }
 
+/// Fetch a public key from the provided slot. If there is not exactly one
+/// Yubikey this will fail.
 pub fn fetch_pubkey(slot: SlotId) -> Result<PublicKeyInfo, Error> {
     let mut yubikey = match YubiKey::open() {
         Ok(yk) => yk,
@@ -35,7 +45,7 @@ pub fn fetch_pubkey(slot: SlotId) -> Result<PublicKeyInfo, Error> {
 /// 
 /// It requires that a YubiKey object be passed in a long with a pin to make sure that
 /// it is configuring the correct one.
-pub fn provision(yk: &mut YubiKey, pin: &[u8], slot: SlotId) -> Result<PublicKeyInfo, Error> {
+pub fn provision(yk: &mut YubiKey, pin: &[u8], slot: SlotId, alg: AlgorithmId) -> Result<PublicKeyInfo, Error> {
     match yk.verify_pin(pin) {
         Ok(_) => (),
         Err(e) => {
@@ -52,7 +62,7 @@ pub fn provision(yk: &mut YubiKey, pin: &[u8], slot: SlotId) -> Result<PublicKey
         },
     }
 
-    let key_info = match yubikey_piv::key::generate(yk, slot, AlgorithmId::EccP256, PinPolicy::Never, TouchPolicy::Never) {
+    let key_info = match yubikey_piv::key::generate(yk, slot, alg, PinPolicy::Never, TouchPolicy::Never) {
         Ok(ki) => ki,
         Err(e) => {
             println!("Error in provisioning new key: {}", e);
@@ -75,6 +85,10 @@ pub fn provision(yk: &mut YubiKey, pin: &[u8], slot: SlotId) -> Result<PublicKey
     configured(yk, slot)
 }
 
+/// Take an data, an algorithm, and a slot and attempt to sign the data field
+/// 
+/// If the requested algorithm doesn't match the key in the slot (or the slot
+/// is empty) this will return an error.
 pub fn sign_data(data: &[u8], alg: AlgorithmId, slot: SlotId) -> Result<Vec<u8>, Error> {
     let mut yk = match YubiKey::open() {
         Ok(yk) => yk,
