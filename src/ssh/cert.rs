@@ -6,7 +6,7 @@ use std::path::Path;
 
 use ring::signature::{
     ECDSA_P256_SHA256_FIXED,
-    // ECDSA_P256_SHA384_ASN1,
+    ECDSA_P384_SHA384_FIXED,
     RSA_PKCS1_2048_8192_SHA256,
     RSA_PKCS1_2048_8192_SHA512,
     UnparsedPublicKey,
@@ -451,7 +451,7 @@ fn read_principals(buf: &[u8]) -> Result<Vec<String>> {
 //
 // ECDSA
 //  ecdsa-sha2-nistp256
-//  ecdsa-sha2-nistp384 (@obelisk TODO: Ring doesn't support this with fixed but does with ASN1)
+//  ecdsa-sha2-nistp384
 //  ecdsa-sha2-nistp521 (but this is unsupported in Ring so not supported)
 //
 // RSA
@@ -479,7 +479,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
 
             let alg = match sig_type.name {
                 "ecdsa-sha2-nistp256" => &ECDSA_P256_SHA256_FIXED,
-                //"ecdsa-sha2-nistp384" => &ECDSA_P256_SHA384_ASN1,
+                "ecdsa-sha2-nistp384" => &ECDSA_P384_SHA384_FIXED,
                 _ => return Err(Error::with_kind(ErrorKind::KeyTypeMismatch)), 
             };
 
