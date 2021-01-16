@@ -12,9 +12,9 @@
 //!
 //! - ssh-rsa-cert-v01@openssh.com
 //! - ecdsa-sha2-nistp256-cert-v01@openssh.com
-//! - ecdsa-sha2-nistp384-cert-v01@openssh.com  (Not yet)
+//! - ecdsa-sha2-nistp384-cert-v01@openssh.com
 //! - ecdsa-sha2-nistp512-cert-v01@openssh.com  (Not yet)
-//! - ssh-ed25519-cert-v01@openssh.com          (Not yet)
+//! - ssh-ed25519-cert-v01@openssh.com
 //!
 //! The crate also provides functionality for provision key slots on
 //! Yubikeys to handle signing operations. This is provided in `yubikey`

@@ -46,7 +46,7 @@ pub fn fetch_pubkey(slot: SlotId) -> Result<PublicKeyInfo, Error> {
 /// to use as this means there is no backup of the key should it be lost.
 /// It is however provided as an easy method quickly get a YubiKey properly configured
 /// for use with Rustica.
-pub fn provision(pin: &[u8], slot: SlotId, alg: AlgorithmId) -> Result<PublicKeyInfo, Error> {
+pub fn provision(pin: &[u8], slot: SlotId, alg: AlgorithmId, require_touch: TouchPolicy) -> Result<PublicKeyInfo, Error> {
     let mut yk = match YubiKey::open() {
         Ok(yk) => yk,
         Err(e) => return Err(Error::InternalYubiKeyError(e)),
@@ -68,7 +68,7 @@ pub fn provision(pin: &[u8], slot: SlotId, alg: AlgorithmId) -> Result<PublicKey
         },
     }
 
-    let key_info = match yubikey_piv::key::generate(&mut yk, slot, alg, PinPolicy::Never, TouchPolicy::Never) {
+    let key_info = match yubikey_piv::key::generate(&mut yk, slot, alg, PinPolicy::Never, require_touch) {
         Ok(ki) => ki,
         Err(e) => {
             println!("Error in provisioning new key: {}", e);

@@ -25,7 +25,7 @@ fn main() {
     }
 
     println!("Retired Slots:");
-    for slot in 0x82..0x95_u8 {
+    for slot in 0x82..0x96_u8 {
         let s = RetiredSlotId::try_from(slot).unwrap();
         match ssh_cert_fetch_pubkey(SlotId::Retired(s)) {
             Some(cert) => println!("\t{:?}: Public Key Fingerprint: {}", s, cert.fingerprint().hash),

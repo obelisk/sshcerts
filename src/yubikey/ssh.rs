@@ -60,24 +60,35 @@ pub fn ssh_cert_fetch_pubkey(slot: SlotId) -> Option<PublicKey> {
     }
 }
 
-/// Sign the provided buffer of data and return it in an SSH Certificiate
-/// signature formatted byte vector
-pub fn ssh_cert_signer(buf: &[u8], slot: SlotId) -> Option<Vec<u8>> {
+/// Returns the AlgorithmId of the kind of key stored in the given
+/// slot. This could return RSA key types as they are valid but
+/// currently it only differentiates between no key, and ECCP256 and ECCP384
+pub fn get_ssh_key_type(slot: SlotId) -> Option<AlgorithmId> {
     let pubkey = match ssh_cert_fetch_pubkey(slot) {
         None => return None,
         Some(pk) => pk,
     };
 
-    let (alg, sig_type) = match pubkey.kind {
+     match pubkey.kind {
         PublicKeyKind::Ecdsa(x) => {
             match x.curve.kind {
-                CurveKind::Nistp256 => (AlgorithmId::EccP256, "ecdsa-sha2-nistp256"),
-                CurveKind::Nistp384 => (AlgorithmId::EccP384, "ecdsa-sha2-nistp384"),
-                CurveKind::Nistp521 => return None,
+                CurveKind::Nistp256 => Some(AlgorithmId::EccP256),
+                CurveKind::Nistp384 => Some(AlgorithmId::EccP384),
+                CurveKind::Nistp521 => None,
             }
         },
         PublicKeyKind::Rsa(_) => return None,
         PublicKeyKind::Ed25519(_) => return None,
+    }
+}
+
+/// Sign the provided buffer of data and return it in an SSH Certificiate
+/// signature formatted byte vector
+pub fn ssh_cert_signer(buf: &[u8], slot: SlotId) -> Option<Vec<u8>> {
+    let (alg, sig_type) = match get_ssh_key_type(slot) {
+        Some(AlgorithmId::EccP256) => (AlgorithmId::EccP256, "ecdsa-sha2-nistp256"),
+        Some(AlgorithmId::EccP384) => (AlgorithmId::EccP384, "ecdsa-sha2-nistp384"),
+        _ => return None,
     };
 
     match sign_data(&buf, alg, slot) {
