@@ -77,8 +77,8 @@ pub fn get_ssh_key_type(slot: SlotId) -> Option<AlgorithmId> {
                 CurveKind::Nistp521 => None,
             }
         },
-        PublicKeyKind::Rsa(_) => return None,
-        PublicKeyKind::Ed25519(_) => return None,
+        PublicKeyKind::Rsa(_) => None,
+        PublicKeyKind::Ed25519(_) => None,
     }
 }
 
