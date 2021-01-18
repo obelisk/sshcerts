@@ -15,11 +15,13 @@ use ring::signature::{
 
 use ring::rand::{SystemRandom, SecureRandom};
 
+// TODO @obelisk undo this Result aliasing
 use super::error::{Error, ErrorKind, Result};
 use super::keytype::{KeyType};
 use super::pubkey::{PublicKey, PublicKeyKind};
 use super::reader::Reader;
 
+use std::convert::TryFrom;
 
 /// Represents the different types a certificate can be.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -29,6 +31,18 @@ pub enum CertType {
 
     /// Represents a host certificate.
     Host = 2,
+}
+
+impl TryFrom<&str> for CertType {
+    type Error = &'static str;
+
+    fn try_from(s: &str) -> std::result::Result<Self, Self::Error> {
+        match s {
+            "user" | "User" => Ok(CertType::User),
+            "host" | "Host" => Ok(CertType::Host),
+            _ => Err("Unknown certificate type"),
+        }
+    }
 }
 
 impl fmt::Display for CertType {
@@ -278,7 +292,7 @@ impl Certificate {
         critical_options: CriticalOptions,
         extensions: Extensions,
         ca_pubkey: PublicKey,
-        signer: fn(&[u8]) -> Option<Vec<u8>>,
+        signer: impl Fn(&[u8]) -> Option<Vec<u8>>,
     ) -> Result<Certificate> {
         let mut writer = super::Writer::new();
         let kt_name = format!("{}-cert-v01@openssh.com", pubkey.key_type.name);

@@ -10,7 +10,7 @@ use yubikey_piv::policy::TouchPolicy;
 
 use std::convert::TryFrom;
 
-fn provision_new_key(slot: SlotId, pin: &str, alg: &str, secure: bool) {
+fn provision_new_key(slot: SlotId, pin: &str, mgm_key: &[u8], alg: &str, secure: bool) {
     let alg = match alg {
         "eccp256" => AlgorithmId::EccP256,
         _ => AlgorithmId::EccP384,
@@ -25,11 +25,11 @@ fn provision_new_key(slot: SlotId, pin: &str, alg: &str, secure: bool) {
         TouchPolicy::Never
     };
 
-    match provision(pin.as_bytes(), slot, alg, policy) {
+    match provision(pin.as_bytes(), mgm_key, slot, alg, policy) {
         Ok(pk) => {
             convert_to_ssh_pubkey(&pk).unwrap();
         },
-        Err(_) => panic!("Could not provision device with new key"),
+        Err(e) => panic!("Could not provision device with new key: {:?}", e),
     }
 }
 
@@ -80,6 +80,15 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("management-key")
+                .about("Provision this slot with a new private key. The pin number must be passed as parameter here")
+                .default_value("010203040506070801020304050607080102030405060708")
+                .long("mgmkey")
+                .short('m')
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("type")
                 .about("Specify the type of key you want to provision (eccp256, eccp384)")
                 .long("type")
@@ -104,5 +113,11 @@ fn main() {
     
         let secure = matches.is_present("require-touch");
 
-        provision_new_key(slot, matches.value_of("pin").unwrap(), matches.value_of("type").unwrap_or("eccp384"), secure);
+        provision_new_key(
+            slot,
+            matches.value_of("pin").unwrap(),
+            &hex::decode(matches.value_of("management-key").unwrap()).unwrap(),
+            matches.value_of("type").unwrap_or("eccp384"),
+            secure
+        );
 }

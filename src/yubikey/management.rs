@@ -19,6 +19,9 @@ pub enum Error {
     /// but is currently unimplemented or unsupported on the hardware connected.
     /// For example, RSA signing will currently throw this error.
     Unsupported,
+    /// If you pass a management key into the provision function that does not
+    /// deserialize from bytes, you will get this error.
+    InvalidManagementKey,
     /// If the Yubikey throws an error we don't recognize, it's encapsulated
     /// and returned
     InternalYubiKeyError(yubikey_piv::error::Error),
@@ -46,7 +49,7 @@ pub fn fetch_pubkey(slot: SlotId) -> Result<PublicKeyInfo, Error> {
 /// to use as this means there is no backup of the key should it be lost.
 /// It is however provided as an easy method quickly get a YubiKey properly configured
 /// for use with Rustica.
-pub fn provision(pin: &[u8], slot: SlotId, alg: AlgorithmId, require_touch: TouchPolicy) -> Result<PublicKeyInfo, Error> {
+pub fn provision(pin: &[u8], mgm_key: &[u8], slot: SlotId, alg: AlgorithmId, require_touch: TouchPolicy) -> Result<PublicKeyInfo, Error> {
     let mut yk = match YubiKey::open() {
         Ok(yk) => yk,
         Err(e) => return Err(Error::InternalYubiKeyError(e)),
@@ -60,7 +63,12 @@ pub fn provision(pin: &[u8], slot: SlotId, alg: AlgorithmId, require_touch: Touc
         },
     }
 
-    match yk.authenticate(MgmKey::default()) {
+    let mgm_key = match MgmKey::from_bytes(mgm_key) {
+        Ok(mgm) => mgm,
+        Err(_) => return Err(Error::InvalidManagementKey),
+    };
+
+    match yk.authenticate(mgm_key) {
         Ok(_) => (),
         Err(e) => {
             println!("Error in MGM Key Authentication: {}", e);
