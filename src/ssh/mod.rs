@@ -11,15 +11,17 @@ All rights reserved.
 mod cert;
 mod error;
 mod keytype;
+mod privkey;
 mod pubkey;
 mod reader;
 mod writer;
 
 pub use self::cert::{CertType, Certificate, CriticalOptions, Extensions};
 pub use self::error::{Error, Result};
-pub use self::keytype::{KeyType, KeyTypeKind};
+pub use self::keytype::{KeyType, KeyTypeKind, Curve, CurveKind};
+pub use self::privkey::{PrivateKey, PrivateKeyKind, RsaPrivateKey, EcdsaPrivateKey, Ed25519PrivateKey};
 pub use self::pubkey::{
-    Curve, CurveKind, EcdsaPublicKey, Ed25519PublicKey, Fingerprint, FingerprintKind,
+    EcdsaPublicKey, Ed25519PublicKey, Fingerprint, FingerprintKind,
     PublicKey, PublicKeyKind, RsaPublicKey,
 };
 pub use self::reader::Reader;

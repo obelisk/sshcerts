@@ -162,6 +162,32 @@ impl<'a> Reader<'a> {
         Ok(result)
     }
 
+    /// Read a null terminated string from the reader's buffer.
+    /// This is different than read_string in that the length
+    /// is unknown and will continue until it reads a null byte
+    /// or reaches the end of the data.
+    /// 
+    /// In the event the buffer runs out before a null byte, the offset will be
+    /// reset and an error returned.
+    pub fn read_cstring(&mut self) -> Result<String> {
+        let original_offset = self.offset;
+        let mut s = String::new();
+
+        while self.offset < self.inner.len() {
+            let chr = self.inner[self.offset];
+            if chr == 0x0 {
+                // Count the final null byte as read
+                self.offset += 1;
+                return Ok(s);
+            }
+
+            s.push(chr as char);
+            self.offset += 1;
+        }
+        self.offset = original_offset;
+        Err(Error::with_kind(ErrorKind::UnexpectedEof))
+    }
+
     /// Reads an `u32` value from the wrapped byte sequence and returns it.
     ///
     /// # Example

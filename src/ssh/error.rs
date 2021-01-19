@@ -27,6 +27,7 @@ pub(crate) enum ErrorKind {
     KeyTypeMismatch,
     CertificateInvalidSignature,
     SigningError,
+    EncryptedPrivateKeyNotSupported,
     UnknownKeyType(String),
     UnknownCurve(String),
 }
@@ -82,6 +83,7 @@ impl fmt::Display for Error {
             ErrorKind::KeyTypeMismatch => write!(f, "Key type mismatch"),
             ErrorKind::CertificateInvalidSignature => write!(f, "Certificate is improperly signed"),
             ErrorKind::SigningError => write!(f, "Could not sign data"),
+            ErrorKind::EncryptedPrivateKeyNotSupported => write!(f, "Encrypted private keys are not supported"),
             ErrorKind::UnknownKeyType(ref v) => write!(f, "Unknown key type {}", v),
             ErrorKind::UnknownCurve(ref v) => write!(f, "Unknown curve {}", v),
         }
