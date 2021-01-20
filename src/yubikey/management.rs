@@ -30,7 +30,15 @@ pub enum Error {
 /// Check to see that a provided Yubikey and slot is configured for signing
 pub fn configured(yk: &mut YubiKey, slot: SlotId) -> Result<PublicKeyInfo, Error> {
     match yubikey_piv::certificate::Certificate::read(yk, slot) {
-        Ok(cert) => Ok(cert.subject_pki().clone()),
+        Ok(cert) => {Ok(cert.subject_pki().clone())},
+        Err(e) => Err(Error::InternalYubiKeyError(e)),
+    }
+}
+
+/// Check to see that a provided Yubikey and slot is configured for signing
+fn subject(yk: &mut YubiKey, slot: SlotId) -> Result<String, Error> {
+    match yubikey_piv::certificate::Certificate::read(yk, slot) {
+        Ok(cert) => {Ok(cert.subject().to_owned())},
         Err(e) => Err(Error::InternalYubiKeyError(e)),
     }
 }
@@ -45,11 +53,20 @@ pub fn fetch_pubkey(slot: SlotId) -> Result<PublicKeyInfo, Error> {
     configured(&mut yubikey, slot)
 }
 
+/// Fetch a certificate subject from a yubikey slot
+pub fn fetch_subject(slot: SlotId) -> Result<String, Error> {
+    let mut yubikey = match YubiKey::open() {
+        Ok(yk) => yk,
+        Err(e) => return Err(Error::InternalYubiKeyError(e)),
+    };
+    subject(&mut yubikey, slot)
+}
+
 /// This provisions the YubiKey with a new certificate. It is generally not advisable
 /// to use as this means there is no backup of the key should it be lost.
 /// It is however provided as an easy method quickly get a YubiKey properly configured
 /// for use with Rustica.
-pub fn provision(pin: &[u8], mgm_key: &[u8], slot: SlotId, alg: AlgorithmId, require_touch: TouchPolicy) -> Result<PublicKeyInfo, Error> {
+pub fn provision(pin: &[u8], mgm_key: &[u8], slot: SlotId, subject: &str, alg: AlgorithmId, require_touch: TouchPolicy) -> Result<PublicKeyInfo, Error> {
     let mut yk = match YubiKey::open() {
         Ok(yk) => yk,
         Err(e) => return Err(Error::InternalYubiKeyError(e)),
@@ -90,7 +107,7 @@ pub fn provision(pin: &[u8], mgm_key: &[u8], slot: SlotId, alg: AlgorithmId, req
         slot,
         [0u8; 20],
         None,
-        "/CN=RusticaProvisioned/".to_owned(),
+        subject.to_string(),
         key_info,
     ) {
         return Err(Error::InternalYubiKeyError(e));

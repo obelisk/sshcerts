@@ -90,7 +90,7 @@ impl PrivateKey {
             if part == "-----END OPENSSH PRIVATE KEY-----" {
                 break;
             }
-            encoded_key.extend(part.chars());
+            encoded_key.push_str(part);
         }
 
         let decoded = base64::decode(encoded_key)?;

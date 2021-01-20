@@ -10,13 +10,13 @@ use yubikey_piv::policy::TouchPolicy;
 
 use std::convert::TryFrom;
 
-fn provision_new_key(slot: SlotId, pin: &str, mgm_key: &[u8], alg: &str, secure: bool) {
+fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg: &str, secure: bool) {
     let alg = match alg {
-        "eccp256" => AlgorithmId::EccP256,
+        "p256" => AlgorithmId::EccP256,
         _ => AlgorithmId::EccP384,
     };
 
-    println!("Provisioning new {:?} key in slot: {:?}", alg, slot);
+    println!("Provisioning new {:?} key called [{}] in slot: {:?}", alg, subject, slot);
 
     let policy = if secure {
         println!("You're creating a secure key that will require touch to use. Touch key to continue...");
@@ -25,7 +25,7 @@ fn provision_new_key(slot: SlotId, pin: &str, mgm_key: &[u8], alg: &str, secure:
         TouchPolicy::Never
     };
 
-    match provision(pin.as_bytes(), mgm_key, slot, alg, policy) {
+    match provision(pin.as_bytes(), mgm_key, slot, subject, alg, policy) {
         Ok(pk) => {
             convert_to_ssh_pubkey(&pk).unwrap();
         },
@@ -74,9 +74,18 @@ fn main() {
         .arg(
             Arg::new("pin")
                 .about("Provision this slot with a new private key. The pin number must be passed as parameter here")
+                .default_value("123456")
                 .long("pin")
                 .short('p')
                 .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("subject")
+                .about("They subject you would like to store in the certificate for later identification")
+                .default_value("ykProvisioned")
+                .long("subject")
+                .short('j')
                 .takes_value(true),
         )
         .arg(
@@ -90,11 +99,11 @@ fn main() {
         )
         .arg(
             Arg::new("type")
-                .about("Specify the type of key you want to provision (eccp256, eccp384)")
+                .about("Specify the type of key you want to provision (p256, p384)")
                 .long("type")
                 .short('t')
-                .possible_value("eccp256")
-                .possible_value("eccp384")
+                .possible_value("p256")
+                .possible_value("p384")
                 .takes_value(true),
         )
         .arg(
@@ -115,9 +124,10 @@ fn main() {
 
         provision_new_key(
             slot,
+            matches.value_of("subject").unwrap(),
             matches.value_of("pin").unwrap(),
             &hex::decode(matches.value_of("management-key").unwrap()).unwrap(),
-            matches.value_of("type").unwrap_or("eccp384"),
+            matches.value_of("type").unwrap_or("p384"),
             secure
         );
 }

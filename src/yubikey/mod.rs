@@ -8,4 +8,4 @@ mod management;
 pub use yubikey_piv::key::{AlgorithmId, RetiredSlotId, SlotId};
 
 pub use management::Error;
-pub use management::{configured, fetch_pubkey, provision, sign_data};
+pub use management::{configured, fetch_pubkey, fetch_subject, provision, sign_data};
