@@ -62,6 +62,21 @@ const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
     ("permit-X11-forwarding", ""),
 ];
 
+impl From<Extensions> for HashMap<String, String> {
+    fn from(extensions: Extensions) -> Self {
+        match extensions {
+            Extensions::Standard => {
+                let mut hm = HashMap::new();
+                for extension in &STANDARD_EXTENSIONS {
+                    hm.insert(String::from(extension.0), String::from(extension.1));
+                }
+                hm
+            },
+            Extensions::Custom(co) => co,
+        }
+    }
+}
+
 /// Type that encapsulates the normal usage of the extensions field.
 #[derive(Debug)]
 pub enum Extensions {
@@ -81,6 +96,15 @@ pub enum CriticalOptions {
     None,
     /// Allows a custom set of critical options. Does not contain any standard options.
     Custom(HashMap<String, String>)
+}
+
+impl From<CriticalOptions> for HashMap<String, String> {
+    fn from(critical_options: CriticalOptions) -> Self {
+        match critical_options {
+            CriticalOptions::None => HashMap::new(),
+            CriticalOptions::Custom(co) => co,
+        }
+    }
 }
 
 /// A type which represents an OpenSSH certificate key.

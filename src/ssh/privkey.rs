@@ -3,7 +3,6 @@ use super::error::{Error, ErrorKind};
 use super::PublicKey;
 use super::reader::Reader;
 
-//use std::fmt;
 use std::fs::File;
 use std::io::{Read};
 use std::path::Path;
@@ -103,9 +102,7 @@ impl PrivateKey {
         Ok(k)
     }
 
-    // This function is used for extracting a public key from an existing reader, e.g.
-    // we already have a reader for reading an OpenSSH certificate key and
-    // we want to extract the public key information from it.
+    /// This function is used for extracting a private key from an existing reader.
     pub(crate) fn from_reader(reader: &mut Reader) -> Result<PrivateKey, Error> {
         let preamble = reader.read_cstring()?;
 
@@ -113,26 +110,34 @@ impl PrivateKey {
             return Err(Error::with_kind(ErrorKind::InvalidFormat));
         }
 
+        // These values are for encrypted keys which are not supported
         let cipher_name = reader.read_string()?;
         let kdf = reader.read_string()?;
         if cipher_name != "none" || kdf != "none" {
             return Err(Error::with_kind(ErrorKind::EncryptedPrivateKeyNotSupported));
         }
+
         // This appears to be en empty value
         reader.read_string()?;
 
+        // This seems to be hardcoded into the standard
         let number_of_keys = reader.read_u32()?;
-
         if number_of_keys != 1 {
             return Err(Error::with_kind(ErrorKind::InvalidFormat));
         }
 
+        // A full pubkey with the same format as seen in certificates
         let pubkey = reader
         .read_bytes()
         .and_then(|v| PublicKey::from_bytes(&v))?;
 
+        // This contains the length of the rest of the bytes in the key
+        // We could use this to do a read bytes into a new reader but I don't
+        // think there is an advantage to that right now (other than verifying)
+        // that this value is correct.
         let _remaining_length = reader.read_u32()?;
 
+        // These four bytes are repeated and I'm not sure what they do
         let c1 = reader.read_u32()?;
         let c2 = reader.read_u32()?;
 
@@ -140,6 +145,7 @@ impl PrivateKey {
             return Err(Error::with_kind(ErrorKind::InvalidFormat));
         }
 
+        // The key type is repeated here.
         let key_type = reader.read_string()?;
         let kt = KeyType::from_name(&key_type)?;
         
@@ -155,6 +161,7 @@ impl PrivateKey {
             KeyTypeKind::Ecdsa => {
                 let identifier = reader.read_string()?;
                 let curve = Curve::from_identifier(&identifier)?;
+                // The pub key is also repeated here
                 let _pubkey = reader.read_bytes()?;
                 let key = reader.read_bytes()?;
                 let k = EcdsaPrivateKey {
