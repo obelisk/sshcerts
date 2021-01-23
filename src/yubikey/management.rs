@@ -2,7 +2,7 @@ use sha2::{Digest, Sha256, Sha384};
 
 use yubikey_piv::{MgmKey, YubiKey};
 use yubikey_piv::policy::{PinPolicy, TouchPolicy};
-use yubikey_piv::key::{AlgorithmId, sign_data as yk_sign_data, SlotId};
+use yubikey_piv::key::{attest, AlgorithmId, sign_data as yk_sign_data, SlotId};
 use yubikey_piv::certificate::{Certificate, PublicKeyInfo};
 
 
@@ -60,6 +60,19 @@ pub fn fetch_subject(slot: SlotId) -> Result<String, Error> {
         Err(e) => return Err(Error::InternalYubiKeyError(e)),
     };
     subject(&mut yubikey, slot)
+}
+
+/// Generate attestation for a slot
+pub fn fetch_attestation(slot: SlotId) -> Option<Vec<u8>> {
+    let mut yubikey = match YubiKey::open() {
+        Ok(yk) => yk,
+        Err(_e) => return None,
+    };
+
+    match attest(&mut yubikey, slot) {
+        Ok(buf) => Some(buf.to_vec()),
+        Err(_) => None
+    }
 }
 
 /// This provisions the YubiKey with a new certificate. It is generally not advisable
