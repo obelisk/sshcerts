@@ -17,13 +17,14 @@
 //! - ssh-ed25519-cert-v01@openssh.com
 //!
 //! The crate also provides functionality for provision key slots on
-//! Yubikeys to handle signing operations. This is provided in `yubikey`
-//! module.
+//! Yubikeys to handle signing operations. This is provided in the
+//! optional `yubikey` submodule
 //! 
 #![deny(warnings)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 
+#[cfg(feature = "yubikey")]
 #[macro_use]
 extern crate log;
 
@@ -38,6 +39,7 @@ pub mod utils;
 /// Functions for dealing with Yubikey signing.
 /// Also contains an SSH submodule containing helper functions to generate
 /// SSH encoded versions of it's normal functions.
+#[cfg(feature = "yubikey")]
 pub mod yubikey;
 
 pub use ssh::{Certificate, PublicKey};
