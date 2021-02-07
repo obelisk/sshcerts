@@ -77,8 +77,7 @@ pub fn fetch_attestation(slot: SlotId) -> Option<Vec<u8>> {
 
 /// This provisions the YubiKey with a new certificate. It is generally not advisable
 /// to use as this means there is no backup of the key should it be lost.
-/// It is however provided as an easy method quickly get a YubiKey properly configured
-/// for use with Rustica.
+/// It is however provided as an easy method quickly get a YubiKey properly configured.
 pub fn provision(pin: &[u8], mgm_key: &[u8], slot: SlotId, subject: &str, alg: AlgorithmId, require_touch: TouchPolicy) -> Result<PublicKeyInfo, Error> {
     let mut yk = match YubiKey::open() {
         Ok(yk) => yk,
@@ -151,8 +150,8 @@ pub fn sign_data(data: &[u8], alg: AlgorithmId, slot: SlotId) -> Result<Vec<u8>,
     }
 
     let hash = match slot_alg {
-        AlgorithmId::EccP256 => digest::digest(&digest::SHA256, &data.as_ref()).as_ref().to_vec(),
-        AlgorithmId::EccP384 => digest::digest(&digest::SHA384, &data.as_ref()).as_ref().to_vec(),
+        AlgorithmId::EccP256 => digest::digest(&digest::SHA256, data).as_ref().to_vec(),
+        AlgorithmId::EccP384 => digest::digest(&digest::SHA384, data).as_ref().to_vec(),
         _ => return Err(Error::Unsupported),
     };
 

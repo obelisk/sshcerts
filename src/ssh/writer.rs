@@ -13,7 +13,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// let writer = Writer::new();
     /// ```
     pub fn new() -> Writer {
@@ -26,7 +26,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// let mut writer = Writer::new();
     /// writer.write_bytes(&[0, 0, 0, 42]);
     /// let bytes = writer.into_bytes();
@@ -43,7 +43,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// let mut writer = Writer::new();
     /// writer.write_string("a test string");
     /// let bytes = writer.into_bytes();
@@ -57,7 +57,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// let mut writer = Writer::new();
     /// writer.write_u64(0xFFFFFFFFFFFFFFFF);
     /// let bytes = writer.into_bytes();
@@ -72,7 +72,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// let mut writer = Writer::new();
     /// writer.write_u32(0xFFFFFFFF);
     /// let bytes = writer.into_bytes();
@@ -90,7 +90,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// let mut writer = Writer::new();
     /// writer.write_mpint(&[1, 0, 1]);
     /// let bytes = writer.into_bytes();
@@ -112,7 +112,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// let mut writer = Writer::new();
     /// 
     /// writer.write_string_vec(&vec![String::from("Test"), String::from("Test")]);
@@ -132,7 +132,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// # use std::collections::HashMap;
     /// 
     /// let mut writer = Writer::new();
@@ -187,7 +187,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// 
     /// let mut writer = Writer::new();
     /// writer.write_string("some data");
@@ -203,7 +203,7 @@ impl Writer {
     ///
     /// # Example
     /// ```rust
-    /// # use rustica_keys::ssh::Writer;
+    /// # use sshcerts::ssh::Writer;
     /// 
     /// let mut writer = Writer::new();
     /// writer.write_string("some data");

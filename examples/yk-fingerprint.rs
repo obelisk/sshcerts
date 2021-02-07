@@ -1,8 +1,8 @@
 use std::env;
 
-use rustica_keys::yubikey::ssh::ssh_cert_fetch_pubkey;
-use rustica_keys::yubikey::{fetch_attestation, fetch_subject};
-use rustica_keys::yubikey::{RetiredSlotId, SlotId};
+use sshcerts::yubikey::ssh::ssh_cert_fetch_pubkey;
+use sshcerts::yubikey::{fetch_attestation, fetch_subject};
+use sshcerts::yubikey::{RetiredSlotId, SlotId};
 
 use std::convert::TryFrom;
 

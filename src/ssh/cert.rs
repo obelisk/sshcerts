@@ -169,7 +169,7 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_keys::Certificate;
+    /// # use sshcerts::Certificate;
     /// # fn example() {
     ///     let cert = Certificate::from_path("/path/to/id_ed25519-cert.pub").unwrap();
     ///     println!("{}", cert);
@@ -187,7 +187,7 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_keys::Certificate;
+    /// # use sshcerts::Certificate;
     /// # fn example() {
     ///     let cert = Certificate::from_string("ssh-rsa AAAAB3NzaC1yc2EAAAA...").unwrap();
     ///     println!("{}", cert);
@@ -279,8 +279,8 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use rustica_keys::{Certificate, PublicKey};
-    /// # use rustica_keys::ssh::{CertType, CriticalOptions, Extensions};
+    /// # use sshcerts::{Certificate, PublicKey};
+    /// # use sshcerts::ssh::{CertType, CriticalOptions, Extensions};
     /// fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
     /// fn test_pubkey() -> Option<Vec<u8>> { None }
     /// # fn example() {

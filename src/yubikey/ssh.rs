@@ -51,7 +51,7 @@ pub fn convert_to_ssh_pubkey(pki: &PublicKeyInfo) -> Option<PublicKey> {
     }
 }
 
-/// Pull the public key from the YubiKey and wrap it in a Rustica
+/// Pull the public key from the YubiKey and wrap it in a sshcerts
 /// PublicKey object.
 pub fn ssh_cert_fetch_pubkey(slot: SlotId) -> Option<PublicKey> {
     match fetch_pubkey(slot) {

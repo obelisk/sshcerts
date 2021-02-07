@@ -1,10 +1,10 @@
-# Rustica Keys 
-Rustica Keys is the library the powers certificate parsing, creation, and signing in the Rustica project. It was originally based on `rust-sshkeys` by @dnaeon (and his licence is present at the top of `mod.rs` in the ssh module) but has been significantly expanded to offer a greater writer API, certificate signature validation, issuing new certificates, and more.
+# sshcerts 
+sshcerts (formerly rustica-keys) is the a library the powers certificate parsing, creation, and signing of OpenSSH certificates. It was originally based on `rust-sshkeys` by @dnaeon (and his licence is present at the top of `mod.rs` in the ssh module) but has been significantly expanded to offer a greater writer API, certificate signature validation, issuing new certificates, and more.
 
-The library also contains other key functionality for Yubikeys key management as Rustica only uses hardware devices to hold private keys. The Yubikey management module can be used to provision slot with keys that can never leave the device. When configuring Rustica for the first time, it's recommended you do this for user private keys, but the CA keys should be loaded on outside Rustica (for backup purposes).
+The library optionally contains other functionality for Yubikey key management. The Yubikey management module can be used to provision slot with keys that can never leave the device. To enable this functionality use the feature `yubikey`
 
 ## Builds
-![macOS and Ubuntu Builds](https://github.com/obelisk/rustica-keys/workflows/macOS%20+%20Ubuntu/badge.svg)
+![macOS and Ubuntu Builds](https://github.com/obelisk/sshcerts/workflows/macOS%20+%20Ubuntu/badge.svg)
 
 ## API Stability
 The API for this crate should not be considered stable and expect breaking changes between versions.

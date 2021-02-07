@@ -1,4 +1,4 @@
-use rustica_keys::ssh::{PrivateKey, PrivateKeyKind};
+use sshcerts::ssh::{PrivateKey, PrivateKeyKind};
 
 
 #[test]

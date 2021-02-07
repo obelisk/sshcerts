@@ -2,8 +2,8 @@ use std::env;
 
 use clap::{App, Arg};
 
-use rustica_keys::yubikey::ssh::convert_to_ssh_pubkey;
-use rustica_keys::yubikey::{RetiredSlotId, SlotId, provision};
+use sshcerts::yubikey::ssh::convert_to_ssh_pubkey;
+use sshcerts::yubikey::{RetiredSlotId, SlotId, provision};
 
 use yubikey_piv::key::AlgorithmId;
 use yubikey_piv::policy::TouchPolicy;

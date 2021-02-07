@@ -726,18 +726,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustica-keys"
-version = "0.3.6"
-dependencies = [
- "base64 0.12.3",
- "clap",
- "hex",
- "log",
- "ring",
- "yubikey-piv",
-]
-
-[[package]]
 name = "rusticata-macros"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -821,6 +809,18 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "sshcerts"
+version = "0.3.6"
+dependencies = [
+ "base64 0.12.3",
+ "clap",
+ "hex",
+ "log",
+ "ring",
+ "yubikey-piv",
+]
 
 [[package]]
 name = "static_assertions"

@@ -1,5 +1,7 @@
-use rustica_keys::ssh::Certificate;
+use ring::{rand, signature};
 
+use sshcerts::ssh::{Certificate, CertType, CriticalOptions, Extensions, PublicKey};
+use sshcerts::utils::signature_convert_asn1_ecdsa_to_ssh;
 
 // Constants available for multiple tests
 const ECDSA256_CA_PRIVATE_KEY: &str = concat!(
@@ -208,7 +210,6 @@ fn parse_check_critical_options() {
 // Test PublicKey parsing
 #[test]
 fn parse_ecdsa256_publickey() {
-    use rustica_keys::ssh::{PublicKey};
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
@@ -218,9 +219,6 @@ fn parse_ecdsa256_publickey() {
 
 // Test signing and parsing work together
 fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
-    use ring::{rand, signature};
-    use rustica_keys::utils::signature_convert_asn1_ecdsa_to_ssh;
-
     let pkcs8_bytes = hex::decode(ECDSA256_CA_PRIVATE_KEY).unwrap();
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
     let rng = rand::SystemRandom::new();
@@ -236,9 +234,6 @@ fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
 
 // Test signing and parsing work together
 fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
-    use ring::{rand, signature};
-    use rustica_keys::utils::signature_convert_asn1_ecdsa_to_ssh;
-
     let rng = rand::SystemRandom::new();
     let pkcs8_bytes = hex::decode(ECDSA384_CA_PRIVATE_KEY).unwrap();
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P384_SHA384_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
@@ -255,7 +250,6 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
 
 #[test]
 fn create_sign_parse_verify_ecdsa256() {
-    use rustica_keys::ssh::{Certificate, CertType, CriticalOptions, Extensions, PublicKey};
     use std::collections::HashMap;
 
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
@@ -294,7 +288,6 @@ fn create_sign_parse_verify_ecdsa256() {
 
 #[test]
 fn create_sign_parse_verify_ecdsa384() {
-    use rustica_keys::ssh::{Certificate, CertType, CriticalOptions, Extensions, PublicKey};
     use std::collections::HashMap;
 
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
