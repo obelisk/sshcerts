@@ -29,6 +29,27 @@ fn parse_rsa_key_signed_by_rsa_ca() {
 }
 
 #[test]
+fn parse_rsa_key_signed_by_ecdsa384_ca() {
+    let cert = concat!(
+        "ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgTf3qsIa8N5ClFLijbBBPQxqtfoOKfbrw661HwDn1U4cAAAA",
+        "DAQABAAABAQDfWvPz9gZT1M7rBZws4VKq1hczl5cWa27lhXhUH0/wBJyGEZ2dNUcH0EuLqkSg3zwS56jxeW/IKHv9ER96tmFAOulQgqz5Y6BoftZE8vp8pqoAdUY",
+        "QCDx0PkL+FbsuIEQMn2pOnHPDfGMgoE+6AC+OSPQV0SLunK0qVa4LsulEu0O3u+ujiUMFf6IPzNKUwsbgpx5TslvZVAr8caoEKfSTJ5huVHdZM+2EHCfY6Zj4Kxi",
+        "DT1uOUl33UeYDnvz9ovw0xT0dsfX6tDfEdc5EGMSO0lde+oJIoQw51+RWwJik1z1fVDQIXguNayfEQoidvDrAprUQZtsvZ1d7AyadEWuT/v7+/v7+/v4AAAABAAA",
+        "ADG9iZWxpc2tAdGVzdAAAAAsAAAAHb2JlbGlzawAAAAAAAAAA//////////8AAAAiAAAADWZvcmNlLWNvbW1hbmQAAAANAAAACS9iaW4vdHJ1ZQAAAIIAAAAVcGV",
+        "ybWl0LVgxMS1mb3J3YXJkaW5nAAAAAAAAABdwZXJtaXQtYWdlbnQtZm9yd2FyZGluZwAAAAAAAAAWcGVybWl0LXBvcnQtZm9yd2FyZGluZwAAAAAAAAAKcGVybWl",
+        "0LXB0eQAAAAAAAAAOcGVybWl0LXVzZXItcmMAAAAAAAAAAAAAAIgAAAATZWNkc2Etc2hhMi1uaXN0cDM4NAAAAAhuaXN0cDM4NAAAAGEEPp4/OyXuKLSbDPlJ23D",
+        "9h0q8E9+9o68wVFcMTdInpQimgG6o+l/VoJQLNxkzd48BNt4riB4Il8EPcMb0g3fkAN6eSqo14qn6BEbtuJ9bINdxU35GmC1bZgzsgod3Ok48AAAAhAAAABNlY2R",
+        "zYS1zaGEyLW5pc3RwMzg0AAAAaQAAADEAgTJrs88huubcWt8xkvcMVJC5zDBoRjKCHbgZeobH0gwudZfmhPwAEHqJtpIXEMlmAAAAMBtHZOZZDEWn3OklGIDbK6e",
+        "dvBKClGK9O1wHwn34UddoFwYeUA7szDGz3DWpyrXbTg== obelisk@exclave.lan");
+
+    let cert = Certificate::from_string(cert);
+    assert!(cert.is_ok());
+    let cert = cert.unwrap();
+    assert_eq!(cert.key.fingerprint().hash, "PcLn3Di2x3rrbLQM7QQGA3JHGr6RsT9N7aTaK9B54Xw");
+    assert_eq!(cert.signature_key.fingerprint().hash, "xOwDaE2Z4bv6lUFLvoT87Hf2WGgy/zIP0Av7dIlWT5E");
+}
+
+#[test]
 fn parse_rsa_key_signed_by_ecdsa256_ca() {
     let cert = concat!(
         "ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgvKYUoYQRh64jtxcuQBn344N+Vf551B02clPEYFZUBQkAAAA",
@@ -47,4 +68,24 @@ fn parse_rsa_key_signed_by_ecdsa256_ca() {
     let cert = cert.unwrap();
     assert_eq!(cert.key.fingerprint().hash, "HgEyuGUL94jKMFSFdg3WoGRwIaxVsH7/Js0IBrUvjRQ");
     assert_eq!(cert.signature_key.fingerprint().hash, "Ch3IQ5MgZReoB1OFWwI3BhJi+1QILiHQaH7eVUbhg3M");
+}
+
+#[test]
+fn parse_rsa_key_signed_by_ed25519_ca() {
+    let cert = concat!(
+        "ssh-rsa-cert-v01@openssh.com AAAAHHNzaC1yc2EtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgmwGja+0f+nu1QDYkVfGwzwCeAyKFv1r7fbaqUNLZA3QAAAA",
+        "DAQABAAABAQDfWvPz9gZT1M7rBZws4VKq1hczl5cWa27lhXhUH0/wBJyGEZ2dNUcH0EuLqkSg3zwS56jxeW/IKHv9ER96tmFAOulQgqz5Y6BoftZE8vp8pqoAdUY",
+        "QCDx0PkL+FbsuIEQMn2pOnHPDfGMgoE+6AC+OSPQV0SLunK0qVa4LsulEu0O3u+ujiUMFf6IPzNKUwsbgpx5TslvZVAr8caoEKfSTJ5huVHdZM+2EHCfY6Zj4Kxi",
+        "DT1uOUl33UeYDnvz9ovw0xT0dsfX6tDfEdc5EGMSO0lde+oJIoQw51+RWwJik1z1fVDQIXguNayfEQoidvDrAprUQZtsvZ1d7AyadEWuT/v7+/v7+/v4AAAABAAA",
+        "ADG9iZWxpc2tAdGVzdAAAAAsAAAAHb2JlbGlzawAAAAAAAAAA//////////8AAAAiAAAADWZvcmNlLWNvbW1hbmQAAAANAAAACS9iaW4vdHJ1ZQAAAIIAAAAVcGV",
+        "ybWl0LVgxMS1mb3J3YXJkaW5nAAAAAAAAABdwZXJtaXQtYWdlbnQtZm9yd2FyZGluZwAAAAAAAAAWcGVybWl0LXBvcnQtZm9yd2FyZGluZwAAAAAAAAAKcGVybWl",
+        "0LXB0eQAAAAAAAAAOcGVybWl0LXVzZXItcmMAAAAAAAAAAAAAADMAAAALc3NoLWVkMjU1MTkAAAAgM7RVAP1Mh0gJktYVbC1/uzz9oQ297y3AZMSY1XSbKHkAAAB",
+        "TAAAAC3NzaC1lZDI1NTE5AAAAQHkF7vM7TlQxDd3tsII6OJBJJ9wOfDdnmUwIlSwb5SvRmxqG8o0trZHz3OVQbszJpjSAYCD2uW/toAcd+KpxqA0= obelisk@ex",
+        "clave.lan");
+
+    let cert = Certificate::from_string(cert);
+    assert!(cert.is_ok());
+    let cert = cert.unwrap();
+    assert_eq!(cert.key.fingerprint().hash, "PcLn3Di2x3rrbLQM7QQGA3JHGr6RsT9N7aTaK9B54Xw");
+    assert_eq!(cert.signature_key.fingerprint().hash, "QAtqtvvCePelMMUNPP7madH2zNa1ATxX1nt9L/0C5+M");
 }

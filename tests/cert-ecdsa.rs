@@ -68,6 +68,31 @@ fn parse_ecdsa256_key_signed_by_ecdsa256_ca() {
 }
 
 #[test]
+fn parse_ecdsa384_key_signed_by_rsa_ca() {
+    let cert = concat!(
+        "ecdsa-sha2-nistp384-cert-v01@openssh.com AAAAKGVjZHNhLXNoYTItbmlzdHAzODQtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgqfByho54HO9KZXc1D6Q",
+        "3PFMsQztPnWg3tc03qT54rOIAAAAIbmlzdHAzODQAAABhBM7D51Ov0D96uy4vCrIx98O5SXn0DgXV3lIkGBggT7s1+DkaXpLbdb/RqqD+DqoAm/8+fD7qmNzbcWO",
+        "nEtZGpqnOgxgQqXGx8aZTnm7Mg8oG6w2If0S00aJdCqEvEf+dvf7+/v7+/v7+AAAAAQAAAAxvYmVsaXNrQHRlc3QAAAALAAAAB29iZWxpc2sAAAAAAAAAAP/////",
+        "/////AAAAIgAAAA1mb3JjZS1jb21tYW5kAAAADQAAAAkvYmluL3RydWUAAACCAAAAFXBlcm1pdC1YMTEtZm9yd2FyZGluZwAAAAAAAAAXcGVybWl0LWFnZW50LWZ",
+        "vcndhcmRpbmcAAAAAAAAAFnBlcm1pdC1wb3J0LWZvcndhcmRpbmcAAAAAAAAACnBlcm1pdC1wdHkAAAAAAAAADnBlcm1pdC11c2VyLXJjAAAAAAAAAAAAAAGXAAA",
+        "AB3NzaC1yc2EAAAADAQABAAABgQDHWrH9flwYAqL7Yu9obAjgWYwu+C7cdC+31KW7Nvav6dcoD+CcMDN5GjdlZ1PFmEsjtqldVne4zTD/S7XWs5e8i9QS9dfKagu",
+        "RLY+D8Ob16B0DYsKmf+T5hP1sm7btbVlduoZDK9ghy3XcWTT6yoXX9p7EvVhlkkL5TjXdEW6CDLWm9yhXhVDYVLNH47hA+ocyDLRIcbZ49hCuufwr7SePF/MdTZ7",
+        "CPN07BTl8UFzEsTHUvVOsuv+3+mk1dOVATrVR5ArkFndR506IzGcE5D/1NaHlN4JvWQqdcTYHthJVf91QsgwDas9TQh2yI53mA9UY3a194Uxwl6MVklj+hMc2WIp",
+        "VFtkLVd49xIiABHpSfLep3+jU6DvOfzaXwI1IDP13cm4uc+W0AvaZ3unLlflthyHZxHzt3secv7rI33Ad17ZN8u+VIL+i0+6n9jo+7aXm1h5FwTRcFlZRAWTHJtz",
+        "RnMbpElC3Bx5ky3onEeFVXIvG7njFzCGo8QtuagkgM0UAAAGUAAAADHJzYS1zaGEyLTUxMgAAAYB9SDGFlOpuqdyAyKpf5+jmpWrcOwTxXmsZ4WjQuei35qTwOyP",
+        "80yMDLPJhKDBd7PHaEdI9TKSvyqdhyAmPGKqIynkWwy72QsQaKjms+It1DksJBwAhIOS3hfxdqH6HplizW1WwnkJrUx0Zfd8DSPiVHAY2ICAP8/TCR7udOGTjeSX",
+        "at4i4WtXbqjjmF6sOVeLahtny8LkAz4GhoBdJw9Bxlq76BIzv2FFqLRtUQfYK9k7isyKaTKWlqFD4UO7ViCl0bq98IXm2/B4aahONJi6LFyNW2eIENrk+X3oDbem",
+        "6tZu1X15eGBIccNN9T7ieYlamke2gxwKoQsbK5iruGGIq8MGgaMPHqsYnKrlnquSPPoNisW6DrfRcGkXvUd0l42CxTGccHwBXpPIfBD5AmwXHxpzReDAfoKUAlOA",
+        "augnCIqC3goYIZi6bEwVqFWlhZUiyuhBbj76JbG0xDbhf1g6ryaRZm8RDQVt55c+BqdGCc0JXdIBga18BbX1697VgrQk= obelisk@exclave.lan");
+
+    let cert = Certificate::from_string(cert);
+    assert!(cert.is_ok());
+    let cert = cert.unwrap();
+    assert_eq!(cert.key.fingerprint().hash, "CSauIEwrgbmcS/8fUAKE4TfW7WJSwsxISZq+Loe0E3I");
+    assert_eq!(cert.signature_key.fingerprint().hash, "7HA+VnHzijJNBK2f0+Z0uMus7NIDhvwc1bX0PqjM24g");
+}
+
+#[test]
 fn parse_ecdsa256_key_signed_by_rsa_ca() {
     let cert = concat!(
         "ecdsa-sha2-nistp256-cert-v01@openssh.com AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgjeWGZiKdnaEOd/VZpzt",
@@ -90,4 +115,40 @@ fn parse_ecdsa256_key_signed_by_rsa_ca() {
     let cert = cert.unwrap();
     assert_eq!(cert.key.fingerprint().hash, "calfKUhj4a4YcDOB3F0dPZrvzVAQHfw438eQcbk7Aw0");
     assert_eq!(cert.signature_key.fingerprint().hash, "AOyFjjStJTWt5/f0w/aVcuxtYmVbDAepkBcMKhpfhUc");
+}
+
+#[test]
+fn parse_ecdsa384_key_signed_by_ed25519_ca() {
+    let cert = concat!(
+        "ecdsa-sha2-nistp384-cert-v01@openssh.com AAAAKGVjZHNhLXNoYTItbmlzdHAzODQtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgTbAqFgsYi0ekeZIrD3w",
+        "YVFbavGIgO4NFL80V0y+hnEoAAAAIbmlzdHAzODQAAABhBAB5kFYu4glVA+i1KjPlInkVe09sQY3XXhntz4ENTQvTT/L5nAeZUnLD4aYQhs9XR5IGaJR5nEKiGX8",
+        "s8Rkk4IKAw694onTRPcViN3HKnYaVILseOX1X0qz3i67b8IIU3v7+/v7+/v7+AAAAAQAAAAxvYmVsaXNrQHRlc3QAAAALAAAAB29iZWxpc2sAAAAAAAAAAP/////",
+        "/////AAAAIgAAAA1mb3JjZS1jb21tYW5kAAAADQAAAAkvYmluL3RydWUAAACCAAAAFXBlcm1pdC1YMTEtZm9yd2FyZGluZwAAAAAAAAAXcGVybWl0LWFnZW50LWZ",
+        "vcndhcmRpbmcAAAAAAAAAFnBlcm1pdC1wb3J0LWZvcndhcmRpbmcAAAAAAAAACnBlcm1pdC1wdHkAAAAAAAAADnBlcm1pdC11c2VyLXJjAAAAAAAAAAAAAAAzAAA",
+        "AC3NzaC1lZDI1NTE5AAAAIGNEWkYy0DfiG9OuWontpXG76NXv2IcijoANHBIk/7LZAAAAUwAAAAtzc2gtZWQyNTUxOQAAAEBIMC47aJmfgCXlcB+QlYBOjs5Nr+G",
+        "RSrZcwHALro4tLsESl7Po2xkDhOEW9pODHTOLx1CNY03bRHwg7UrmKdsB obelisk@exclave.lan");
+
+    let cert = Certificate::from_string(cert);
+    assert!(cert.is_ok());
+    let cert = cert.unwrap();
+    assert_eq!(cert.key.fingerprint().hash, "duxdGJwDIxSjXUsNNrqCL/bdx3G810LTsRfb01cg8+k");
+    assert_eq!(cert.signature_key.fingerprint().hash, "bVln6ao5wfn6iOcZIPP7p0r9gsbd4wtNdK24CMf9WhU");
+}
+
+#[test]
+fn parse_ecdsa256_key_signed_by_ed25519_ca() {
+    let cert = concat!(
+        "ecdsa-sha2-nistp256-cert-v01@openssh.com AAAAKGVjZHNhLXNoYTItbmlzdHAyNTYtY2VydC12MDFAb3BlbnNzaC5jb20AAAAgCQziHyZYULimiRkmewe",
+        "HpQnUBK84eTVHqElmpzNktD0AAAAIbmlzdHAyNTYAAABBBM8mM7/B3ZbMew2w01MzfWCQFwOpdspW5sL+KwUtV4opRIHxaTDR8/mEvCly5HprCCcuydj9ztNXmlf",
+        "ifs1OsY3+/v7+/v7+/gAAAAEAAAAMb2JlbGlza0B0ZXN0AAAACwAAAAdvYmVsaXNrAAAAAAAAAAD//////////wAAACIAAAANZm9yY2UtY29tbWFuZAAAAA0AAAA",
+        "JL2Jpbi90cnVlAAAAggAAABVwZXJtaXQtWDExLWZvcndhcmRpbmcAAAAAAAAAF3Blcm1pdC1hZ2VudC1mb3J3YXJkaW5nAAAAAAAAABZwZXJtaXQtcG9ydC1mb3J",
+        "3YXJkaW5nAAAAAAAAAApwZXJtaXQtcHR5AAAAAAAAAA5wZXJtaXQtdXNlci1yYwAAAAAAAAAAAAAAMwAAAAtzc2gtZWQyNTUxOQAAACBjRFpGMtA34hvTrlqJ7aV",
+        "xu+jV79iHIo6ADRwSJP+y2QAAAFMAAAALc3NoLWVkMjU1MTkAAABAsfi+GMohrLeh6BMo6jUioruVnU/t3eyMStE9KQR6GIA0HN54ssGF0UJNaI3bXVwWrKPcyeS",
+        "SB3Fv56hQsqaGBg== obelisk@exclave.lan");
+
+    let cert = Certificate::from_string(cert);
+    assert!(cert.is_ok());
+    let cert = cert.unwrap();
+    assert_eq!(cert.key.fingerprint().hash, "2U1m3NsBctj6Uoa/d2USPtoZCxAwWYDffDcNXQjzRUM");
+    assert_eq!(cert.signature_key.fingerprint().hash, "bVln6ao5wfn6iOcZIPP7p0r9gsbd4wtNdK24CMf9WhU");
 }

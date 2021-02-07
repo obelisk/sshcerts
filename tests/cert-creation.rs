@@ -65,8 +65,6 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
 
 #[test]
 fn create_sign_parse_verify_ecdsa256() {
-    use std::collections::HashMap;
-
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
 
@@ -94,7 +92,7 @@ fn create_sign_parse_verify_ecdsa256() {
 
     let user_cert = user_cert.unwrap();
     assert_eq!(user_cert.principals, vec!["obelisk"]);
-    assert_eq!(user_cert.critical_options, HashMap::new());
+    assert_eq!(user_cert.critical_options, std::collections::HashMap::new());
     assert_eq!(user_cert.extensions.len(), 5);
     assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
     assert_eq!(user_cert.valid_after, 0);
@@ -103,8 +101,6 @@ fn create_sign_parse_verify_ecdsa256() {
 
 #[test]
 fn create_sign_parse_verify_ecdsa384() {
-    use std::collections::HashMap;
-
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
 
@@ -132,7 +128,7 @@ fn create_sign_parse_verify_ecdsa384() {
 
     let user_cert = user_cert.unwrap();
     assert_eq!(user_cert.principals, vec!["obelisk"]);
-    assert_eq!(user_cert.critical_options, HashMap::new());
+    assert_eq!(user_cert.critical_options, std::collections::HashMap::new());
     assert_eq!(user_cert.extensions.len(), 5);
     assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
     assert_eq!(user_cert.valid_after, 0);
