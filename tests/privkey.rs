@@ -78,3 +78,30 @@ fn parse_ed25519_private_key() {
     };
     assert_eq!(hex::encode(&key.key), "c99da258e0ee67eb68a953a346aaec1e5e4e560dd0af3033bc63a231b6c4b12d33b45500fd4c87480992d6156c2d7fbb3cfda10dbdef2dc064c498d5749b2879");
 }
+
+#[test]
+fn parse_ed25519_private_key_2() {
+    let privkey = concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
+        "QyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FAAAAJiT9ajkk/Wo\n",
+        "5AAAAAtzc2gtZWQyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FA\n",
+        "AAAED6HgUU3Ps5TVdFCVO8uTpbfVdg3JBxnOz3DIWO1u1Xbc0JfpeVmfRBExbXgAFlrkZl\n",
+        "zrpT5ywSIqyCRnAYrT4UAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAg==\n",
+        "-----END OPENSSH PRIVATE KEY-----");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+    assert_eq!(privkey.pubkey.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
+
+    let key = match privkey.kind {
+        PrivateKeyKind::Ed25519(key) => key,
+        _ => panic!("Wrong key type detected"),
+    };
+    assert_eq!(hex::encode(&key.key), "fa1e0514dcfb394d57450953bcb93a5b7d5760dc90719cecf70c858ed6ed576dcd097e979599f4411316d7800165ae4665ceba53e72c1222ac82467018ad3e14");
+}
