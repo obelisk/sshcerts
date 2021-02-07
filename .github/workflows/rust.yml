@@ -10,8 +10,17 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  macos-build-test-yubikey:
+    runs-on: macos-latest
 
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --features="yubikey" --verbose
+    - name: Run tests
+      run: cargo test --verbose
+  
+  ubuntu-build-test-no-yubikey:
     runs-on: ubuntu-latest
 
     steps:
