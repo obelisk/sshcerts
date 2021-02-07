@@ -1,5 +1,5 @@
 # sshcerts 
-sshcerts (formerly rustica-keys) is the a library the powers certificate parsing, creation, and signing of OpenSSH certificates. It was originally based on `rust-sshkeys` by @dnaeon (and his licence is present at the top of `mod.rs` in the ssh module) but has been significantly expanded to offer a greater writer API, certificate signature validation, issuing new certificates, and more.
+sshcerts (formerly rustica-keys) is the a library for parsing, creation, and signing of OpenSSH certificates. It was originally based on `rust-sshkeys` by @dnaeon (and his licence is present at the top of `mod.rs` in the ssh module) but has been significantly expanded to offer a greater writer API, certificate signature validation, issuing new certificates, and more.
 
 The library optionally contains other functionality for Yubikey key management. The Yubikey management module can be used to provision slot with keys that can never leave the device. To enable this functionality use the feature `yubikey`
 
