@@ -39,11 +39,12 @@ fn main() {
         match (fetch_subject(slot), ssh_cert_fetch_pubkey(slot)) {
             (Ok(subj), Some(cert)) => {
                 let attest = fetch_attestation(slot);
-                println!("\t{:?}:\t[Fingerprint: {}] [Attest: {}] Subject: [{}]",
+                println!("\t{:?}:\t[Fingerprint: {}] [Attest: {}] Subject: [{}] PubKey: [{}]",
                     slot,
                     cert.fingerprint().hash,
                     if attest.is_some() {"Yes" } else { "No "},
-                    subj
+                    subj,
+                    cert,
                 )
             },
             _ => println!("\t{:?}:\tNo cert found", slot),
