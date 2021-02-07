@@ -82,8 +82,7 @@ impl From<Extensions> for HashMap<String, String> {
 pub enum Extensions {
     /// Contains the five standard extensions: agent-forwarding, port-forwarding, pty, user-rc, X11-forwarding
     Standard,
-    /// Allows a completely custom set of extensions to be passed in. This does not contain the standard
-    /// extensions
+    /// Allows a custom set of extensions to be passed in. This does not contain the standard extensions
     Custom(HashMap<String, String>)
 }
 
