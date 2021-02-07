@@ -1,3 +1,5 @@
+use ring::digest;
+
 use std::fmt;
 use std::fs::File;
 use std::io::{self, Read};
@@ -10,7 +12,6 @@ use super::keytype::{KeyType, KeyTypeKind};
 use super::reader::Reader;
 use super::writer::Writer;
 
-use sha2::{Digest, Sha256, Sha384, Sha512};
 
 /// A type which represents the different kinds a public key can be.
 #[derive(Debug, PartialEq, Clone)]
@@ -142,9 +143,9 @@ impl Fingerprint {
     /// ```
     pub fn compute<T: ?Sized + AsRef<[u8]>>(kind: FingerprintKind, data: &T) -> Fingerprint {
         let digest = match kind {
-            FingerprintKind::Sha256 => Sha256::digest(&data.as_ref()).to_vec(),
-            FingerprintKind::Sha384 => Sha384::digest(&data.as_ref()).to_vec(),
-            FingerprintKind::Sha512 => Sha512::digest(&data.as_ref()).to_vec(),
+            FingerprintKind::Sha256 => digest::digest(&digest::SHA256, &data.as_ref()).as_ref().to_vec(),
+            FingerprintKind::Sha384 => digest::digest(&digest::SHA384, &data.as_ref()).as_ref().to_vec(),
+            FingerprintKind::Sha512 => digest::digest(&digest::SHA512, &data.as_ref()).as_ref().to_vec(),
         };
 
         let mut encoded = base64::encode(&digest);

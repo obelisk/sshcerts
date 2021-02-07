@@ -1,6 +1,5 @@
 use super::error::{Error, ErrorKind, Result};
-
-use byteorder::{BigEndian, ByteOrder};
+use std::convert::TryInto;
 
 /// A `Reader` is used for reading from a byte sequence
 /// representing an encoded OpenSSH public key or certificate.
@@ -85,7 +84,7 @@ impl<'a> Reader<'a> {
             return Err(Error::with_kind(ErrorKind::InvalidFormat));
         }
 
-        let size = BigEndian::read_u32(&slice[..4]) as usize;
+        let size = u32::from_be_bytes(slice[..4].try_into().unwrap()) as usize;
         if slice.len() < size + 4 {
             return Err(Error::with_kind(ErrorKind::InvalidFormat));
         }
@@ -209,7 +208,7 @@ impl<'a> Reader<'a> {
         }
 
         self.offset += 4;
-        let value = BigEndian::read_u32(&slice[..4]);
+        let value = u32::from_be_bytes(slice[..4].try_into().unwrap());
 
         Ok(value)
     }
@@ -235,7 +234,7 @@ impl<'a> Reader<'a> {
         }
 
         self.offset += 8;
-        let value = BigEndian::read_u64(&slice[..8]);
+        let value = u64::from_be_bytes(slice[..8].try_into().unwrap());
 
         Ok(value)
     }

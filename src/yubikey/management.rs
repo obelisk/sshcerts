@@ -1,4 +1,4 @@
-use sha2::{Digest, Sha256, Sha384};
+use ring::digest;
 
 use yubikey_piv::{MgmKey, YubiKey};
 use yubikey_piv::policy::{PinPolicy, TouchPolicy};
@@ -151,19 +151,10 @@ pub fn sign_data(data: &[u8], alg: AlgorithmId, slot: SlotId) -> Result<Vec<u8>,
     }
 
     let hash = match slot_alg {
-        AlgorithmId::EccP256 => {
-            let mut hasher = Sha256::new();
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        },
-        AlgorithmId::EccP384 => {
-            let mut hasher = Sha384::new();
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        }
+        AlgorithmId::EccP256 => digest::digest(&digest::SHA256, &data.as_ref()).as_ref().to_vec(),
+        AlgorithmId::EccP384 => digest::digest(&digest::SHA384, &data.as_ref()).as_ref().to_vec(),
         _ => return Err(Error::Unsupported),
     };
-
 
     match yk_sign_data(&mut yk, &hash[..], alg, slot) {
         Ok(sig) => Ok(sig.to_vec()),

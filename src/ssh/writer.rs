@@ -2,8 +2,6 @@ use std::collections::HashMap;
 
 use super::pubkey::{PublicKey, PublicKeyKind};
 
-use byteorder::{BigEndian, ByteOrder};
-
 /// A `Writer` is used for encoding a key in OpenSSH compatible format.
 #[derive(Debug)]
 pub struct Writer {
@@ -36,8 +34,7 @@ impl Writer {
     /// ```
     pub fn write_bytes(&mut self, val: &[u8]) {
         let size = val.len() as u32;
-        let mut buf = vec![0; 4];
-        BigEndian::write_u32(&mut buf, size);
+        let mut buf = size.to_be_bytes().to_vec();
         self.inner.append(&mut buf);
         self.inner.extend_from_slice(&val);
     }
