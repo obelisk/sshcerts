@@ -95,7 +95,6 @@ impl PrivateKey {
 
         let decoded = base64::decode(encoded_key)?;
         let mut reader = Reader::new(&decoded);
-
         // Construct a new `PrivateKey`
         let k = PrivateKey::from_reader(&mut reader)?;
 
@@ -171,13 +170,14 @@ impl PrivateKey {
 
                 PrivateKeyKind::Ecdsa(k)
             }
-            /*KeyTypeKind::Ed25519 => {
+            KeyTypeKind::Ed25519 => {
+                let _pubkey = reader.read_bytes()?;
                 let k = Ed25519PrivateKey {
                     key: reader.read_bytes()?,
                 };
 
                 PrivateKeyKind::Ed25519(k)
-            }*/
+            }
             _ => return Err(Error::with_kind(ErrorKind::UnknownKeyType(kt.name.to_string()))),
         };
 
