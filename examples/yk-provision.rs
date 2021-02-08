@@ -1,5 +1,3 @@
-#[macro_use] extern crate log;
-
 use std::env;
 
 use clap::{App, Arg};
