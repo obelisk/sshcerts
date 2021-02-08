@@ -1,3 +1,5 @@
+#[macro_use] extern crate log;
+
 use std::env;
 
 use clap::{App, Arg};
@@ -58,6 +60,7 @@ fn slot_validator(slot: &str) -> Result<(), String> {
 
 
 fn main() {
+    env_logger::init();
     let matches = App::new("yk-provision")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Mitchell Grenier <mitchell@confurious.io>")
