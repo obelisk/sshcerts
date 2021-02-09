@@ -1,6 +1,8 @@
 use ring::{rand, signature};
 
-use sshcerts::ssh::{Certificate, CertType, CriticalOptions, Extensions, PublicKey};
+use sshcerts::ssh::{Certificate, CertType, CriticalOptions, Extensions, PrivateKey, PublicKey};
+use sshcerts::ssh::{SigningFunction, create_signer};
+
 use sshcerts::utils::signature_convert_asn1_ecdsa_to_ssh;
 
 // Constants available for multiple tests
@@ -64,7 +66,7 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
 }
 
 #[test]
-fn create_sign_parse_verify_ecdsa256() {
+fn create_sign_parse_verify_ecdsa256_static_function() {
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
 
@@ -100,7 +102,7 @@ fn create_sign_parse_verify_ecdsa256() {
 }
 
 #[test]
-fn create_sign_parse_verify_ecdsa384() {
+fn create_sign_parse_verify_ecdsa384_static_function() {
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
 
@@ -133,4 +135,339 @@ fn create_sign_parse_verify_ecdsa384() {
     assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
     assert_eq!(user_cert.valid_after, 0);
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
+}
+
+#[test]
+fn create_sign_parse_verify_ed25519_into_impl() {
+    let privkey = concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
+        "QyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FAAAAJiT9ajkk/Wo\n",
+        "5AAAAAtzc2gtZWQyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FA\n",
+        "AAAED6HgUU3Ps5TVdFCVO8uTpbfVdg3JBxnOz3DIWO1u1Xbc0JfpeVmfRBExbXgAFlrkZl\n",
+        "zrpT5ywSIqyCRnAYrT4UAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAg==\n",
+        "-----END OPENSSH PRIVATE KEY-----");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+
+    let ssh_pubkey = ssh_pubkey.unwrap();
+    let pubkey = privkey.pubkey.clone();
+    let signer:SigningFunction = privkey.into();
+
+    let user_cert = Certificate::new(
+        ssh_pubkey.clone(),
+        CertType::User,
+        0xFEFEFEFEFEFEFEFE,
+        String::from("key_id"),
+        vec![String::from("obelisk")],
+        0,
+        0xFFFFFFFFFFFFFFFF,
+        CriticalOptions::None,
+        Extensions::Standard,
+        pubkey,
+        signer,
+    );
+
+    assert!(user_cert.is_ok());
+
+    // Check user fields
+    let user_cert = user_cert.unwrap();
+    assert_eq!(user_cert.principals, vec!["obelisk"]);
+    assert_eq!(user_cert.critical_options, std::collections::HashMap::new());
+    assert_eq!(user_cert.extensions.len(), 5);
+    assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
+    assert_eq!(user_cert.valid_after, 0);
+    assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
+
+    // Check CA fields
+    assert_eq!(user_cert.signature_key.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
+}
+
+#[test]
+fn create_sign_parse_verify_ed25519_create_signer() {
+    let privkey = concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
+        "QyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FAAAAJiT9ajkk/Wo\n",
+        "5AAAAAtzc2gtZWQyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FA\n",
+        "AAAED6HgUU3Ps5TVdFCVO8uTpbfVdg3JBxnOz3DIWO1u1Xbc0JfpeVmfRBExbXgAFlrkZl\n",
+        "zrpT5ywSIqyCRnAYrT4UAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAg==\n",
+        "-----END OPENSSH PRIVATE KEY-----");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+
+    let ssh_pubkey = ssh_pubkey.unwrap();
+    let pubkey = privkey.pubkey.clone();
+
+    let user_cert = Certificate::new(
+        ssh_pubkey.clone(),
+        CertType::User,
+        0xFEFEFEFEFEFEFEFE,
+        String::from("key_id"),
+        vec![String::from("obelisk")],
+        0,
+        0xFFFFFFFFFFFFFFFF,
+        CriticalOptions::None,
+        Extensions::Standard,
+        pubkey,
+        create_signer(privkey),
+    );
+
+    assert!(user_cert.is_ok());
+
+    // Check user fields
+    let user_cert = user_cert.unwrap();
+    assert_eq!(user_cert.principals, vec!["obelisk"]);
+    assert_eq!(user_cert.critical_options, std::collections::HashMap::new());
+    assert_eq!(user_cert.extensions.len(), 5);
+    assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
+    assert_eq!(user_cert.valid_after, 0);
+    assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
+
+    // Check CA fields
+    assert_eq!(user_cert.signature_key.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
+}
+
+#[test]
+fn create_sign_parse_verify_ecdsa256_into_impl() {
+    let privkey = concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAaAAAABNlY2RzYS\n",
+        "1zaGEyLW5pc3RwMjU2AAAACG5pc3RwMjU2AAAAQQQ+A6+/rZaiAvELSLxcG+N34qmUwbWi\n",
+        "R/ggELvNm/GnIIVtdBXwGAHfxHUptyglzGGXmFe6OvYcjVIND21cI8sjAAAAsCCyPOAgsj\n",
+        "zgAAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBD4Dr7+tlqIC8QtI\n",
+        "vFwb43fiqZTBtaJH+CAQu82b8acghW10FfAYAd/EdSm3KCXMYZeYV7o69hyNUg0PbVwjyy\n",
+        "MAAAAgZh56NkYn+PWxxMI3Xg5CpKTjuSh07cxm4ZOUgj95xz4AAAATb2JlbGlza0BleGNs\n",
+        "YXZlLmxhbgECAwQF\n",
+        "-----END OPENSSH PRIVATE KEY-----");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+
+    let ssh_pubkey = ssh_pubkey.unwrap();
+    let pubkey = privkey.pubkey.clone();
+    let signer:SigningFunction = privkey.into();
+
+    let user_cert = Certificate::new(
+        ssh_pubkey.clone(),
+        CertType::User,
+        0xFEFEFEFEFEFEFEFE,
+        String::from("key_id"),
+        vec![String::from("obelisk")],
+        0,
+        0xFFFFFFFFFFFFFFFF,
+        CriticalOptions::None,
+        Extensions::Standard,
+        pubkey,
+        signer,
+    );
+
+    assert!(user_cert.is_ok());
+
+    // Check user fields
+    let user_cert = user_cert.unwrap();
+    assert_eq!(user_cert.principals, vec!["obelisk"]);
+    assert_eq!(user_cert.critical_options, std::collections::HashMap::new());
+    assert_eq!(user_cert.extensions.len(), 5);
+    assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
+    assert_eq!(user_cert.valid_after, 0);
+    assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
+
+    // Check CA fields
+    assert_eq!(user_cert.signature_key.fingerprint().hash, "4iFrRMN31rjtQtvJyC/Y3Wg9mKAjQnZtZ2wFNWYzrb8");
+}
+
+#[test]
+fn create_sign_parse_verify_ecdsa256_create_signer() {
+    let privkey = concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAaAAAABNlY2RzYS\n",
+        "1zaGEyLW5pc3RwMjU2AAAACG5pc3RwMjU2AAAAQQQ+A6+/rZaiAvELSLxcG+N34qmUwbWi\n",
+        "R/ggELvNm/GnIIVtdBXwGAHfxHUptyglzGGXmFe6OvYcjVIND21cI8sjAAAAsCCyPOAgsj\n",
+        "zgAAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBD4Dr7+tlqIC8QtI\n",
+        "vFwb43fiqZTBtaJH+CAQu82b8acghW10FfAYAd/EdSm3KCXMYZeYV7o69hyNUg0PbVwjyy\n",
+        "MAAAAgZh56NkYn+PWxxMI3Xg5CpKTjuSh07cxm4ZOUgj95xz4AAAATb2JlbGlza0BleGNs\n",
+        "YXZlLmxhbgECAwQF\n",
+        "-----END OPENSSH PRIVATE KEY-----");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    let user_cert = Certificate::new(
+        ssh_pubkey.clone(),
+        CertType::User,
+        0xFEFEFEFEFEFEFEFE,
+        String::from("key_id"),
+        vec![String::from("obelisk")],
+        0,
+        0xFFFFFFFFFFFFFFFF,
+        CriticalOptions::None,
+        Extensions::Standard,
+        privkey.pubkey.clone(),
+        create_signer(privkey),
+    );
+
+    assert!(user_cert.is_ok());
+
+    // Check user fields
+    let user_cert = user_cert.unwrap();
+    assert_eq!(user_cert.principals, vec!["obelisk"]);
+    assert_eq!(user_cert.critical_options, std::collections::HashMap::new());
+    assert_eq!(user_cert.extensions.len(), 5);
+    assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
+    assert_eq!(user_cert.valid_after, 0);
+    assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
+
+    // Check CA fields
+    assert_eq!(user_cert.signature_key.fingerprint().hash, "4iFrRMN31rjtQtvJyC/Y3Wg9mKAjQnZtZ2wFNWYzrb8");
+}
+
+#[test]
+fn create_sign_parse_verify_ecdsa384_into_impl() {
+    let privkey = concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAiAAAABNlY2RzYS\n",
+        "1zaGEyLW5pc3RwMzg0AAAACG5pc3RwMzg0AAAAYQRwh+P50KGZBX79jg6paL1AwkQHMlKo\n",
+        "HbPRdKnhWcg1aD0QNPnzOz03Lr0hZideAdpCIhH7H9vy/Yc9FZpwTLjhcRT/YLidZTo58Q\n",
+        "8ociEb1JRck8cCqgcleugInh0rmaQAAADgPCAojjwgKI4AAAATZWNkc2Etc2hhMi1uaXN0\n",
+        "cDM4NAAAAAhuaXN0cDM4NAAAAGEEcIfj+dChmQV+/Y4OqWi9QMJEBzJSqB2z0XSp4VnINW\n",
+        "g9EDT58zs9Ny69IWYnXgHaQiIR+x/b8v2HPRWacEy44XEU/2C4nWU6OfEPKHIhG9SUXJPH\n",
+        "AqoHJXroCJ4dK5mkAAAAMQCzbv+cwLvqN5gEqlicsecYiDm6TsSqu6/vK+uZMXVMnWIvdH\n",
+        "pkgBFrUy28lE5LJBoAAAATb2JlbGlza0BleGNsYXZlLmxhbgECAwQ=\n",
+        "-----END OPENSSH PRIVATE KEY-----");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+
+    let ssh_pubkey = ssh_pubkey.unwrap();
+    let pubkey = privkey.pubkey.clone();
+    let signer:SigningFunction = privkey.into();
+
+    let user_cert = Certificate::new(
+        ssh_pubkey.clone(),
+        CertType::User,
+        0xFEFEFEFEFEFEFEFE,
+        String::from("key_id"),
+        vec![String::from("obelisk")],
+        0,
+        0xFFFFFFFFFFFFFFFF,
+        CriticalOptions::None,
+        Extensions::Standard,
+        pubkey,
+        signer,
+    );
+
+    assert!(user_cert.is_ok());
+
+    // Check user fields
+    let user_cert = user_cert.unwrap();
+    assert_eq!(user_cert.principals, vec!["obelisk"]);
+    assert_eq!(user_cert.critical_options, std::collections::HashMap::new());
+    assert_eq!(user_cert.extensions.len(), 5);
+    assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
+    assert_eq!(user_cert.valid_after, 0);
+    assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
+
+    // Check CA fields
+    assert_eq!(user_cert.signature_key.fingerprint().hash, "xHlYNJvliHr0AMuGYs+4SK3N0PqiaI6jbQMZlKWC1Is");
+}
+
+#[test]
+fn create_sign_parse_verify_ecdsa384_create_signer() {
+    let privkey = concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAiAAAABNlY2RzYS\n",
+        "1zaGEyLW5pc3RwMzg0AAAACG5pc3RwMzg0AAAAYQRwh+P50KGZBX79jg6paL1AwkQHMlKo\n",
+        "HbPRdKnhWcg1aD0QNPnzOz03Lr0hZideAdpCIhH7H9vy/Yc9FZpwTLjhcRT/YLidZTo58Q\n",
+        "8ociEb1JRck8cCqgcleugInh0rmaQAAADgPCAojjwgKI4AAAATZWNkc2Etc2hhMi1uaXN0\n",
+        "cDM4NAAAAAhuaXN0cDM4NAAAAGEEcIfj+dChmQV+/Y4OqWi9QMJEBzJSqB2z0XSp4VnINW\n",
+        "g9EDT58zs9Ny69IWYnXgHaQiIR+x/b8v2HPRWacEy44XEU/2C4nWU6OfEPKHIhG9SUXJPH\n",
+        "AqoHJXroCJ4dK5mkAAAAMQCzbv+cwLvqN5gEqlicsecYiDm6TsSqu6/vK+uZMXVMnWIvdH\n",
+        "pkgBFrUy28lE5LJBoAAAATb2JlbGlza0BleGNsYXZlLmxhbgECAwQ=\n",
+        "-----END OPENSSH PRIVATE KEY-----");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    let user_cert = Certificate::new(
+        ssh_pubkey.clone(),
+        CertType::User,
+        0xFEFEFEFEFEFEFEFE,
+        String::from("key_id"),
+        vec![String::from("obelisk")],
+        0,
+        0xFFFFFFFFFFFFFFFF,
+        CriticalOptions::None,
+        Extensions::Standard,
+        privkey.pubkey.clone(),
+        create_signer(privkey),
+    );
+
+    assert!(user_cert.is_ok());
+
+    // Check user fields
+    let user_cert = user_cert.unwrap();
+    assert_eq!(user_cert.principals, vec!["obelisk"]);
+    assert_eq!(user_cert.critical_options, std::collections::HashMap::new());
+    assert_eq!(user_cert.extensions.len(), 5);
+    assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
+    assert_eq!(user_cert.valid_after, 0);
+    assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
+
+    // Check CA fields
+    assert_eq!(user_cert.signature_key.fingerprint().hash, "xHlYNJvliHr0AMuGYs+4SK3N0PqiaI6jbQMZlKWC1Is");
 }

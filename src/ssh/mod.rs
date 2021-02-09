@@ -14,7 +14,12 @@ mod keytype;
 mod privkey;
 mod pubkey;
 mod reader;
+mod signer;
 mod writer;
+
+/// This is a type that can be used for certificate signing when passed
+/// to Certificate::new
+pub type SigningFunction = Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync>;
 
 pub use self::cert::{CertType, Certificate, CriticalOptions, Extensions};
 pub use self::error::{Error, Result};
@@ -25,4 +30,5 @@ pub use self::pubkey::{
     PublicKey, PublicKeyKind, RsaPublicKey,
 };
 pub use self::reader::Reader;
+pub use self::signer::{create_signer, ssh_cert_signer};
 pub use self::writer::Writer;
