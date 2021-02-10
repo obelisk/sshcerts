@@ -1,11 +1,14 @@
 use super::keytype::{Curve, KeyType, KeyTypeKind};
 use super::error::{Error, ErrorKind};
+use num_bigint::{BigInt, BigUint, Sign};
 use super::PublicKey;
 use super::reader::Reader;
+use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
 
 use std::fs::File;
 use std::io::{Read};
 use std::path::Path;
+
 
 /// RSA private key.
 #[derive(Debug, PartialEq, Clone)]
@@ -27,6 +30,12 @@ pub struct RsaPrivateKey {
 
     /// Prime factor q of n
     pub q: Vec<u8>,
+
+    /// Exponent using p
+    pub exp: Vec<u8>,
+
+    /// Exponent using q
+    pub exq: Vec<u8>,
 }
 
 /// ECDSA private key.
@@ -73,6 +82,29 @@ pub struct PrivateKey {
 
     /// Associated comment, if any.
     pub comment: Option<String>,
+}
+
+impl ToASN1 for RsaPrivateKey {
+    type Error = Error;
+
+    fn to_asn1_class(&self, _class: ASN1Class) -> Result<Vec<simple_asn1::ASN1Block>, Self::Error> {
+        Ok(vec![ASN1Block::Sequence(
+            0,
+            [
+                vec![ASN1Block::Integer(0, BigInt::new(Sign::Plus, vec![0]))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.n))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.e))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.d))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.p))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.q))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.exp))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.exq))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.coefficient))],
+                Vec::new(),
+            ]
+            .concat(),
+        )])
+    }
 }
 
 impl PrivateKey {
@@ -162,13 +194,34 @@ impl PrivateKey {
         
         let kind = match kt.kind {
             KeyTypeKind::Rsa => {
+                let n = reader.read_mpint()?;
+                let e = reader.read_mpint()?;
+                let d = reader.read_mpint()?;
+                let coefficient = reader.read_mpint()?;
+                let p = reader.read_mpint()?;
+                let q = reader.read_mpint()?;
+
+                let exp = BigUint::from_bytes_be(&d)
+                    .modpow(
+                        &BigUint::from_slice(&[0x1]),
+                        &(BigUint::from_bytes_be(&p) - 1_u8)
+                    );
+
+                let exq = BigUint::from_bytes_be(&d)
+                    .modpow(
+                        &BigUint::from_slice(&[0x1]),
+                        &(BigUint::from_bytes_be(&q) - 1_u8)
+                    );
+
                 let k = RsaPrivateKey {
-                    n: reader.read_mpint()?,
-                    e: reader.read_mpint()?,
-                    d: reader.read_mpint()?,
-                    coefficient: reader.read_mpint()?,
-                    p: reader.read_mpint()?,
-                    q: reader.read_mpint()?,
+                    n,
+                    e,
+                    d,
+                    coefficient,
+                    p,
+                    q,
+                    exp: exp.to_bytes_be(),
+                    exq: exq.to_bytes_be(),
                 };
 
                 let pubkey = match &pubkey.kind {

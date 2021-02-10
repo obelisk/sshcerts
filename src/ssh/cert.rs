@@ -330,6 +330,7 @@ impl Certificate {
             Ok(()) => (),
             Err(_) => return Err(Error::with_kind(ErrorKind::UnexpectedEof)),
         };
+
         // Write the nonce
         writer.write_bytes(&nonce);
 
@@ -391,9 +392,8 @@ impl Certificate {
             None => return Err(Error::with_kind(ErrorKind::SigningError)),
         };
 
-        match verify_signature(&signature, &writer.as_bytes(), &ca_pubkey) {
-            Ok(_) => (),
-            Err(e) => return Err(e),
+        if let Err(e) = verify_signature(&signature, &writer.as_bytes(), &ca_pubkey) {
+            return Err(e)
         }
 
         writer.write_bytes(&signature);

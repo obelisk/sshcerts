@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.3.9"
+version = "0.3.10"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -17,6 +17,8 @@ yubikey = ["yubikey-piv"]
 [dependencies]
 base64 = "0.13"
 log = "0.4"
+simple_asn1 = "0.5"
+num-bigint = "0.3"
 ring = "0.16"
 
 yubikey-piv = {version = "0.1.0", features = ["untested"], optional = true}

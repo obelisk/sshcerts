@@ -59,6 +59,13 @@ impl From<string::FromUtf8Error> for Error {
     }
 }
 
+
+impl From<simple_asn1::ASN1EncodeErr> for Error {
+    fn from(_e: simple_asn1::ASN1EncodeErr) -> Self {
+        Error::with_kind(ErrorKind::InvalidFormat)
+    }
+}
+
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self.kind {

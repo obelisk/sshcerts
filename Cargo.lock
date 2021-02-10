@@ -1009,7 +1009,7 @@ dependencies = [
  "pem",
  "rand",
  "sha2",
- "simple_asn1",
+ "simple_asn1 0.4.1",
  "subtle",
  "thiserror",
  "zeroize",
@@ -1160,6 +1160,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "simple_asn1"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db8d597fce66eb0f19dd129b9956e4054cba21aeaf97d4116595027b670fac50"
+dependencies = [
+ "chrono",
+ "num-bigint 0.3.1",
+ "num-traits",
+ "thiserror",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1173,7 +1185,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "sshcerts"
-version = "0.3.9"
+version = "0.3.10"
 dependencies = [
  "base64",
  "clap 3.0.0-beta.2",
@@ -1181,7 +1193,9 @@ dependencies = [
  "env_logger",
  "hex",
  "log",
+ "num-bigint 0.3.1",
  "ring",
+ "simple_asn1 0.5.1",
  "yubikey-piv",
 ]
 

@@ -43,8 +43,27 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
 
     let (signature, sig_type) = match &privkey.kind {
-        PrivateKeyKind::Rsa(_key) => {
-            return None
+        PrivateKeyKind::Rsa(key) => {
+            let asn_privkey = match simple_asn1::der_encode(key) {
+                Ok(apk) => apk,
+                Err(_) => return None,
+            };
+
+            let keypair = match signature::RsaKeyPair::from_der(&asn_privkey) {
+                Ok(kp) => kp,
+                Err(_) => return None,
+            };
+
+            let rng = rand::SystemRandom::new();
+            let mut signature = vec![0; keypair.public_modulus_len()];
+
+            if let Err(_) = keypair.sign(&signature::RSA_PKCS1_SHA512, &rng, buf, &mut signature) {
+                return None
+            }
+
+            let mut encoding = (signature.len() as u32).to_be_bytes().to_vec();
+            encoding.extend(signature);
+            (encoding, "rsa-sha2-512")
         },
         PrivateKeyKind::Ecdsa(key) => {
             let (alg, alg_name) = match key.curve.kind {
