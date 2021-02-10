@@ -43,7 +43,9 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
 
     let (signature, sig_type) = match &privkey.kind {
-        PrivateKeyKind::Rsa(_) => return None,
+        PrivateKeyKind::Rsa(_key) => {
+            return None
+        },
         PrivateKeyKind::Ecdsa(key) => {
             let (alg, alg_name) = match key.curve.kind {
                 CurveKind::Nistp256 => (&signature::ECDSA_P256_SHA256_ASN1_SIGNING, "ecdsa-sha2-nistp256"),

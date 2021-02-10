@@ -42,4 +42,4 @@ pub mod utils;
 #[cfg(feature = "yubikey")]
 pub mod yubikey;
 
-pub use ssh::{Certificate, PublicKey};
+pub use ssh::{Certificate, PublicKey, PrivateKey};

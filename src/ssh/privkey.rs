@@ -10,11 +10,23 @@ use std::path::Path;
 /// RSA private key.
 #[derive(Debug, PartialEq, Clone)]
 pub struct RsaPrivateKey {
+    /// Modulus of key.
+    pub n: Vec<u8>,
+
+    /// Public key exponent
+    pub e: Vec<u8>,
+
     /// Private key exponent.
     pub d: Vec<u8>,
 
-    /// Modulus of key.
-    pub n: Vec<u8>,
+    /// CRT coefficient q^(-1) mod p.
+    pub coefficient: Vec<u8>,
+
+    /// Prime factor p of n
+    pub p: Vec<u8>,
+
+    /// Prime factor q of n
+    pub q: Vec<u8>,
 }
 
 /// ECDSA private key.
@@ -149,14 +161,31 @@ impl PrivateKey {
         let kt = KeyType::from_name(&key_type)?;
         
         let kind = match kt.kind {
-            /*KeyTypeKind::Rsa => {
-                let k = RsaPublicKey {
-                    e: reader.read_mpint()?,
+            KeyTypeKind::Rsa => {
+                let k = RsaPrivateKey {
                     n: reader.read_mpint()?,
+                    e: reader.read_mpint()?,
+                    d: reader.read_mpint()?,
+                    coefficient: reader.read_mpint()?,
+                    p: reader.read_mpint()?,
+                    q: reader.read_mpint()?,
                 };
 
-                PublicKeyKind::Rsa(k)
-            }*/
+                let pubkey = match &pubkey.kind {
+                    crate::ssh::pubkey::PublicKeyKind::Rsa(pubkey) => pubkey,
+                    _ => return Err(Error::with_kind(ErrorKind::InvalidFormat)),
+                };
+
+                if k.n != pubkey.n {
+                    return Err(Error::with_kind(ErrorKind::InvalidFormat));
+                }
+
+                if k.e != pubkey.e {
+                    return Err(Error::with_kind(ErrorKind::InvalidFormat));
+                }
+
+                PrivateKeyKind::Rsa(k)
+            },
             KeyTypeKind::Ecdsa => {
                 let identifier = reader.read_string()?;
                 let curve = Curve::from_identifier(&identifier)?;
