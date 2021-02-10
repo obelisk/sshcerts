@@ -7,6 +7,7 @@ use std::path::Path;
 use ring::signature::{
     ECDSA_P256_SHA256_FIXED,
     ECDSA_P384_SHA384_FIXED,
+    RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
     RSA_PKCS1_2048_8192_SHA256,
     RSA_PKCS1_2048_8192_SHA512,
     ED25519,
@@ -517,7 +518,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             let alg = match sig_type.name {
                 "ecdsa-sha2-nistp256" => &ECDSA_P256_SHA256_FIXED,
                 "ecdsa-sha2-nistp384" => &ECDSA_P384_SHA384_FIXED,
-                _ => return Err(Error::with_kind(ErrorKind::KeyTypeMismatch)), 
+                _ => return Err(Error::with_kind(ErrorKind::KeyTypeMismatch)),
             };
 
             let result = UnparsedPublicKey::new(alg, &key.key).verify(&signed_bytes, &sig);
@@ -530,7 +531,8 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             let alg = match sig_type.name {
                 "rsa-sha2-256" => &RSA_PKCS1_2048_8192_SHA256,
                 "rsa-sha2-512" => &RSA_PKCS1_2048_8192_SHA512,
-                _ => return Err(Error::with_kind(ErrorKind::KeyTypeMismatch)), 
+                "ssh-rsa" => &RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
+                _ => return Err(Error::with_kind(ErrorKind::KeyTypeMismatch)),
             };
             let signature = reader.read_bytes()?;
             let public_key = RsaPublicKeyComponents { n: &key.n, e: &key.e };
