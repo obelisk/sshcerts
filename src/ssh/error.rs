@@ -59,7 +59,7 @@ impl From<string::FromUtf8Error> for Error {
     }
 }
 
-
+#[cfg(feature = "rsa-signing")]
 impl From<simple_asn1::ASN1EncodeErr> for Error {
     fn from(_e: simple_asn1::ASN1EncodeErr) -> Self {
         Error::with_kind(ErrorKind::InvalidFormat)

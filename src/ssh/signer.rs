@@ -29,6 +29,8 @@ pub fn create_signer(privkey: PrivateKey) -> Box<dyn Fn(&[u8]) -> Option<Vec<u8>
     })
 }
 
+/// This is in this file to prevent a circular dependency between PrivateKey
+/// and the signer module.
 impl Into<Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync>> for PrivateKey {
     fn into(self) -> Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync> {
         Box::new(move |buf: &[u8]| {
@@ -43,6 +45,7 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
 
     let (signature, sig_type) = match &privkey.kind {
+        #[cfg(feature = "rsa-signing")]
         PrivateKeyKind::Rsa(key) => {
             let asn_privkey = match simple_asn1::der_encode(key) {
                 Ok(apk) => apk,
@@ -65,6 +68,8 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
             encoding.extend(signature);
             (encoding, "rsa-sha2-512")
         },
+        #[cfg(not(feature = "rsa-signing"))]
+        PrivateKeyKind::Rsa(_) => return None,
         PrivateKeyKind::Ecdsa(key) => {
             let (alg, alg_name) = match key.curve.kind {
                 CurveKind::Nistp256 => (&signature::ECDSA_P256_SHA256_ASN1_SIGNING, "ecdsa-sha2-nistp256"),

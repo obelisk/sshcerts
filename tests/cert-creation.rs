@@ -472,6 +472,7 @@ fn create_sign_parse_verify_ecdsa384_create_signer() {
     assert_eq!(user_cert.signature_key.fingerprint().hash, "xHlYNJvliHr0AMuGYs+4SK3N0PqiaI6jbQMZlKWC1Is");
 }
 
+#[cfg(feature = "rsa-signing")]
 #[test]
 fn create_sign_parse_verify_rsa4096_impl_into() {
     let privkey = concat!(
@@ -575,6 +576,7 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
     assert_eq!(user_cert.signature_key.fingerprint().hash, "+9NkmQZUWidGVFdel/s8bjQtVgthWEILEX2DtAZST5c");
 }
 
+#[cfg(feature = "rsa-signing")]
 #[test]
 fn create_sign_parse_verify_rsa3072_impl_into() {
     let privkey = concat!(
@@ -667,6 +669,7 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
     assert_eq!(user_cert.signature_key.fingerprint().hash, "YlmcNWmmzkuy/5oIlCoqyd5JkIaa/RgzjlF7nFzsZ3o");
 }
 
+#[cfg(feature = "rsa-signing")]
 #[test]
 fn create_sign_parse_verify_rsa2048_impl_into() {
     let privkey = concat!(

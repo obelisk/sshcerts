@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.3.10"
+version = "0.3.11"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -11,16 +11,23 @@ keywords = ["ssh", "yubikey", "certs", "certificates"]
 categories = ["authentication"]
 
 [features]
-default = []
-yubikey = ["yubikey-piv"]
+default = ["rsa-signing"]
+
+all = ["yubikey", "rsa-signing"]
+
+yubikey = ["yubikey-piv", "log"]
+rsa-signing = ["simple_asn1", "num-bigint"]
 
 [dependencies]
 base64 = "0.13"
-log = "0.4"
-simple_asn1 = "0.5"
-num-bigint = "0.3"
 ring = "0.16"
 
+# Dependencies for rsa-signing
+simple_asn1 = {version = "0.5", optional = true}
+num-bigint = {version = "0.3", optional = true}
+
+# Dependencies for yubikey
+log = {version = "0.4", optional = true}
 yubikey-piv = {version = "0.1.0", features = ["untested"], optional = true}
 
 [dev-dependencies]

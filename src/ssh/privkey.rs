@@ -1,8 +1,10 @@
 use super::keytype::{Curve, KeyType, KeyTypeKind};
 use super::error::{Error, ErrorKind};
+#[cfg(feature = "rsa-signing")]
 use num_bigint::{BigInt, BigUint, Sign};
 use super::PublicKey;
 use super::reader::Reader;
+#[cfg(feature = "rsa-signing")]
 use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
 
 use std::fs::File;
@@ -32,10 +34,10 @@ pub struct RsaPrivateKey {
     pub q: Vec<u8>,
 
     /// Exponent using p
-    pub exp: Vec<u8>,
+    pub exp: Option<Vec<u8>>,
 
     /// Exponent using q
-    pub exq: Vec<u8>,
+    pub exq: Option<Vec<u8>>,
 }
 
 /// ECDSA private key.
@@ -84,6 +86,7 @@ pub struct PrivateKey {
     pub comment: Option<String>,
 }
 
+#[cfg(feature = "rsa-signing")]
 impl ToASN1 for RsaPrivateKey {
     type Error = Error;
 
@@ -97,8 +100,8 @@ impl ToASN1 for RsaPrivateKey {
                 vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.d))],
                 vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.p))],
                 vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.q))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.exp))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.exq))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.exp.as_ref().unwrap()))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.exq.as_ref().unwrap()))],
                 vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.coefficient))],
                 Vec::new(),
             ]
@@ -201,17 +204,23 @@ impl PrivateKey {
                 let p = reader.read_mpint()?;
                 let q = reader.read_mpint()?;
 
-                let exp = BigUint::from_bytes_be(&d)
+                #[cfg(feature = "rsa-signing")]
+                let exp = Some(BigUint::from_bytes_be(&d)
                     .modpow(
                         &BigUint::from_slice(&[0x1]),
                         &(BigUint::from_bytes_be(&p) - 1_u8)
-                    );
+                    ).to_bytes_be());
+                #[cfg(not(feature = "rsa-signing"))]
+                let exp = None;
 
-                let exq = BigUint::from_bytes_be(&d)
+                #[cfg(feature = "rsa-signing")]
+                let exq = Some(BigUint::from_bytes_be(&d)
                     .modpow(
                         &BigUint::from_slice(&[0x1]),
                         &(BigUint::from_bytes_be(&q) - 1_u8)
-                    );
+                    ).to_bytes_be());
+                #[cfg(not(feature = "rsa-signing"))]
+                let exq = None;
 
                 let k = RsaPrivateKey {
                     n,
@@ -220,8 +229,8 @@ impl PrivateKey {
                     coefficient,
                     p,
                     q,
-                    exp: exp.to_bytes_be(),
-                    exq: exq.to_bytes_be(),
+                    exp: exp,
+                    exq: exq,
                 };
 
                 let pubkey = match &pubkey.kind {
