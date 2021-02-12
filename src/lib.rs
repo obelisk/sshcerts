@@ -1,20 +1,24 @@
 //! 
-//! The `rustica-keys` crate provides types and methods for parsing
-//! OpenSSH public keys, and parsing then verifying SSH certificates.
+//! The 'sshcerts` crate provides types and methods for parsing
+//! OpenSSH keys, and parsing, verifying, and creating SSH certificates.
 //!
-//! The following public key types are supported.
+//! The following OpenSSH key types are supported.
 //!
 //! - RSA
 //! - ECDSA
 //! - ED25519
 //!
-//! The following OpenSSH certificate types are supported as well.
+//! The following OpenSSH certificate types are supported.
 //!
 //! - ssh-rsa-cert-v01@openssh.com
 //! - ecdsa-sha2-nistp256-cert-v01@openssh.com
 //! - ecdsa-sha2-nistp384-cert-v01@openssh.com
-//! - ecdsa-sha2-nistp512-cert-v01@openssh.com  (Not yet)
 //! - ssh-ed25519-cert-v01@openssh.com
+//!
+//! ### Why no ecdsa-sha2-nistp521-cert-v01@openssh.com?
+//! That curve is not supported on a standard yubikey nor in `ring`. This
+//! means I cannot implement any signing or verification routines. If this
+//! changes, I will update this crate with support.
 //!
 //! The crate also provides functionality for provision key slots on
 //! Yubikeys to handle signing operations. This is provided in the
