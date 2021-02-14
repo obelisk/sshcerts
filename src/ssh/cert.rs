@@ -510,16 +510,36 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             let sig_reader = reader.read_bytes()?;
             let mut reader = Reader::new(&sig_reader);
 
-            // Read the R value
-            let mut sig = reader.read_mpint()?;
-            // Read the S value
-            sig.extend(reader.read_mpint()?);
-
-            let alg = match sig_type.name {
-                "ecdsa-sha2-nistp256" => &ECDSA_P256_SHA256_FIXED,
-                "ecdsa-sha2-nistp384" => &ECDSA_P384_SHA384_FIXED,
+            let (alg, len) = match sig_type.name {
+                "ecdsa-sha2-nistp256" => (&ECDSA_P256_SHA256_FIXED, 32),
+                "ecdsa-sha2-nistp384" => (&ECDSA_P384_SHA384_FIXED, 48),
                 _ => return Err(Error::with_kind(ErrorKind::KeyTypeMismatch)),
             };
+
+            // Read the R value
+            let r_bytes = reader.read_mpint()?;
+            // Read the S value
+            let s_bytes = reader.read_mpint()?;
+
+            // r_bytes and s_bytes are user controlled so we need to make sure
+            // a maliciously crafted signature doesn't cause an integer underflow.
+            // Rust will catch this a panic so that risk is mitigated but a user
+            // should not be able to cause a panic in any way
+            if r_bytes.len() > len || s_bytes.len() > len {
+                return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            }
+
+            // Determine and create the padding required
+            let mut r = vec![0; len - r_bytes.len()];
+            let mut s = vec![0; len - s_bytes.len()];
+
+            // Pad *_bytes
+            r.extend(r_bytes);
+            s.extend(s_bytes);
+
+            // Build a properly padded signature
+            let mut sig = r;
+            sig.extend(s);
 
             let result = UnparsedPublicKey::new(alg, &key.key).verify(&signed_bytes, &sig);
             match result {
