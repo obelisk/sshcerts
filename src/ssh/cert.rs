@@ -187,11 +187,17 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use sshcerts::Certificate;
-    /// # fn example() {
-    ///     let cert = Certificate::from_string("ssh-rsa AAAAB3NzaC1yc2EAAAA...").unwrap();
-    ///     println!("{}", cert);
-    /// # }
+    /// use sshcerts::Certificate;
+    ///
+    /// let cert = Certificate::from_string(concat!(
+    ///     "ssh-ed25519-cert-v01@openssh.com AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIGZlEWgv+aRvfJZiREMOKR0PVSTEstkuSeOyRgx",
+    ///     "wI1v2AAAAIAwPJZIwmYs+W7WHNPneMUIAkQnBVw1LP0yQdfh7lT/S/v7+/v7+/v4AAAABAAAADG9iZWxpc2tAdGVzdAAAAAsAAAAHb2JlbGlzawAAAAAAAAAA///",
+    ///     "///////8AAAAiAAAADWZvcmNlLWNvbW1hbmQAAAANAAAACS9iaW4vdHJ1ZQAAAIIAAAAVcGVybWl0LVgxMS1mb3J3YXJkaW5nAAAAAAAAABdwZXJtaXQtYWdlbnQ",
+    ///     "tZm9yd2FyZGluZwAAAAAAAAAWcGVybWl0LXBvcnQtZm9yd2FyZGluZwAAAAAAAAAKcGVybWl0LXB0eQAAAAAAAAAOcGVybWl0LXVzZXItcmMAAAAAAAAAAAAAADM",
+    ///     "AAAALc3NoLWVkMjU1MTkAAAAgXRsP8RFzML3wJDAqm2ENwOrRAHez5QqtcEpyBvwvniYAAABTAAAAC3NzaC1lZDI1NTE5AAAAQMo0Akv0eyr269StM2zBd0Alzjx",
+    ///     "XAC6krgBQex2O31at8r550oCIelfgj8YwZIaXG9DmleP525LcseJ16Z8e5Aw= obelisk@exclave.lan"
+    /// )).unwrap();
+    /// println!("{:?}", cert);
     /// ```
     pub fn from_string(s: &str) -> Result<Certificate> {
         let mut iter = s.split_whitespace();
@@ -243,13 +249,13 @@ impl Certificate {
         let signed_len = reader.get_offset();
         let signature = reader.read_bytes()?;
 
-        reader.set_offset(0).unwrap();
-        let signed_bytes = reader.read_raw_bytes(signed_len).unwrap();
+        reader.set_offset(0)?;
+        let signed_bytes = reader.read_raw_bytes(signed_len)?;
 
         // Verify the certificate is properly signed
         verify_signature(&signature, &signed_bytes, &signature_key)?;
 
-        let cert = Certificate {
+        Ok(Certificate {
             key_type,
             nonce,
             key,
@@ -266,9 +272,7 @@ impl Certificate {
             signature,
             comment,
             serialized: decoded,
-        };
-
-        Ok(cert)
+        })
     }
 
     /// Create a new SSH certificate from the provided values. It takes
@@ -521,10 +525,8 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             // Read the S value
             let s_bytes = reader.read_mpint()?;
 
-            // r_bytes and s_bytes are user controlled so we need to make sure
-            // a maliciously crafted signature doesn't cause an integer underflow.
-            // Rust will catch this a panic so that risk is mitigated but a user
-            // should not be able to cause a panic in any way
+            // *_bytes are user controlled so ensure maliciously signatures
+            // can't cause integer underflow.
             if r_bytes.len() > len || s_bytes.len() > len {
                 return Err(Error::with_kind(ErrorKind::InvalidFormat));
             }
@@ -541,11 +543,8 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             let mut sig = r;
             sig.extend(s);
 
-            let result = UnparsedPublicKey::new(alg, &key.key).verify(&signed_bytes, &sig);
-            match result {
-                Ok(()) => Ok(signature_buf.to_vec()),
-                Err(_) => Err(Error::with_kind(ErrorKind::CertificateInvalidSignature)),
-            }
+            UnparsedPublicKey::new(alg, &key.key).verify(&signed_bytes, &sig)?;
+            Ok(signature_buf.to_vec())
         },
         PublicKeyKind::Rsa(key) => {
             let alg = match sig_type.name {
@@ -556,26 +555,15 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             };
             let signature = reader.read_bytes()?;
             let public_key = RsaPublicKeyComponents { n: &key.n, e: &key.e };
-            let result = public_key.verify(alg, &signed_bytes, &signature);
-            match result {
-                Ok(()) => Ok(signature_buf.to_vec()),
-                Err(e) => {
-                    println!("Error: {}", e);
-                    Err(Error::with_kind(ErrorKind::CertificateInvalidSignature))
-                }
-            }
+            public_key.verify(alg, &signed_bytes, &signature)?;
+            Ok(signature_buf.to_vec())
         },
         PublicKeyKind::Ed25519(key) => {
             let alg = &ED25519;
             let signature = reader.read_bytes()?;
             let peer_public_key = UnparsedPublicKey::new(alg, &key.key);
-            match peer_public_key.verify(&signed_bytes, &signature) {
-                Ok(()) => Ok(signature_buf.to_vec()),
-                Err(e) => {
-                    println!("Error: {}", e);
-                    Err(Error::with_kind(ErrorKind::CertificateInvalidSignature))
-                }
-            }
+            peer_public_key.verify(&signed_bytes, &signature)?;
+            Ok(signature_buf.to_vec())
         },
     }
 }

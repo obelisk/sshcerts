@@ -59,6 +59,12 @@ impl From<string::FromUtf8Error> for Error {
     }
 }
 
+impl From<ring::error::Unspecified> for Error {
+    fn from(_: ring::error::Unspecified) -> Error{
+        Error::with_kind(ErrorKind::CertificateInvalidSignature)
+    }
+}
+
 #[cfg(feature = "rsa-signing")]
 impl From<simple_asn1::ASN1EncodeErr> for Error {
     fn from(_e: simple_asn1::ASN1EncodeErr) -> Self {

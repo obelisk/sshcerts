@@ -83,10 +83,20 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
             };
 
             let key = if key.key[0] == 0x0_u8 {&key.key[1..]} else {&key.key};
-            let key_pair = signature::EcdsaKeyPair::from_private_key_and_public_key(alg, &key, &pubkey).unwrap();
-            let signature = key_pair.sign(&rng, &buf).unwrap().as_ref().to_vec();
-            let signature = signature_convert_asn1_ecdsa_to_ssh(&signature).unwrap();
-            (signature, alg_name)
+            let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(alg, &key, &pubkey) {
+                Ok(kp) => kp,
+                Err(_) => return None,
+            };
+
+            let signature = match key_pair.sign(&rng, &buf) {
+                Ok(sig) => signature_convert_asn1_ecdsa_to_ssh(&sig.as_ref()),
+                Err(_) => return None,
+            };
+
+            match signature {
+                Some(sig) => (sig, alg_name),
+                None => return None,
+            }
         },
         PrivateKeyKind::Ed25519(key) => {
             let public_key = match &privkey.pubkey.kind {
