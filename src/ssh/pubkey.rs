@@ -113,7 +113,7 @@ impl fmt::Display for FingerprintKind {
 }
 
 /// A type that represents an OpenSSH public key fingerprint.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Fingerprint {
     /// The kind used to represent the fingerprint.
     pub kind: FingerprintKind,
