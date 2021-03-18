@@ -43,6 +43,20 @@ fn subject(yk: &mut YubiKey, slot: SlotId) -> Result<String, Error> {
     }
 }
 
+/// Fetch the certificate from a given Yubikey slot. If there is not one, this
+/// will fail
+pub fn fetch_certificate(slot: SlotId) -> Result<Vec<u8>, Error> {
+    let mut yk = match YubiKey::open() {
+        Ok(yk) => yk,
+        Err(e) => return Err(Error::InternalYubiKeyError(e)),
+    };
+
+    match yubikey_piv::certificate::Certificate::read(&mut yk, slot) {
+        Ok(cert) => {Ok(cert.as_ref().to_vec())},
+        Err(e) => Err(Error::InternalYubiKeyError(e)),
+    }
+}
+
 /// Fetch a public key from the provided slot. If there is not exactly one
 /// Yubikey this will fail.
 pub fn fetch_pubkey(slot: SlotId) -> Result<PublicKeyInfo, Error> {

@@ -1,5 +1,5 @@
 use yubikey_piv::key::{AlgorithmId, SlotId};
-use yubikey_piv::certificate::PublicKeyInfo;
+use yubikey_piv::certificate::{Certificate, PublicKeyInfo};
 
 use crate::yubikey::management::{fetch_pubkey, sign_data};
 
@@ -50,6 +50,20 @@ pub fn convert_to_ssh_pubkey(pki: &PublicKeyInfo) -> Option<PublicKey> {
         _ => None,
     }
 }
+
+/// This function is used to convert a der encoded certificate to the internal
+/// PublicKey type.
+pub fn convert_x509_to_ssh_pubkey(certificate: &[u8]) -> Option<PublicKey> {
+    let certificate = match Certificate::from_bytes(certificate.to_vec()) {
+        Ok(c) => c,
+        Err(e) => {
+            error!("Parsing Error: {:?}", e);
+            return None
+        }
+    };
+    convert_to_ssh_pubkey(certificate.subject_pki())
+}
+
 
 /// Pull the public key from the YubiKey and wrap it in a sshcerts
 /// PublicKey object.
