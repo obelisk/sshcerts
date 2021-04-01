@@ -5,6 +5,8 @@ use yubikey_piv::policy::{PinPolicy, TouchPolicy};
 use yubikey_piv::key::{attest, AlgorithmId, sign_data as yk_sign_data, SlotId};
 use yubikey_piv::certificate::{Certificate, PublicKeyInfo};
 
+use std::convert::From;
+
 
 /// Errors when interacting with the Yubikey.
 #[derive(Debug)]
@@ -24,153 +26,115 @@ pub enum Error {
     InvalidManagementKey,
     /// If the Yubikey throws an error we don't recognize, it's encapsulated
     /// and returned
-    InternalYubiKeyError(yubikey_piv::error::Error),
+    InternalYubiKeyError(String),
 }
 
-/// Check to see that a provided Yubikey and slot is configured for signing
-pub fn configured(yk: &mut YubiKey, slot: SlotId) -> Result<PublicKeyInfo, Error> {
-    match yubikey_piv::certificate::Certificate::read(yk, slot) {
-        Ok(cert) => {Ok(cert.subject_pki().clone())},
-        Err(e) => Err(Error::InternalYubiKeyError(e)),
+impl From<yubikey_piv::error::Error> for Error {
+    fn from(e: yubikey_piv::error::Error) -> Self {
+        Error::InternalYubiKeyError(e.to_string())
     }
 }
 
-/// Check to see that a provided Yubikey and slot is configured for signing
-fn subject(yk: &mut YubiKey, slot: SlotId) -> Result<String, Error> {
-    match yubikey_piv::certificate::Certificate::read(yk, slot) {
-        Ok(cert) => {Ok(cert.subject().to_owned())},
-        Err(e) => Err(Error::InternalYubiKeyError(e)),
-    }
-}
-
-/// Fetch the certificate from a given Yubikey slot. If there is not one, this
-/// will fail
-pub fn fetch_certificate(slot: SlotId) -> Result<Vec<u8>, Error> {
-    let mut yk = match YubiKey::open() {
-        Ok(yk) => yk,
-        Err(e) => return Err(Error::InternalYubiKeyError(e)),
-    };
-
-    match yubikey_piv::certificate::Certificate::read(&mut yk, slot) {
-        Ok(cert) => {Ok(cert.as_ref().to_vec())},
-        Err(e) => Err(Error::InternalYubiKeyError(e)),
-    }
-}
-
-/// Fetch a public key from the provided slot. If there is not exactly one
-/// Yubikey this will fail.
-pub fn fetch_pubkey(slot: SlotId) -> Result<PublicKeyInfo, Error> {
-    let mut yubikey = match YubiKey::open() {
-        Ok(yk) => yk,
-        Err(e) => return Err(Error::InternalYubiKeyError(e)),
-    };
-    configured(&mut yubikey, slot)
-}
-
-/// Fetch a certificate subject from a yubikey slot
-pub fn fetch_subject(slot: SlotId) -> Result<String, Error> {
-    let mut yubikey = match YubiKey::open() {
-        Ok(yk) => yk,
-        Err(e) => return Err(Error::InternalYubiKeyError(e)),
-    };
-    subject(&mut yubikey, slot)
-}
-
-/// Generate attestation for a slot
-pub fn fetch_attestation(slot: SlotId) -> Option<Vec<u8>> {
-    let mut yubikey = match YubiKey::open() {
-        Ok(yk) => yk,
-        Err(_e) => return None,
-    };
-
-    match attest(&mut yubikey, slot) {
-        Ok(buf) => Some(buf.to_vec()),
-        Err(_) => None
-    }
-}
-
-/// This provisions the YubiKey with a new certificate. It is generally not advisable
-/// to use as this means there is no backup of the key should it be lost.
-/// It is however provided as an easy method quickly get a YubiKey properly configured.
-pub fn provision(pin: &[u8], mgm_key: &[u8], slot: SlotId, subject: &str, alg: AlgorithmId, require_touch: TouchPolicy) -> Result<PublicKeyInfo, Error> {
-    let mut yk = match YubiKey::open() {
-        Ok(yk) => yk,
-        Err(e) => return Err(Error::InternalYubiKeyError(e)),
-    };
-
-    match yk.verify_pin(pin) {
-        Ok(_) => (),
-        Err(e) => {
-            println!("Error in verify pin: {}", e);
-            return Err(Error::InternalYubiKeyError(e))
-        },
+impl crate::yubikey::Yubikey {
+    /// Create a new YubiKey. Assumes there is only one Yubikey connected
+    pub fn new() -> Result<Self, Error> {
+        Ok(Self {
+            yk: YubiKey::open()?,
+        })
     }
 
-    let mgm_key = match MgmKey::from_bytes(mgm_key) {
-        Ok(mgm) => mgm,
-        Err(_) => return Err(Error::InvalidManagementKey),
-    };
+    /// Unlock the yubikey for signing or provisioning operations
+    pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8]) -> Result<(), Error> {
+        self.yk.verify_pin(pin)?;
 
-    match yk.authenticate(mgm_key) {
-        Ok(_) => (),
-        Err(e) => {
-            println!("Error in MGM Key Authentication: {}", e);
-            return Err(Error::InternalYubiKeyError(e));
-        },
+        match MgmKey::from_bytes(mgm_key) {
+            Ok(mgm) => self.yk.authenticate(mgm)?,
+            Err(_) => return Err(Error::InvalidManagementKey),
+        };
+        Ok(())
     }
 
-    let key_info = match yubikey_piv::key::generate(&mut yk, slot, alg, PinPolicy::Never, require_touch) {
-        Ok(ki) => ki,
-        Err(e) => {
-            println!("Error in provisioning new key: {}", e);
-            return Err(Error::InternalYubiKeyError(e));
-        },
-    };
-
-    // Generate a self-signed certificate for the new key.
-    if let Err(e) = Certificate::generate_self_signed(
-        &mut yk,
-        slot,
-        [0u8; 20],
-        None,
-        subject.to_string(),
-        key_info,
-    ) {
-        return Err(Error::InternalYubiKeyError(e));
+    /// Check to see that a provided Yubikey and slot is configured for signing
+    pub fn configured(&mut self, slot: &SlotId) -> Result<PublicKeyInfo, Error> {
+        match yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot) {
+            Ok(cert) => Ok(cert.subject_pki().clone()),
+            Err(e) => Err(Error::InternalYubiKeyError(e.to_string())),
+        }
     }
 
-    configured(&mut yk, slot)
-}
-
-/// Take an data, an algorithm, and a slot and attempt to sign the data field
-/// 
-/// If the requested algorithm doesn't match the key in the slot (or the slot
-/// is empty) this will return an error.
-pub fn sign_data(data: &[u8], alg: AlgorithmId, slot: SlotId) -> Result<Vec<u8>, Error> {
-    let mut yk = match YubiKey::open() {
-        Ok(yk) => yk,
-        Err(e) => return Err(Error::InternalYubiKeyError(e)),
-    };
-
-    let slot_alg = match configured(&mut yk, slot) {
-        Ok(PublicKeyInfo::EcP256(_)) => AlgorithmId::EccP256,
-        Ok(PublicKeyInfo::EcP384(_)) => AlgorithmId::EccP384,
-        Ok(_) => AlgorithmId::Rsa2048,  // RSAish
-        Err(_) => return Err(Error::Unprovisioned),
-    };
-
-    if slot_alg != alg {
-        return Err(Error::WrongKeyType);
+    /// Check to see that a provided Yubikey and slot is configured for signing
+    pub fn fetch_subject(&mut self, slot: &SlotId) -> Result<String, Error> {
+        match yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot) {
+            Ok(cert) => {Ok(cert.subject().to_owned())},
+            Err(e) => Err(Error::InternalYubiKeyError(e.to_string())),
+        }
     }
 
-    let hash = match slot_alg {
-        AlgorithmId::EccP256 => digest::digest(&digest::SHA256, data).as_ref().to_vec(),
-        AlgorithmId::EccP384 => digest::digest(&digest::SHA384, data).as_ref().to_vec(),
-        _ => return Err(Error::Unsupported),
-    };
+    /// Fetch the certificate from a given Yubikey slot. If there is not one, this
+    /// will fail
+    pub fn fetch_certificate(&mut self, slot: &SlotId) -> Result<Vec<u8>, Error> {
+        match yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot) {
+            Ok(cert) => {Ok(cert.as_ref().to_vec())},
+            Err(e) => Err(Error::InternalYubiKeyError(e.to_string())),
+        }
+    }
 
-    match yk_sign_data(&mut yk, &hash[..], alg, slot) {
-        Ok(sig) => Ok(sig.to_vec()),
-        Err(e) => Err(Error::InternalYubiKeyError(e)),
+    /// Fetch a public key from the provided slot. If there is not exactly one
+    /// Yubikey this will fail.
+    pub fn fetch_pubkey(&mut self, slot: &SlotId) -> Result<PublicKeyInfo, Error> {
+        self.configured(slot)
+    }
+
+
+    /// Generate attestation for a slot
+    pub fn fetch_attestation(&mut self, slot: &SlotId) -> Result<Vec<u8>, Error> {
+        match attest(&mut self.yk, *slot) {
+            Ok(buf) => Ok(buf.to_vec()),
+            Err(e) => Err(Error::InternalYubiKeyError(e.to_string())),
+        }
+    }
+
+    /// This provisions the YubiKey with a new certificate generated on the device.
+    /// Only keys that are generate this way can use the attestation functionality.
+    pub fn provision(&mut self, slot: &SlotId, subject: &str, alg: AlgorithmId, touch_policy: TouchPolicy, pin_policy: PinPolicy) -> Result<PublicKeyInfo, Error> {
+        let key_info = yubikey_piv::key::generate(&mut self.yk, *slot, alg, pin_policy, touch_policy)?;
+
+        // Generate a self-signed certificate for the new key.
+        Certificate::generate_self_signed(
+            &mut self.yk,
+            *slot,
+            [0u8; 20],
+            None,
+            subject.to_string(),
+            key_info,
+        )?;
+
+        self.configured(slot)
+    }
+
+    /// Take data, an algorithm, and a slot and attempt to sign the data field
+    /// 
+    /// If the requested algorithm doesn't match the key in the slot (or the slot
+    /// is empty) this will return an error.
+    pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>, Error> {
+
+        let slot_alg = match self.configured(slot) {
+            Ok(PublicKeyInfo::EcP256(_)) => AlgorithmId::EccP256,
+            Ok(PublicKeyInfo::EcP384(_)) => AlgorithmId::EccP384,
+            Ok(_) => AlgorithmId::Rsa2048,  // RSAish
+            Err(_) => return Err(Error::Unprovisioned),
+        };
+
+        if slot_alg != alg {
+            return Err(Error::WrongKeyType);
+        }
+
+        let hash = match slot_alg {
+            AlgorithmId::EccP256 => digest::digest(&digest::SHA256, data).as_ref().to_vec(),
+            AlgorithmId::EccP384 => digest::digest(&digest::SHA384, data).as_ref().to_vec(),
+            _ => return Err(Error::Unsupported),
+        };
+
+        Ok(yk_sign_data(&mut self.yk, &hash[..], alg, *slot)?.to_vec())
     }
 }

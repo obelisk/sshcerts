@@ -1185,7 +1185,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "sshcerts"
-version = "0.3.14"
+version = "0.4.0"
 dependencies = [
  "base64",
  "clap 3.0.0-beta.2",

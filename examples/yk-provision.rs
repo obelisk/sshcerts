@@ -2,11 +2,12 @@ use std::env;
 
 use clap::{App, Arg};
 
+use sshcerts::yubikey::Yubikey;
 use sshcerts::yubikey::ssh::convert_to_ssh_pubkey;
-use sshcerts::yubikey::{RetiredSlotId, SlotId, provision};
+use sshcerts::yubikey::{RetiredSlotId, SlotId};
 
 use yubikey_piv::key::AlgorithmId;
-use yubikey_piv::policy::TouchPolicy;
+use yubikey_piv::policy::{PinPolicy, TouchPolicy};
 
 use std::convert::TryFrom;
 
@@ -25,7 +26,9 @@ fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg
         TouchPolicy::Never
     };
 
-    match provision(pin.as_bytes(), mgm_key, slot, subject, alg, policy) {
+    let mut yk = Yubikey::new().unwrap();
+    yk.unlock(pin.as_bytes(), mgm_key).unwrap();
+    match yk.provision(&slot, subject, alg, policy, PinPolicy::Never) {
         Ok(pk) => {
             convert_to_ssh_pubkey(&pk).unwrap();
         },
@@ -55,7 +58,6 @@ fn slot_validator(slot: &str) -> Result<(), String> {
         None => Err(String::from("Provided slot was not valid. Should be R1 - R20 or a raw hex identifier")),
     }
 }
-
 
 fn main() {
     env_logger::init();
