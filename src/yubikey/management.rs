@@ -36,27 +36,21 @@ impl crate::yubikey::Yubikey {
 
     /// Check to see that a provided Yubikey and slot is configured for signing
     pub fn configured(&mut self, slot: &SlotId) -> Result<PublicKeyInfo, Error> {
-        match yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot) {
-            Ok(cert) => Ok(cert.subject_pki().clone()),
-            Err(e) => Err(Error::InternalYubiKeyError(e.to_string())),
-        }
+        let cert = yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot)?;
+        Ok(cert.subject_pki().clone())
     }
 
     /// Check to see that a provided Yubikey and slot is configured for signing
     pub fn fetch_subject(&mut self, slot: &SlotId) -> Result<String, Error> {
-        match yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot) {
-            Ok(cert) => {Ok(cert.subject().to_owned())},
-            Err(e) => Err(Error::InternalYubiKeyError(e.to_string())),
-        }
+        let cert = yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot)?;
+        Ok(cert.subject().to_string())
     }
 
     /// Fetch the certificate from a given Yubikey slot. If there is not one, this
     /// will fail
     pub fn fetch_certificate(&mut self, slot: &SlotId) -> Result<Vec<u8>, Error> {
-        match yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot) {
-            Ok(cert) => {Ok(cert.as_ref().to_vec())},
-            Err(e) => Err(Error::InternalYubiKeyError(e.to_string())),
-        }
+        let cert = yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot)?;
+        Ok(cert.as_ref().to_vec())
     }
 
     /// Fetch a public key from the provided slot. If there is not exactly one
@@ -65,13 +59,9 @@ impl crate::yubikey::Yubikey {
         self.configured(slot)
     }
 
-
     /// Generate attestation for a slot
     pub fn fetch_attestation(&mut self, slot: &SlotId) -> Result<Vec<u8>, Error> {
-        match attest(&mut self.yk, *slot) {
-            Ok(buf) => Ok(buf.to_vec()),
-            Err(e) => Err(Error::InternalYubiKeyError(e.to_string())),
-        }
+        Ok(attest(&mut self.yk, *slot)?.to_vec())
     }
 
     /// This provisions the YubiKey with a new certificate generated on the device.
@@ -97,24 +87,17 @@ impl crate::yubikey::Yubikey {
     /// If the requested algorithm doesn't match the key in the slot (or the slot
     /// is empty) this will return an error.
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>, Error> {
-
-        let slot_alg = match self.configured(slot) {
-            Ok(PublicKeyInfo::EcP256(_)) => AlgorithmId::EccP256,
-            Ok(PublicKeyInfo::EcP384(_)) => AlgorithmId::EccP384,
-            Ok(_) => AlgorithmId::Rsa2048,  // RSAish
+        let (slot_alg, hash_alg) = match self.configured(slot) {
+            Ok(PublicKeyInfo::EcP256(_)) => (AlgorithmId::EccP256, &digest::SHA256),
+            Ok(PublicKeyInfo::EcP384(_)) => (AlgorithmId::EccP384, &digest::SHA384),
+            Ok(_) => (AlgorithmId::Rsa2048, &digest::SHA256), // RSAish
             Err(_) => return Err(Error::Unprovisioned),
         };
 
         if slot_alg != alg {
             return Err(Error::WrongKeyType);
         }
-
-        let hash = match slot_alg {
-            AlgorithmId::EccP256 => digest::digest(&digest::SHA256, data).as_ref().to_vec(),
-            AlgorithmId::EccP384 => digest::digest(&digest::SHA384, data).as_ref().to_vec(),
-            _ => return Err(Error::Unsupported),
-        };
-
-        Ok(yk_sign_data(&mut self.yk, &hash[..], alg, *slot)?.to_vec())
+        let signature = yk_sign_data(&mut self.yk, digest::digest(hash_alg, data).as_ref(), alg, *slot)?;
+        Ok(signature.to_vec())
     }
 }
