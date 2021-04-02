@@ -28,6 +28,8 @@ pub enum Error {
     InternalYubiKeyError(String),
 }
 
+impl std::error::Error for Error {}
+
 // Re-export because it's used as a parameter in `sign_data`
 pub use yubikey_piv::key::{AlgorithmId, RetiredSlotId, SlotId};
 
@@ -40,5 +42,18 @@ pub struct Yubikey {
 impl std::fmt::Debug for Yubikey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "SSHCerts YubiKey")
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            Error::Unprovisioned => write!(f, "Slot is unprovisioned for signing"),
+            Error::WrongKeyType => write!(f, "Wrong key type was provided for requested signing operation"),
+            Error::Unsupported => write!(f, "This key is not supported the way you tried to use it"),
+            Error::InvalidManagementKey => write!(f, "Could not use the management key as provided"),
+            Error::ParsingError => write!(f, "Could not parse data"),
+            Error::InternalYubiKeyError(ref err) => write!(f, "Yubikey error: {}", err),
+        }
     }
 }
