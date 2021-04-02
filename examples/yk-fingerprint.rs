@@ -20,7 +20,7 @@ fn main() {
     for slot in [0x9a, 0x9c, 0x9e, 0x9d, 0x9e, 0xf9].iter().map(|x| *x as u8) {
         let slot = SlotId::try_from(slot).unwrap();
         match (yk.fetch_subject(&slot), yk.ssh_cert_fetch_pubkey(&slot))  {
-            (Ok(subj), Some(cert)) => {
+            (Ok(subj), Ok(cert)) => {
                 let attest = yk.fetch_attestation(&slot);
                 println!("\t{:?}:\t[Fingerprint: {}] [Attest: {}] Subject: [{}]",
                     &slot,
@@ -37,7 +37,7 @@ fn main() {
     for slot in 0x82..0x96_u8 {
         let slot = SlotId::Retired(RetiredSlotId::try_from(slot).unwrap());
         match (yk.fetch_subject(&slot), yk.ssh_cert_fetch_pubkey(&slot)) {
-            (Ok(subj), Some(cert)) => {
+            (Ok(subj), Ok(cert)) => {
                 let attest = yk.fetch_attestation(&slot);
                 println!("\t{:?}:\t[Fingerprint: {}] [Attest: {}] Subject: [{}]",
                     slot,
