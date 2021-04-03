@@ -282,8 +282,8 @@ impl Certificate {
     /// ```rust
     /// # use sshcerts::{Certificate, PublicKey};
     /// # use sshcerts::ssh::{CertType, CriticalOptions, Extensions};
-    /// fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
-    /// fn test_pubkey() -> Option<Vec<u8>> { None }
+    /// # fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
+    /// # fn test_pubkey() -> Option<Vec<u8>> { None }
     /// # fn example() {
     ///     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan").unwrap();
     ///     let cert = Certificate::builder(&ssh_pubkey, CertType::User, &ssh_pubkey).unwrap()

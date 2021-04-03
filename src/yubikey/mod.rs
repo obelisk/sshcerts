@@ -30,6 +30,8 @@ pub enum Error {
 
 impl std::error::Error for Error {}
 
+type Result<T> = std::result::Result<T, Error>;
+
 // Re-export because it's used as a parameter in `sign_data`
 pub use yubikey_piv::key::{AlgorithmId, RetiredSlotId, SlotId};
 
@@ -38,7 +40,6 @@ pub struct Yubikey {
     yk: yubikey_piv::yubikey::YubiKey,
 }
 
-//TODO @obelisk Fix this
 impl std::fmt::Debug for Yubikey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "YubiKey: {}", self.yk.serial().to_string())
