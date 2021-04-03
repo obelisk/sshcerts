@@ -275,10 +275,8 @@ impl Certificate {
         })
     }
 
-    /// Create a new SSH certificate from the provided values. It takes
-    /// two function pointers to retrieve the signing public key as well
-    /// as a function to do the actual signing. This function pointed to is 
-    /// responsible for hashing the data as no hashing is done Certificate::new
+    /// Create a new empty SSH certificate. Values must then be filled in using
+    /// the mutator methods below.
     ///
     /// # Example
     ///
@@ -288,107 +286,169 @@ impl Certificate {
     /// fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
     /// fn test_pubkey() -> Option<Vec<u8>> { None }
     /// # fn example() {
-    ///   let cert = Certificate::new(
-    ///      PublicKey::from_string("AAA...").unwrap(),
-    ///      CertType::User,
-    ///      0xFEFEFEFEFEFEFEFE,
-    ///      String::from("obelisk@exclave"),
-    ///      vec![String::from("obelisk2")],
-    ///      0,
-    ///      0xFFFFFFFFFFFFFFFF,
-    ///      CriticalOptions::None,
-    ///      Extensions::Standard,
-    ///      PublicKey::from_string("AAA...").unwrap(),
-    ///      test_signer,
-    ///   );
+    ///     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan").unwrap();
+    ///     let cert = Certificate::builder(&ssh_pubkey, CertType::User, &ssh_pubkey).unwrap()
+    ///        .serial(0xFEFEFEFEFEFEFEFE)
+    ///        .key_id("key_id")
+    ///        .principal("obelisk")
+    ///        .valid_after(0)
+    ///        .valid_before(0xFFFFFFFFFFFFFFFF)
+    ///        .set_critical_options(CriticalOptions::None)
+    ///        .set_extensions(Extensions::Standard)
+    ///        .sign(test_signer);
     /// 
-    ///   match cert {
-    ///      Ok(cert) => println!("{}", cert),
-    ///      Err(e) => println!("Encountered an error while creating certificate: {}", e),
-    ///   }
+    ///        match cert {
+    ///            Ok(cert) => println!("{}", cert),
+    ///            Err(e) => println!("Encountered an error while creating certificate: {}", e),
+    ///        }
     /// # }
     /// ```
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        pubkey: PublicKey,
-        cert_type: CertType,
-        serial: u64,
-        key_id: String,
-        principals: Vec<String>,
-        valid_after: u64,
-        valid_before: u64,
-        critical_options: CriticalOptions,
-        extensions: Extensions,
-        ca_pubkey: PublicKey,
-        signer: impl Fn(&[u8]) -> Option<Vec<u8>>,
-    ) -> Result<Certificate> {
-        let mut writer = super::Writer::new();
+    pub fn builder(pubkey: &PublicKey, cert_type: CertType, signing_key: &PublicKey) -> Result<Certificate> {
         let kt_name = format!("{}-cert-v01@openssh.com", pubkey.key_type.name);
-        // Write the cert type
-        writer.write_string(kt_name.as_str());
-        
-        // Generate the nonce
-        let mut nonce = [0x0u8; 32];
+        let key_type = KeyType::from_name(kt_name.as_str()).unwrap();
         let rng = SystemRandom::new();
+
+        let mut nonce = [0x0u8; 32];
         match SecureRandom::fill(&rng, &mut nonce) {
             Ok(()) => (),
             Err(_) => return Err(Error::with_kind(ErrorKind::UnexpectedEof)),
         };
 
+        let mut serial = [0x0u8; 8];
+        match SecureRandom::fill(&rng, &mut serial) {
+            Ok(()) => (),
+            Err(_) => return Err(Error::with_kind(ErrorKind::UnexpectedEof)),
+        };
+        let serial = u64::from_be_bytes(serial);
+
+        Ok(Certificate {
+            nonce: nonce.to_vec(),
+            key: pubkey.clone(),
+            key_type,
+            serial,
+            cert_type,
+            key_id: String::new(),
+            principals: vec![],
+            valid_after: 0,
+            valid_before: 0,
+            critical_options: HashMap::new(),
+            extensions: HashMap::new(),
+            reserved: vec![0,0,0,0,0,0,0,0],
+            signature_key: signing_key.clone(),
+            signature: vec![],
+            comment: None,
+            serialized: vec![],
+        })
+    }
+
+    /// Set the serial of a certificate builder
+    pub fn serial(mut self, serial: u64) -> Self {
+        self.serial = serial;
+        self
+    }
+
+    /// Set the Key ID of a certificate builder
+    pub fn key_id<S: AsRef<str>>(mut self, key_id: S) -> Self {
+        self.key_id = key_id.as_ref().to_owned();
+        self
+    }
+    
+    /// Add a principal to the certificate
+    pub fn principal<S: AsRef<str>>(mut self, principal: S) -> Self {
+        self.principals.push(principal.as_ref().to_owned());
+        self
+    }
+
+    /// Set the principals of the certificate
+    pub fn set_principals(mut self, principals: &[String]) -> Self {
+        self.principals = principals.to_vec();
+        self
+    }
+
+    /// Set the initial validity time of the certificate
+    pub fn valid_after(mut self, valid_after: u64) -> Self {
+        self.valid_after = valid_after;
+        self
+    }
+
+    /// Set the expiry of the certificate
+    pub fn valid_before(mut self, valid_before: u64) -> Self {
+        self.valid_before = valid_before;
+        self
+    }
+
+    /// Add a critical option to the certificate
+    pub fn critical_option<S: AsRef<str>>(mut self, option: S, value: S) -> Self {
+        self.critical_options.insert(option.as_ref().to_owned(), value.as_ref().to_owned());
+        self
+    }
+
+    /// Set the critical options of the certificate
+    pub fn set_critical_options(mut self, critical_options: CriticalOptions) -> Self {
+        self.critical_options = critical_options.into();
+        self
+    }
+
+    /// Add a critical option to the certificate
+    pub fn extension<S: AsRef<str>>(mut self, option: S, value: S) -> Self {
+        self.extensions.insert(option.as_ref().to_owned(), value.as_ref().to_owned());
+        self
+    }
+
+    /// Set the critical options of the certificate
+    pub fn set_extensions(mut self, extensions: Extensions) -> Self {
+        self.extensions = extensions.into();
+        self
+    }
+
+    /// Set the critical options of the certificate
+    pub fn comment<S: AsRef<str>>(mut self, comment: S) -> Self {
+        self.comment = Some(comment.as_ref().to_owned());
+        self
+    }
+
+    /// Take the certificate settings and generate a valid signature using the provided signer function
+    pub fn sign(mut self, signer: impl Fn(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
+        let mut writer = super::Writer::new();
+        let kt_name = format!("{}-cert-v01@openssh.com", self.key.key_type.name);
+        // Write the cert type
+        writer.write_string(kt_name.as_str());
+
         // Write the nonce
-        writer.write_bytes(&nonce);
+        writer.write_bytes(&self.nonce);
 
         // Write the user public key
-        writer.write_pub_key(&pubkey);
+        writer.write_pub_key(&self.key);
 
         // Write the serial number
-        writer.write_u64(serial);
+        writer.write_u64(self.serial);
 
         // Write what kind of cert this is
-        writer.write_u32(cert_type as u32);
+        writer.write_u32(self.cert_type as u32);
 
         // Write the key id
-        writer.write_string(&key_id);
+        writer.write_string(&self.key_id);
 
         // Write the principals
-        writer.write_string_vec(&principals);
+        writer.write_string_vec(&self.principals);
 
         // Write valid after
-        writer.write_u64(valid_after);
+        writer.write_u64(self.valid_after);
 
         // Write valid before
-        writer.write_u64(valid_before);
+        writer.write_u64(self.valid_before);
 
-        // Write critical options
-        let critical_options = match critical_options {
-            CriticalOptions::None => {
-                writer.write_string_map(&HashMap::new());
-                HashMap::new()
-            },
-            CriticalOptions::Custom(co) => {
-                writer.write_string_map(&co);
-                co
-            },
-        };
+        // Write the critical options
+        writer.write_string_map(&self.critical_options);
 
-        // Write extensions
-        let extensions = match extensions {
-            Extensions::Standard => {
-                let stdex = STANDARD_EXTENSIONS.iter().map(|x| (String::from(x.0), String::from(x.1))).collect();
-                writer.write_string_map(&stdex);
-                stdex
-            },
-            Extensions::Custom(co) => {
-                writer.write_string_map(&co);
-                co
-            },
-        };
+        // Write the extensions
+        writer.write_string_map(&self.extensions);
 
         // Write the unused reserved bytes
         writer.write_u32(0x0);
 
         // Write the CA public key
-        writer.write_bytes(&ca_pubkey.encode());
+        writer.write_bytes(&self.signature_key.encode());
 
         // Sign the data and write it to the cert
         let signature =  match signer(writer.as_bytes()) {
@@ -396,30 +456,14 @@ impl Certificate {
             None => return Err(Error::with_kind(ErrorKind::SigningError)),
         };
 
-        if let Err(e) = verify_signature(&signature, &writer.as_bytes(), &ca_pubkey) {
+        if let Err(e) = verify_signature(&signature, &writer.as_bytes(), &self.signature_key) {
             return Err(e)
         }
 
         writer.write_bytes(&signature);
 
-        Ok(Certificate {
-            key_type: KeyType::from_name(kt_name.as_str()).unwrap(),
-            nonce: nonce.to_vec(),
-            key: pubkey,
-            serial,
-            cert_type,
-            key_id,
-            principals,
-            valid_after,
-            valid_before,
-            critical_options,
-            extensions,
-            reserved: vec![0,0,0,0,0,0,0,0],
-            signature_key: ca_pubkey,
-            signature,
-            comment: None,
-            serialized: writer.into_bytes(),
-        })
+        self.serialized = writer.into_bytes();
+        Ok(self)
     }
 }
 
