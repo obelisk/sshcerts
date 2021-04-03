@@ -1,4 +1,5 @@
-use super::error::{Error, ErrorKind, Result};
+//use super::error::{Error, ErrorKind, Result};
+use crate::{error::Error, Result};
 use std::fmt;
 /// A type which represents the various kinds of keys.
 #[derive(Debug, PartialEq, Clone)]
@@ -87,7 +88,7 @@ impl Curve {
                 kind: CurveKind::Nistp521,
                 identifier: "nistp521",
             },
-            _ => return Err(Error::with_kind(ErrorKind::UnknownCurve(id.to_string()))),
+            _ => return Err(Error::UnknownCurve(id.to_string())),
         };
 
         Ok(curve)
@@ -184,9 +185,9 @@ impl KeyType {
                 kind: KeyTypeKind::Ed25519Cert,
             },
             _ => {
-                return Err(Error::with_kind(ErrorKind::UnknownKeyType(
+                return Err(Error::UnknownKeyType(
                     name.to_string(),
-                )))
+                ))
             }
         };
 

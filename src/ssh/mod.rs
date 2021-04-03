@@ -9,7 +9,6 @@ All rights reserved.
 //! code provided
 
 mod cert;
-mod error;
 mod keytype;
 mod privkey;
 mod pubkey;
@@ -22,7 +21,6 @@ mod writer;
 pub type SigningFunction = Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync>;
 
 pub use self::cert::{CertType, Certificate, CriticalOptions, Extensions};
-pub use self::error::{Error, Result};
 pub use self::keytype::{KeyType, KeyTypeKind, Curve, CurveKind};
 pub use self::privkey::{PrivateKey, PrivateKeyKind, RsaPrivateKey, EcdsaPrivateKey, Ed25519PrivateKey};
 pub use self::pubkey::{

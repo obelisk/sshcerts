@@ -1,5 +1,6 @@
 use super::keytype::{Curve, KeyType, KeyTypeKind};
-use super::error::{Error, ErrorKind};
+//use super::error::{Error, ErrorKind};
+use crate::{error::Error, Result};
 #[cfg(feature = "rsa-signing")]
 use num_bigint::{BigInt, BigUint, Sign};
 use super::PublicKey;
@@ -90,7 +91,7 @@ pub struct PrivateKey {
 impl ToASN1 for RsaPrivateKey {
     type Error = Error;
 
-    fn to_asn1_class(&self, _class: ASN1Class) -> Result<Vec<simple_asn1::ASN1Block>, Self::Error> {
+    fn to_asn1_class(&self, _class: ASN1Class) -> std::result::Result<Vec<simple_asn1::ASN1Block>, Error> {
         Ok(vec![ASN1Block::Sequence(
             0,
             [
@@ -112,7 +113,7 @@ impl ToASN1 for RsaPrivateKey {
 
 impl PrivateKey {
     /// Reads an OpenSSH private key from a given path.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<PrivateKey, Error> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<PrivateKey> {
         let mut contents = String::new();
         File::open(path)?.read_to_string(&mut contents)?;
 
@@ -120,18 +121,18 @@ impl PrivateKey {
     }
 
     /// Reads an OpenSSH private key from a given string.
-    pub fn from_string(contents: &str) -> Result<PrivateKey, Error> {
+    pub fn from_string(contents: &str) -> Result<PrivateKey> {
         let mut iter = contents.lines();
         let header = iter.next().unwrap_or("");
         if header != "-----BEGIN OPENSSH PRIVATE KEY-----" {
-            return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            return Err(Error::InvalidFormat);
         }
 
         let mut encoded_key = String::new();
         loop {
             let part = match iter.next() {
                 Some(p) => p,
-                None => return Err(Error::with_kind(ErrorKind::InvalidFormat)),
+                None => return Err(Error::InvalidFormat),
             };
 
             if part == "-----END OPENSSH PRIVATE KEY-----" {
@@ -149,18 +150,18 @@ impl PrivateKey {
     }
 
     /// This function is used for extracting a private key from an existing reader.
-    pub(crate) fn from_reader(reader: &mut Reader) -> Result<PrivateKey, Error> {
+    pub(crate) fn from_reader(reader: &mut Reader) -> Result<PrivateKey> {
         let preamble = reader.read_cstring()?;
 
         if preamble != "openssh-key-v1" {
-            return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            return Err(Error::InvalidFormat);
         }
 
         // These values are for encrypted keys which are not supported
         let cipher_name = reader.read_string()?;
         let kdf = reader.read_string()?;
         if cipher_name != "none" || kdf != "none" {
-            return Err(Error::with_kind(ErrorKind::EncryptedPrivateKeyNotSupported));
+            return Err(Error::EncryptedPrivateKeyNotSupported);
         }
 
         // This appears to be en empty value
@@ -169,7 +170,7 @@ impl PrivateKey {
         // This seems to be hardcoded into the standard
         let number_of_keys = reader.read_u32()?;
         if number_of_keys != 1 {
-            return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            return Err(Error::InvalidFormat);
         }
 
         // A full pubkey with the same format as seen in certificates
@@ -188,7 +189,7 @@ impl PrivateKey {
         let c2 = reader.read_u32()?;
 
         if c1 != c2 {
-            return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            return Err(Error::InvalidFormat);
         }
 
         // The key type is repeated here.
@@ -235,15 +236,15 @@ impl PrivateKey {
 
                 let pubkey = match &pubkey.kind {
                     crate::ssh::pubkey::PublicKeyKind::Rsa(pubkey) => pubkey,
-                    _ => return Err(Error::with_kind(ErrorKind::InvalidFormat)),
+                    _ => return Err(Error::InvalidFormat),
                 };
 
                 if k.n != pubkey.n {
-                    return Err(Error::with_kind(ErrorKind::InvalidFormat));
+                    return Err(Error::InvalidFormat);
                 }
 
                 if k.e != pubkey.e {
-                    return Err(Error::with_kind(ErrorKind::InvalidFormat));
+                    return Err(Error::InvalidFormat);
                 }
 
                 PrivateKeyKind::Rsa(k)
@@ -269,7 +270,7 @@ impl PrivateKey {
 
                 PrivateKeyKind::Ed25519(k)
             }
-            _ => return Err(Error::with_kind(ErrorKind::UnknownKeyType(kt.name.to_string()))),
+            _ => return Err(Error::UnknownKeyType(kt.name.to_string())),
         };
 
         Ok(PrivateKey {

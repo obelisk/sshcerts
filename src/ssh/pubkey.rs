@@ -7,7 +7,8 @@ use std::path::Path;
 
 use super::keytype::{Curve, CurveKind};
 
-use super::error::{Error, ErrorKind, Result};
+//use super::error::{Error, ErrorKind, Result};
+use crate::{error::Error, Result};
 use super::keytype::{KeyType, KeyTypeKind};
 use super::reader::Reader;
 use super::writer::Writer;
@@ -196,11 +197,11 @@ impl PublicKey {
 
         let kt_name = iter
             .next()
-            .ok_or_else(|| Error::with_kind(ErrorKind::InvalidFormat))?;
+            .ok_or_else(|| Error::InvalidFormat)?;
 
         let data = iter
             .next()
-            .ok_or_else(|| Error::with_kind(ErrorKind::InvalidFormat))?;
+            .ok_or_else(|| Error::InvalidFormat)?;
 
         let comment = iter.next().map(String::from);
 
@@ -212,7 +213,7 @@ impl PublicKey {
         // Validate key type before reading rest of the data
         let kt_from_reader = reader.read_string()?;
         if kt_name != kt_from_reader {
-            return Err(Error::with_kind(ErrorKind::KeyTypeMismatch));
+            return Err(Error::KeyTypeMismatch);
         }
 
         // Construct a new `PublicKey` value and preserve the `comment` value.

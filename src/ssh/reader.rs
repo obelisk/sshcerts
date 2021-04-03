@@ -1,4 +1,5 @@
-use super::error::{Error, ErrorKind, Result};
+//use super::error::{Error, ErrorKind, Result};
+use crate::{error::Error, Result};
 use std::convert::TryInto;
 
 /// A `Reader` is used for reading from a byte sequence
@@ -76,17 +77,17 @@ impl<'a> Reader<'a> {
     /// ```
     pub fn read_bytes(&mut self) -> Result<Vec<u8>> {
         if self.offset >= self.inner.len() {
-            return Err(Error::with_kind(ErrorKind::UnexpectedEof));
+            return Err(Error::UnexpectedEof);
         }
 
         let slice = &self.inner[self.offset..];
         if slice.len() < 4 {
-            return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            return Err(Error::InvalidFormat);
         }
 
         let size = u32::from_be_bytes(slice[..4].try_into().unwrap()) as usize;
         if slice.len() < size + 4 {
-            return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            return Err(Error::InvalidFormat);
         }
 
         self.offset += size + 4;
@@ -106,11 +107,11 @@ impl<'a> Reader<'a> {
     /// ```
     pub fn read_raw_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
         if self.offset >= self.inner.len() {
-            return Err(Error::with_kind(ErrorKind::UnexpectedEof));
+            return Err(Error::UnexpectedEof);
         }
 
         if len + self.offset > self.inner.len() {
-            return Err(Error::with_kind(ErrorKind::UnexpectedEof));
+            return Err(Error::UnexpectedEof);
         }
 
         let slice = &self.inner[self.offset..];
@@ -184,7 +185,7 @@ impl<'a> Reader<'a> {
             self.offset += 1;
         }
         self.offset = original_offset;
-        Err(Error::with_kind(ErrorKind::UnexpectedEof))
+        Err(Error::UnexpectedEof)
     }
 
     /// Reads an `u32` value from the wrapped byte sequence and returns it.
@@ -199,12 +200,12 @@ impl<'a> Reader<'a> {
     /// ```
     pub fn read_u32(&mut self) -> Result<u32> {
         if self.offset >= self.inner.len() {
-            return Err(Error::with_kind(ErrorKind::UnexpectedEof));
+            return Err(Error::UnexpectedEof);
         }
 
         let slice = &self.inner[self.offset..];
         if slice.len() < 4 {
-            return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            return Err(Error::InvalidFormat);
         }
 
         self.offset += 4;
@@ -225,12 +226,12 @@ impl<'a> Reader<'a> {
     /// ```
     pub fn read_u64(&mut self) -> Result<u64> {
         if self.offset >= self.inner.len() {
-            return Err(Error::with_kind(ErrorKind::UnexpectedEof));
+            return Err(Error::UnexpectedEof);
         }
 
         let slice = &self.inner[self.offset..];
         if slice.len() < 8 {
-            return Err(Error::with_kind(ErrorKind::InvalidFormat));
+            return Err(Error::InvalidFormat);
         }
 
         self.offset += 8;

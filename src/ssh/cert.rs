@@ -16,8 +16,8 @@ use ring::signature::{
 
 use ring::rand::{SystemRandom, SecureRandom};
 
-// TODO @obelisk undo this Result aliasing
-use super::error::{Error, ErrorKind, Result};
+//use super::error::{Error, ErrorKind, Result};
+use crate::{error::Error, Result};
 use super::keytype::{KeyType};
 use super::pubkey::{PublicKey, PublicKeyKind};
 use super::reader::Reader;
@@ -204,16 +204,16 @@ impl Certificate {
 
         let kt_name = iter
             .next()
-            .ok_or_else(|| Error::with_kind(ErrorKind::InvalidFormat))?;
+            .ok_or_else(|| Error::InvalidFormat)?;
 
         let key_type = KeyType::from_name(&kt_name)?;
         if !key_type.is_cert {
-            return Err(Error::with_kind(ErrorKind::NotCertificate));
+            return Err(Error::NotCertificate);
         }
 
         let data = iter
             .next()
-            .ok_or_else(|| Error::with_kind(ErrorKind::InvalidFormat))?;
+            .ok_or_else(|| Error::InvalidFormat)?;
 
         let comment = iter.next().map(String::from);
         let decoded = base64::decode(&data)?;
@@ -222,7 +222,7 @@ impl Certificate {
         // Validate key types before reading the rest of the data
         let kt_from_reader = reader.read_string()?;
         if kt_name != kt_from_reader {
-            return Err(Error::with_kind(ErrorKind::KeyTypeMismatch));
+            return Err(Error::KeyTypeMismatch);
         }
 
         let nonce = reader.read_bytes()?;
@@ -232,7 +232,7 @@ impl Certificate {
         let cert_type = match reader.read_u32()? {
             1 => CertType::User,
             2 => CertType::Host,
-            n => return Err(Error::with_kind(ErrorKind::InvalidCertType(n))),
+            n => return Err(Error::InvalidCertType(n)),
         };
 
         let key_id = reader.read_string()?;
@@ -311,13 +311,13 @@ impl Certificate {
         let mut nonce = [0x0u8; 32];
         match SecureRandom::fill(&rng, &mut nonce) {
             Ok(()) => (),
-            Err(_) => return Err(Error::with_kind(ErrorKind::UnexpectedEof)),
+            Err(_) => return Err(Error::UnexpectedEof),
         };
 
         let mut serial = [0x0u8; 8];
         match SecureRandom::fill(&rng, &mut serial) {
             Ok(()) => (),
-            Err(_) => return Err(Error::with_kind(ErrorKind::UnexpectedEof)),
+            Err(_) => return Err(Error::UnexpectedEof),
         };
         let serial = u64::from_be_bytes(serial);
 
@@ -453,7 +453,7 @@ impl Certificate {
         // Sign the data and write it to the cert
         let signature =  match signer(writer.as_bytes()) {
             Some(sig) => sig,
-            None => return Err(Error::with_kind(ErrorKind::SigningError)),
+            None => return Err(Error::SigningError),
         };
 
         if let Err(e) = verify_signature(&signature, &writer.as_bytes(), &self.signature_key) {
@@ -487,8 +487,8 @@ fn read_options(buf: &[u8]) -> Result<HashMap<String, String>> {
     loop {
         let name = match reader.read_string() {
             Ok(v) => v,
-            Err(e) => match e.kind {
-                ErrorKind::UnexpectedEof => break,
+            Err(e) => match e {
+                Error::UnexpectedEof => break,
                 _ => return Err(e),
             },
         };
@@ -520,8 +520,8 @@ fn read_principals(buf: &[u8]) -> Result<Vec<String>> {
     loop {
         let principal = match reader.read_string() {
             Ok(v) => v,
-            Err(e) => match e.kind {
-                ErrorKind::UnexpectedEof => break,
+            Err(e) => match e {
+                Error::UnexpectedEof => break,
                 _ => return Err(e),
             },
         };
@@ -561,7 +561,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             let (alg, len) = match sig_type.name {
                 "ecdsa-sha2-nistp256" => (&ECDSA_P256_SHA256_FIXED, 32),
                 "ecdsa-sha2-nistp384" => (&ECDSA_P384_SHA384_FIXED, 48),
-                _ => return Err(Error::with_kind(ErrorKind::KeyTypeMismatch)),
+                _ => return Err(Error::KeyTypeMismatch),
             };
 
             // Read the R value
@@ -572,7 +572,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             // *_bytes are user controlled so ensure maliciously signatures
             // can't cause integer underflow.
             if r_bytes.len() > len || s_bytes.len() > len {
-                return Err(Error::with_kind(ErrorKind::InvalidFormat));
+                return Err(Error::InvalidFormat);
             }
 
             // Determine and create the padding required
@@ -595,7 +595,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
                 "rsa-sha2-256" => &RSA_PKCS1_2048_8192_SHA256,
                 "rsa-sha2-512" => &RSA_PKCS1_2048_8192_SHA512,
                 "ssh-rsa" => &RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
-                _ => return Err(Error::with_kind(ErrorKind::KeyTypeMismatch)),
+                _ => return Err(Error::KeyTypeMismatch),
             };
             let signature = reader.read_bytes()?;
             let public_key = RsaPublicKeyComponents { n: &key.n, e: &key.e };

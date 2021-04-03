@@ -32,6 +32,12 @@
 #[macro_use]
 extern crate log;
 
+/// The `sshcerts` error enum
+pub mod error;
+
+type Result<T> = std::result::Result<T, error::Error>;
+
+
 /// Functions or structs for dealing with SSH Certificates.
 /// Parsing, and creating certs happens here.
 pub mod ssh;
