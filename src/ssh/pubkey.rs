@@ -5,10 +5,9 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
-use super::keytype::{Curve, CurveKind};
-
-//use super::error::{Error, ErrorKind, Result};
 use crate::{error::Error, Result};
+
+use super::keytype::{Curve, CurveKind};
 use super::keytype::{KeyType, KeyTypeKind};
 use super::reader::Reader;
 use super::writer::Writer;

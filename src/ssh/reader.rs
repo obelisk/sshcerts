@@ -1,4 +1,3 @@
-//use super::error::{Error, ErrorKind, Result};
 use crate::{error::Error, Result};
 use std::convert::TryInto;
 

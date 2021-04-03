@@ -1,4 +1,3 @@
-//use super::error::{Error, ErrorKind, Result};
 use crate::{error::Error, Result};
 use std::fmt;
 /// A type which represents the various kinds of keys.

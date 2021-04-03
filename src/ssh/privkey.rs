@@ -1,5 +1,4 @@
 use super::keytype::{Curve, KeyType, KeyTypeKind};
-//use super::error::{Error, ErrorKind};
 use crate::{error::Error, Result};
 #[cfg(feature = "rsa-signing")]
 use num_bigint::{BigInt, BigUint, Sign};

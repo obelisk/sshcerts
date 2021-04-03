@@ -29,6 +29,9 @@ pub enum Error {
     UnknownKeyType(String),
     /// The curve in an ECC public/private key/signature is unknown
     UnknownCurve(String),
+    /// An error occured in the yubikey module
+    #[cfg(feature = "yubikey")]
+    YubikeyError(crate::yubikey::Error),
 }
 
 impl fmt::Display for Error {
@@ -47,6 +50,8 @@ impl fmt::Display for Error {
             Error::EncryptedPrivateKeyNotSupported => write!(f, "Encrypted private keys are not supported"),
             Error::UnknownKeyType(ref v) => write!(f, "Unknown key type {}", v),
             Error::UnknownCurve(ref v) => write!(f, "Unknown curve {}", v),
+            #[cfg(feature = "yubikey")]
+            Error::YubikeyError(ref e) => write!(f, "{}", e), 
         }
     }
 }

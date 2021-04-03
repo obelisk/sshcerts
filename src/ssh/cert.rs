@@ -16,7 +16,6 @@ use ring::signature::{
 
 use ring::rand::{SystemRandom, SecureRandom};
 
-//use super::error::{Error, ErrorKind, Result};
 use crate::{error::Error, Result};
 use super::keytype::{KeyType};
 use super::pubkey::{PublicKey, PublicKeyKind};

@@ -41,7 +41,7 @@ pub struct Yubikey {
 //TODO @obelisk Fix this
 impl std::fmt::Debug for Yubikey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "SSHCerts YubiKey")
+        writeln!(f, "YubiKey: {}", self.yk.serial().to_string())
     }
 }
 
