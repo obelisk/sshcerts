@@ -407,7 +407,7 @@ impl Certificate {
     }
 
     /// Take the certificate settings and generate a valid signature using the provided signer function
-    pub fn sign(mut self, signer: impl Fn(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
+    pub fn sign(mut self, signer: impl FnOnce(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
         let mut writer = super::Writer::new();
         let kt_name = format!("{}-cert-v01@openssh.com", self.key.key_type.name);
         // Write the cert type
