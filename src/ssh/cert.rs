@@ -17,7 +17,7 @@ use ring::signature::{
 use ring::rand::{SystemRandom, SecureRandom};
 
 use crate::{error::Error, Result};
-use super::keytype::{KeyType};
+use super::keytype::KeyType;
 use super::pubkey::{PublicKey, PublicKeyKind};
 use super::reader::Reader;
 
@@ -46,7 +46,7 @@ impl TryFrom<&str> for CertType {
 }
 
 impl fmt::Display for CertType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             CertType::User => write!(f, "user certificate"),
             CertType::Host => write!(f, "host certificate"),
@@ -612,7 +612,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
 }
 
 impl fmt::Display for Certificate {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !f.alternate() {
             write!(f, "{} {} {}", &self.key_type.name, base64::encode(&self.serialized), &self.key_id)
         } else {

@@ -71,7 +71,7 @@ pub struct PublicKey {
 }
 
 impl fmt::Display for PublicKey {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let comment = match &self.comment {
             Some(c) => c,
             None => "",
@@ -101,7 +101,7 @@ pub enum FingerprintKind {
 }
 
 impl fmt::Display for FingerprintKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let kind = match *self {
             FingerprintKind::Sha256 => "SHA256",
             FingerprintKind::Sha384 => "SHA384",
@@ -123,7 +123,7 @@ pub struct Fingerprint {
 }
 
 impl fmt::Display for Fingerprint {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.kind, self.hash)
     }
 }
@@ -255,7 +255,7 @@ impl PublicKey {
     // This function is used for extracting a public key from an existing reader, e.g.
     // we already have a reader for reading an OpenSSH certificate key and
     // we want to extract the public key information from it.
-    pub(crate) fn from_reader(kt_name: &str, reader: &mut Reader) -> Result<PublicKey> {
+    pub(crate) fn from_reader(kt_name: &str, reader: &mut Reader<'_>) -> Result<PublicKey> {
         let kt = KeyType::from_name(&kt_name)?;
 
         let kind = match kt.kind {

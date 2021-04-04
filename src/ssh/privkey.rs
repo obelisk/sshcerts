@@ -8,7 +8,7 @@ use super::reader::Reader;
 use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
 
 use std::fs::File;
-use std::io::{Read};
+use std::io::Read;
 use std::path::Path;
 
 
@@ -90,7 +90,7 @@ pub struct PrivateKey {
 impl ToASN1 for RsaPrivateKey {
     type Error = Error;
 
-    fn to_asn1_class(&self, _class: ASN1Class) -> std::result::Result<Vec<simple_asn1::ASN1Block>, Error> {
+    fn to_asn1_class(&self, _class: ASN1Class) -> std::result::Result<Vec<ASN1Block>, Error> {
         Ok(vec![ASN1Block::Sequence(
             0,
             [
@@ -149,7 +149,7 @@ impl PrivateKey {
     }
 
     /// This function is used for extracting a private key from an existing reader.
-    pub(crate) fn from_reader(reader: &mut Reader) -> Result<PrivateKey> {
+    pub(crate) fn from_reader(reader: &mut Reader<'_>) -> Result<PrivateKey> {
         let preamble = reader.read_cstring()?;
 
         if preamble != "openssh-key-v1" {

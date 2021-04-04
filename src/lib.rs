@@ -23,10 +23,23 @@
 //! The crate also provides functionality for provision key slots on
 //! Yubikeys to handle signing operations. This is provided in the
 //! optional `yubikey` submodule
-//! 
-#![deny(warnings)]
-#![deny(missing_docs)]
-#![deny(missing_debug_implementations)]
+//!
+
+#![ deny
+(
+   anonymous_parameters          ,
+   missing_debug_implementations ,
+   missing_docs                  ,
+   nonstandard_style             ,
+   rust_2018_idioms              ,
+   single_use_lifetimes          ,
+   trivial_casts                 ,
+   trivial_numeric_casts         ,
+   unreachable_pub               ,
+   unused_extern_crates          ,
+   unused_qualifications         ,
+   warnings                      ,
+)]
 
 #[cfg(feature = "yubikey")]
 #[macro_use]
