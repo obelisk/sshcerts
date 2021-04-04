@@ -47,7 +47,7 @@ impl std::fmt::Debug for Yubikey {
 }
 
 impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             Error::Unprovisioned => write!(f, "Slot is unprovisioned for signing"),
             Error::WrongKeyType => write!(f, "Wrong key type was provided for requested signing operation"),
