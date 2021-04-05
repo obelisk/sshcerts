@@ -17,8 +17,8 @@ mod signer;
 mod writer;
 
 /// This is a type that can be used for certificate signing when passed
-/// to Certificate::new
-pub type SigningFunction = Box<dyn FnOnce(&[u8]) -> Option<Vec<u8>> + Send + Sync>;
+/// to Certificate::sign
+pub type SigningFunction = Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync>;
 
 pub use self::cert::{CertType, Certificate, CriticalOptions, Extensions};
 pub use self::keytype::{KeyType, KeyTypeKind, Curve, CurveKind};

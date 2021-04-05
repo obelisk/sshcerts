@@ -31,8 +31,8 @@ pub fn create_signer(privkey: PrivateKey) -> Box<dyn Fn(&[u8]) -> Option<Vec<u8>
 
 /// This is in this file to prevent a circular dependency between PrivateKey
 /// and the signer module.
-impl Into<Box<dyn FnOnce(&[u8]) -> Option<Vec<u8>> + Send + Sync>> for PrivateKey {
-    fn into(self) -> Box<dyn FnOnce(&[u8]) -> Option<Vec<u8>> + Send + Sync> {
+impl Into<Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync>> for PrivateKey {
+    fn into(self) -> Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync> {
         Box::new(move |buf: &[u8]| {
             ssh_cert_signer(buf, &self)
         })
