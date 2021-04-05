@@ -23,6 +23,9 @@ pub enum Error {
     /// If you provide invalid bytes that cannot be converted from an x509 to
     /// a SSH key.
     ParsingError,
+    /// The requested key could not be found connected to the system. It's
+    /// possible it was removed while running.
+    NoSuchYubikey,
     /// If the Yubikey throws an error we don't recognize, it's encapsulated
     /// and returned
     InternalYubiKeyError(String),
@@ -54,6 +57,7 @@ impl std::fmt::Display for Error {
             Error::Unsupported => write!(f, "This key is not supported the way you tried to use it"),
             Error::InvalidManagementKey => write!(f, "Could not use the management key as provided"),
             Error::ParsingError => write!(f, "Could not parse data"),
+            Error::NoSuchYubikey => write!(f, "Could not find the requested Yubikey"),
             Error::InternalYubiKeyError(ref err) => write!(f, "Yubikey error: {}", err),
         }
     }

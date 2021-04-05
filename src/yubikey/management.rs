@@ -23,6 +23,14 @@ impl crate::yubikey::Yubikey {
         })
     }
 
+    /// Reconnet to the Yubikey (if possible, if it's disconnected)
+    pub fn reconnect(&mut self) -> Result <(), Error> {
+        match self.yk.reconnect() {
+            Ok(()) => Ok(()),
+            Err(_) => Err(Error::NoSuchYubikey)
+        }
+    }
+
     /// Unlock the yubikey for signing or provisioning operations
     pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8]) -> Result<(), Error> {
         self.yk.verify_pin(pin)?;
