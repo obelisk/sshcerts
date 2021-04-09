@@ -2,7 +2,9 @@
 /// by the Yubikey. This includes things like signing and SSH public key
 /// export.
 pub mod ssh;
-mod management;
+/// Contains all the functions used for creating new keys, unlocking, and
+/// managing the yubikey
+pub mod management;
 
 /// Errors when interacting with the Yubikey.
 #[derive(Debug)]
@@ -46,6 +48,12 @@ pub struct Yubikey {
 impl std::fmt::Debug for Yubikey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "YubiKey: {}", self.yk.serial().to_string())
+    }
+}
+
+impl From<yubikey_piv::error::Error> for Error {
+    fn from(e: yubikey_piv::error::Error) -> Self {
+        Error::InternalYubiKeyError(e.to_string())
     }
 }
 
