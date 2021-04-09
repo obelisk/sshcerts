@@ -616,46 +616,45 @@ impl fmt::Display for Certificate {
         if !f.alternate() {
             write!(f, "{} {} {}", &self.key_type.name, base64::encode(&self.serialized), &self.key_id)
         } else {
-            writeln!(f, "Type: {} {}", self.key_type, self.cert_type).unwrap();
-            writeln!(f, "Public Key: {} {}:{}", self.key_type.short_name, self.key.fingerprint().kind, self.key.fingerprint().hash).unwrap();
-            writeln!(f, "Signing CA: {} {}:{} (using {})", self.signature_key.key_type.short_name, self.signature_key.fingerprint().kind, self.signature_key.fingerprint().hash, self.signature_key.key_type).unwrap();
-            writeln!(f, "Key ID: \"{}\"", self.key_id).unwrap();
-            writeln!(f, "Serial: {}", self.serial).unwrap();
-
+            let mut pretty: String = format!("Type: {} {}\n", self.key_type, self.cert_type);
+            pretty.push_str(&format!("Public Key: {} {}:{}\n", self.key_type.short_name, self.key.fingerprint().kind, self.key.fingerprint().hash));
+            pretty.push_str(&format!("Signing CA: {} {}:{} (using {})\n", self.signature_key.key_type.short_name, self.signature_key.fingerprint().kind, self.signature_key.fingerprint().hash, self.signature_key.key_type));
+            pretty.push_str(&format!("Key ID: \"{}\"\n", self.key_id));
+            pretty.push_str(&format!("Serial: {}\n", self.serial));
             if self.valid_before == 0xFFFFFFFFFFFFFFFF && self.valid_after == 0x0 {
-                writeln!(f, "Valid: forever").unwrap();
+                pretty.push_str("Valid: forever\n");
             } else {
-                writeln!(f, "Valid between: {} and {}", self.valid_after, self.valid_before).unwrap();
+                pretty.push_str(&format!("Valid between: {} and {}\n", self.valid_after, self.valid_before));
             }
 
             if self.principals.is_empty() {
-                writeln!(f, "Principals: (none)").unwrap();
+                pretty.push_str("Principals: (none)\n");
             } else {
-                writeln!(f, "Principals:").unwrap();
+                pretty.push_str("Principals\n");
                 for principal in &self.principals {
-                    writeln!(f, "\t{}", principal).unwrap();
+                    pretty.push_str(&format!("\t{}\n", principal));
                 }
             }
 
             if self.critical_options.is_empty() {
-                writeln!(f, "Critical Options: (none)").unwrap();
+                pretty.push_str("Critical Options: (none)\n");
             } else {
-                writeln!(f, "Critical Options:").unwrap();
+                pretty.push_str("Critical Options:\n");
                 for (name, value) in &self.critical_options {
-                    writeln!(f, "\t{} {}", name, value).unwrap();
+                    pretty.push_str(&format!("\t{} {}\n", name, value));
                 }
             }
 
             if self.extensions.is_empty() {
-                writeln!(f, "Extensions: (none)").unwrap();
+                pretty.push_str("Extensions: (none)\n");
             } else {
-                writeln!(f, "Extensions:").unwrap();
+                pretty.push_str("Extensions:\n");
                 for name in self.extensions.keys() {
-                    writeln!(f, "\t{}", name).unwrap();
+                    pretty.push_str(&format!("\t{}\n", &name));
                 }
             }
 
-            write!(f, "")
+            write!(f, "{}", pretty)
         }
     }
 }
