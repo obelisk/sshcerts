@@ -646,6 +646,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-bigint"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e0d047c1062aa51e256408c560894e5251f08925980e53cf1aa5bd00eec6512"
+dependencies = [
+ "autocfg 1.0.1",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-bigint-dig"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1161,12 +1172,12 @@ dependencies = [
 
 [[package]]
 name = "simple_asn1"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db8d597fce66eb0f19dd129b9956e4054cba21aeaf97d4116595027b670fac50"
+checksum = "6e0e9076e5242ff5a58e854cb478ea9caebce01088f86d3d9c6ad336b7655263"
 dependencies = [
  "chrono",
- "num-bigint 0.3.1",
+ "num-bigint 0.4.0",
  "num-traits",
  "thiserror",
 ]
@@ -1185,7 +1196,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "sshcerts"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "base64",
  "clap 3.0.0-beta.2",
@@ -1193,9 +1204,9 @@ dependencies = [
  "env_logger",
  "hex",
  "log",
- "num-bigint 0.3.1",
+ "num-bigint 0.4.0",
  "ring",
- "simple_asn1 0.5.1",
+ "simple_asn1 0.5.2",
  "yubikey-piv",
 ]
 

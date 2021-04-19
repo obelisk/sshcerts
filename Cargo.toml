@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -23,8 +23,8 @@ base64 = "0.13"
 ring = "0.16"
 
 # Dependencies for rsa-signing
-simple_asn1 = {version = "0.5", optional = true}
-num-bigint = {version = "0.3", optional = true}
+simple_asn1 = {version = "0.5.2", optional = true}
+num-bigint = {version = "0.4", optional = true}
 
 # Dependencies for yubikey
 log = {version = "0.4", optional = true}

@@ -19,7 +19,13 @@ impl crate::yubikey::Yubikey {
     pub fn reconnect(&mut self) -> Result <()> {
         match self.yk.reconnect() {
             Ok(()) => Ok(()),
-            Err(_) => Err(Error::NoSuchYubikey)
+            Err(_) => match YubiKey::open_by_serial(self.yk.serial()){
+                Ok(yk) => {
+                    self.yk = yk;
+                    Ok(())
+                },
+                Err(_) => Err(Error::NoSuchYubikey),
+            }
         }
     }
 
