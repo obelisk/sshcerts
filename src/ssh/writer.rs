@@ -173,8 +173,8 @@ impl Writer {
                 self.write_bytes(&key.key);
             },
             PublicKeyKind::Rsa(key) => {
-                self.write_bytes(&key.n);
-                self.write_bytes(&key.e);
+                self.write_mpint(&key.e);
+                self.write_mpint(&key.n);
             },
             PublicKeyKind::Ed25519(key) => {
                 self.write_bytes(&key.key);

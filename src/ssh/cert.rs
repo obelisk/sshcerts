@@ -461,6 +461,7 @@ impl Certificate {
 
         writer.write_bytes(&signature);
 
+        self.signature = signature;
         self.serialized = writer.into_bytes();
         Ok(self)
     }
