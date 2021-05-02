@@ -319,10 +319,12 @@ impl Certificate {
             Err(_) => return Err(Error::UnexpectedEof),
         };
         let serial = u64::from_be_bytes(serial);
+        let mut key = pubkey.clone();
+        key.key_type = key_type.clone();
 
         Ok(Certificate {
             nonce: nonce.to_vec(),
-            key: pubkey.clone(),
+            key,
             key_type,
             serial,
             cert_type,
@@ -409,9 +411,8 @@ impl Certificate {
     /// Take the certificate settings and generate a valid signature using the provided signer function
     pub fn sign(mut self, signer: impl FnOnce(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
         let mut writer = super::Writer::new();
-        let kt_name = format!("{}-cert-v01@openssh.com", self.key.key_type.name);
         // Write the cert type
-        writer.write_string(kt_name.as_str());
+        writer.write_string(self.key.key_type.name);
 
         // Write the nonce
         writer.write_bytes(&self.nonce);
