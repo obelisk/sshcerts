@@ -252,9 +252,9 @@ impl PublicKey {
         PublicKey::from_reader(&kt_name, &mut reader)
     }
 
-    // This function is used for extracting a public key from an existing reader, e.g.
-    // we already have a reader for reading an OpenSSH certificate key and
-    // we want to extract the public key information from it.
+    /// This function is used for extracting a public key from an existing reader, e.g.
+    /// we already have a reader for reading an OpenSSH certificate key and
+    /// we want to extract the public key information from it.
     pub(crate) fn from_reader(kt_name: &str, reader: &mut Reader<'_>) -> Result<PublicKey> {
         let kt = KeyType::from_name(&kt_name)?;
 

@@ -20,7 +20,7 @@ fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg
     println!("Provisioning new {:?} key called [{}] in slot: {:?}", alg, subject, slot);
 
     let policy = if secure {
-        println!("You're creating a secure key that will require touch to use. Touch key to continue...");
+        println!("You're creating a secure key that will require touch to use. Touch Yubikey to continue...");
         TouchPolicy::Cached
     } else {
         TouchPolicy::Never

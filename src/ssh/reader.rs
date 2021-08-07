@@ -2,7 +2,7 @@ use crate::{error::Error, Result};
 use std::convert::TryInto;
 
 /// A `Reader` is used for reading from a byte sequence
-/// representing an encoded OpenSSH public key or certificate.
+/// representing an encoded OpenSSH public/private key or certificate.
 #[derive(Debug)]
 pub struct Reader<'a> {
     inner: &'a [u8],

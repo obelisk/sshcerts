@@ -2,7 +2,7 @@ use super::keytype::{Curve, KeyType, KeyTypeKind};
 use crate::{error::Error, Result};
 #[cfg(feature = "rsa-signing")]
 use num_bigint::{BigInt, BigUint, Sign};
-use super::PublicKey;
+use super::{PublicKey, PublicKeyKind, EcdsaPublicKey, Ed25519PublicKey, RsaPublicKey};
 use super::reader::Reader;
 #[cfg(feature = "rsa-signing")]
 use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
@@ -110,6 +110,111 @@ impl ToASN1 for RsaPrivateKey {
     }
 }
 
+fn read_private_key(reader: &mut Reader<'_>) -> Result<PrivateKey> {
+    let key_type = reader.read_string()?;
+    let kt = KeyType::from_name(&key_type)?;
+
+    let (kind, pubkey) = match kt.kind {
+        KeyTypeKind::Rsa => {
+            let n = reader.read_mpint()?;
+            let e = reader.read_mpint()?;
+            let d = reader.read_mpint()?;
+            let coefficient = reader.read_mpint()?;
+            let p = reader.read_mpint()?;
+            let q = reader.read_mpint()?;
+
+            #[cfg(feature = "rsa-signing")]
+            let exp = Some(BigUint::from_bytes_be(&d)
+                .modpow(
+                    &BigUint::from_slice(&[0x1]),
+                    &(BigUint::from_bytes_be(&p) - 1_u8)
+                ).to_bytes_be());
+            #[cfg(not(feature = "rsa-signing"))]
+            let exp = None;
+
+            #[cfg(feature = "rsa-signing")]
+            let exq = Some(BigUint::from_bytes_be(&d)
+                .modpow(
+                    &BigUint::from_slice(&[0x1]),
+                    &(BigUint::from_bytes_be(&q) - 1_u8)
+                ).to_bytes_be());
+            #[cfg(not(feature = "rsa-signing"))]
+            let exq = None;
+
+            (
+                PrivateKeyKind::Rsa(RsaPrivateKey {
+                    n: n.clone(),
+                    e: e.clone(),
+                    d,
+                    coefficient,
+                    p,
+                    q,
+                    exp: exp,
+                    exq: exq,
+                }
+            ),
+                PublicKey {
+                    key_type: kt.clone(),
+                    kind: PublicKeyKind::Rsa(RsaPublicKey{
+                        e,
+                        n
+                    }),
+                    comment: None,
+                }
+            )
+        },
+        KeyTypeKind::Ecdsa => {
+            let identifier = reader.read_string()?;
+            let curve = Curve::from_identifier(&identifier)?;
+            let pubkey = reader.read_bytes()?;
+            let key = reader.read_bytes()?;
+            let k = EcdsaPrivateKey {
+                curve: curve.clone(),
+                key,
+            };
+
+            (
+                PrivateKeyKind::Ecdsa(k),
+                PublicKey {
+                    key_type: kt.clone(),
+                    kind: PublicKeyKind::Ecdsa(EcdsaPublicKey {
+                        curve,
+                        key: pubkey,
+                    }),
+                    comment: None,
+                }
+            )
+        }
+        KeyTypeKind::Ed25519 => {
+            let pubkey = reader.read_bytes()?;
+            let k = Ed25519PrivateKey {
+                key: reader.read_bytes()?,
+            };
+
+            (
+                PrivateKeyKind::Ed25519(k),
+                PublicKey {
+                    key_type: kt.clone(),
+                    kind: PublicKeyKind::Ed25519(Ed25519PublicKey {
+                        key: pubkey,
+                    }),
+                    comment: None,
+                }
+            )
+        }
+        _ => return Err(Error::UnknownKeyType(kt.name.to_string())),
+    };
+
+    let comment = reader.read_string()?;
+
+    Ok(PrivateKey {
+        key_type: kt,
+        kind,
+        pubkey,
+        comment: if comment.len() == 0 {None} else {Some(comment)},
+    })
+}
+
 impl PrivateKey {
     /// Reads an OpenSSH private key from a given path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<PrivateKey> {
@@ -146,6 +251,12 @@ impl PrivateKey {
         let k = PrivateKey::from_reader(&mut reader)?;
 
         Ok(k)
+    }
+
+    /// Create a private key from just the private portion of a key file
+    pub fn from_bytes<T: ?Sized + AsRef<[u8]>>(buffer: &T) -> Result<PrivateKey> {
+        let mut reader = Reader::new(buffer);
+        read_private_key(&mut reader)
     }
 
     /// This function is used for extracting a private key from an existing reader.
@@ -190,94 +301,14 @@ impl PrivateKey {
         if c1 != c2 {
             return Err(Error::InvalidFormat);
         }
-
-        // The key type is repeated here.
-        let key_type = reader.read_string()?;
-        let kt = KeyType::from_name(&key_type)?;
         
-        let kind = match kt.kind {
-            KeyTypeKind::Rsa => {
-                let n = reader.read_mpint()?;
-                let e = reader.read_mpint()?;
-                let d = reader.read_mpint()?;
-                let coefficient = reader.read_mpint()?;
-                let p = reader.read_mpint()?;
-                let q = reader.read_mpint()?;
+        let private_key = read_private_key(reader)?;
 
-                #[cfg(feature = "rsa-signing")]
-                let exp = Some(BigUint::from_bytes_be(&d)
-                    .modpow(
-                        &BigUint::from_slice(&[0x1]),
-                        &(BigUint::from_bytes_be(&p) - 1_u8)
-                    ).to_bytes_be());
-                #[cfg(not(feature = "rsa-signing"))]
-                let exp = None;
+        if private_key.pubkey != pubkey {
+            return Err(Error::InvalidFormat);
+        }
 
-                #[cfg(feature = "rsa-signing")]
-                let exq = Some(BigUint::from_bytes_be(&d)
-                    .modpow(
-                        &BigUint::from_slice(&[0x1]),
-                        &(BigUint::from_bytes_be(&q) - 1_u8)
-                    ).to_bytes_be());
-                #[cfg(not(feature = "rsa-signing"))]
-                let exq = None;
-
-                let k = RsaPrivateKey {
-                    n,
-                    e,
-                    d,
-                    coefficient,
-                    p,
-                    q,
-                    exp: exp,
-                    exq: exq,
-                };
-
-                let pubkey = match &pubkey.kind {
-                    crate::ssh::pubkey::PublicKeyKind::Rsa(pubkey) => pubkey,
-                    _ => return Err(Error::InvalidFormat),
-                };
-
-                if k.n != pubkey.n {
-                    return Err(Error::InvalidFormat);
-                }
-
-                if k.e != pubkey.e {
-                    return Err(Error::InvalidFormat);
-                }
-
-                PrivateKeyKind::Rsa(k)
-            },
-            KeyTypeKind::Ecdsa => {
-                let identifier = reader.read_string()?;
-                let curve = Curve::from_identifier(&identifier)?;
-                // The pub key is also repeated here
-                let _pubkey = reader.read_bytes()?;
-                let key = reader.read_bytes()?;
-                let k = EcdsaPrivateKey {
-                    curve,
-                    key,
-                };
-
-                PrivateKeyKind::Ecdsa(k)
-            }
-            KeyTypeKind::Ed25519 => {
-                let _pubkey = reader.read_bytes()?;
-                let k = Ed25519PrivateKey {
-                    key: reader.read_bytes()?,
-                };
-
-                PrivateKeyKind::Ed25519(k)
-            }
-            _ => return Err(Error::UnknownKeyType(kt.name.to_string())),
-        };
-
-        Ok(PrivateKey {
-            key_type: kt,
-            kind,
-            pubkey,
-            comment: None,
-        })
+        Ok(private_key)
     }
 }
 
