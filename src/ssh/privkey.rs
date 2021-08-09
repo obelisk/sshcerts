@@ -1,15 +1,34 @@
-use super::keytype::{Curve, KeyType, KeyTypeKind};
-use crate::{error::Error, Result};
-#[cfg(feature = "rsa-signing")]
-use num_bigint::{BigInt, BigUint, Sign};
-use super::{PublicKey, PublicKeyKind, EcdsaPublicKey, Ed25519PublicKey, RsaPublicKey};
-use super::reader::Reader;
-#[cfg(feature = "rsa-signing")]
-use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
-
+use std::convert::TryInto;
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+
+use crate::{error::Error, Result};
+use super::{
+    EcdsaPublicKey,
+    Ed25519PublicKey,
+    PublicKey,
+    PublicKeyKind,
+    RsaPublicKey,
+    keytype::{Curve, KeyType, KeyTypeKind},
+    reader::Reader,
+};
+
+#[cfg(feature = "rsa-signing")]
+use num_bigint::{BigInt, BigUint, Sign};
+
+#[cfg(feature = "rsa-signing")]
+use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
+
+#[cfg(feature = "encrypted-keys")]
+use aes::{
+    Aes256Ctr,
+    cipher::{NewCipher, generic_array::GenericArray, StreamCipher},
+};
+
+#[cfg(feature = "encrypted-keys")]
+use bcrypt_pbkdf::bcrypt_pbkdf;
 
 
 /// RSA private key.
@@ -216,16 +235,21 @@ fn read_private_key(reader: &mut Reader<'_>) -> Result<PrivateKey> {
 }
 
 impl PrivateKey {
-    /// Reads an OpenSSH private key from a given path.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<PrivateKey> {
+    /// Reads an OpenSSH private key from a given path and passphrase
+    pub fn from_path_with_passphrase<P: AsRef<Path>>(path: P, passphrase: Option<String>) -> Result<PrivateKey> {
         let mut contents = String::new();
         File::open(path)?.read_to_string(&mut contents)?;
 
-        PrivateKey::from_string(&contents)
+        PrivateKey::from_string_with_passphrase(&contents, passphrase)
     }
 
-    /// Reads an OpenSSH private key from a given string.
-    pub fn from_string(contents: &str) -> Result<PrivateKey> {
+    /// Reads an OpenSSH private key from a given path.
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<PrivateKey> {
+        PrivateKey::from_path_with_passphrase(path, None)
+    }
+
+    /// Reads an OpenSSH private key from a given string and passphrase
+    pub fn from_string_with_passphrase(contents: &str, passphrase: Option<String>) -> Result<PrivateKey> {
         let mut iter = contents.lines();
         let header = iter.next().unwrap_or("");
         if header != "-----BEGIN OPENSSH PRIVATE KEY-----" {
@@ -248,19 +272,24 @@ impl PrivateKey {
         let decoded = base64::decode(encoded_key)?;
         let mut reader = Reader::new(&decoded);
         // Construct a new `PrivateKey`
-        let k = PrivateKey::from_reader(&mut reader)?;
+        let k = PrivateKey::from_reader(&mut reader, passphrase)?;
 
         Ok(k)
     }
 
-    /// Create a private key from just the private portion of a key file
+    /// Reads an OpenSSH private key from a given string.
+    pub fn from_string(contents: &str) -> Result<PrivateKey> {
+        PrivateKey::from_string_with_passphrase(contents, None)
+    }
+
+    /// Create a private key from just the decrypted private bytes
     pub fn from_bytes<T: ?Sized + AsRef<[u8]>>(buffer: &T) -> Result<PrivateKey> {
         let mut reader = Reader::new(buffer);
         read_private_key(&mut reader)
     }
 
     /// This function is used for extracting a private key from an existing reader.
-    pub(crate) fn from_reader(reader: &mut Reader<'_>) -> Result<PrivateKey> {
+    pub(crate) fn from_reader(reader: &mut Reader<'_>, passphrase: Option<String>) -> Result<PrivateKey> {
         let preamble = reader.read_cstring()?;
 
         if preamble != "openssh-key-v1" {
@@ -270,12 +299,9 @@ impl PrivateKey {
         // These values are for encrypted keys which are not supported
         let cipher_name = reader.read_string()?;
         let kdf = reader.read_string()?;
-        if cipher_name != "none" || kdf != "none" {
-            return Err(Error::EncryptedPrivateKeyNotSupported);
-        }
 
-        // This appears to be en empty value
-        reader.read_string()?;
+        #[allow(unused_variables)]
+        let encryption_data = reader.read_bytes()?;
 
         // This seems to be hardcoded into the standard
         let number_of_keys = reader.read_u32()?;
@@ -288,21 +314,49 @@ impl PrivateKey {
         .read_bytes()
         .and_then(|v| PublicKey::from_bytes(&v))?;
 
-        // This contains the length of the rest of the bytes in the key
-        // We could use this to do a read bytes into a new reader but I don't
-        // think there is an advantage to that right now (other than verifying)
-        // that this value is correct.
-        let _remaining_length = reader.read_u32()?;
+        let remaining_length = match reader.read_u32()?.try_into() {
+            Ok(rl) => rl,
+            Err(_) => return Err(Error::InvalidFormat),
+        };
 
-        // These four bytes are repeated and I'm not sure what they do
-        let c1 = reader.read_u32()?;
-        let c2 = reader.read_u32()?;
+        #[allow(unused_mut)]
+        let mut remaining_bytes = reader.read_raw_bytes(remaining_length)?;
 
-        if c1 != c2 {
+        match (cipher_name.as_str(), kdf.as_str(), passphrase) {
+            ("none", "none", _) => (),
+            #[cfg(feature = "encrypted-keys")]
+            ("aes256-ctr", "bcrypt", Some(passphrase)) => {
+                let mut enc_reader = Reader::new(&encryption_data);
+                let salt = enc_reader.read_bytes()?;
+                let rounds = enc_reader.read_u32()?;
+                let mut output = [0; 48];
+                if let Err(_) = bcrypt_pbkdf(passphrase.as_str(), &salt, rounds, &mut output) {
+                    return Err(Error::InvalidFormat);
+                }
+
+                let mut cipher = Aes256Ctr::new(
+                    &GenericArray::from_slice(&output[..32]),
+                    &GenericArray::from_slice(&output[32..]),
+                );
+
+                match cipher.try_apply_keystream(&mut remaining_bytes) {
+                    Ok(_) => (),
+                    Err(_) => return Err(Error::InvalidFormat),
+                }
+            },
+            ("aes256-ctr", "bcrypt", None) => return Err(Error::EncryptedPrivateKey),
+            _ => return Err(Error::EncryptedPrivateKeyNotSupported),
+        };
+
+        let mut reader = Reader::new(&remaining_bytes);
+
+        // These four bytes are repeated and are used to checks that a key has
+        // been decrypted successfully
+        if reader.read_u32()? != reader.read_u32()? {
             return Err(Error::InvalidFormat);
         }
         
-        let private_key = read_private_key(reader)?;
+        let private_key = read_private_key(&mut reader)?;
 
         if private_key.pubkey != pubkey {
             return Err(Error::InvalidFormat);
@@ -312,3 +366,8 @@ impl PrivateKey {
     }
 }
 
+impl fmt::Display for PrivateKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", &self.pubkey.fingerprint(), self.comment.as_ref().unwrap_or(&String::new()))
+    }
+}

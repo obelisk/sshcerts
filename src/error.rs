@@ -23,7 +23,9 @@ pub enum Error {
     CertificateInvalidSignature,
     /// A cryptographic operation failed.
     SigningError,
-    /// An encrypted private key was supplied and is not supported
+    /// An encrypted private key was provided with no decryption key
+    EncryptedPrivateKey,
+    /// An encrypted private key was supplied but the encryption method is not supported
     EncryptedPrivateKeyNotSupported,
     /// The key type is unknown
     UnknownKeyType(String),
@@ -47,7 +49,8 @@ impl fmt::Display for Error {
             Error::KeyTypeMismatch => write!(f, "Key type mismatch"),
             Error::CertificateInvalidSignature => write!(f, "Certificate is improperly signed"),
             Error::SigningError => write!(f, "Could not sign data"),
-            Error::EncryptedPrivateKeyNotSupported => write!(f, "Encrypted private keys are not supported"),
+            Error::EncryptedPrivateKey => write!(f, "Encountered encrypted private key with no decryption key"),
+            Error::EncryptedPrivateKeyNotSupported => write!(f, "This method of private key encryption is not supported or sshcerts was not compiled with encrypted private key support"),
             Error::UnknownKeyType(ref v) => write!(f, "Unknown key type {}", v),
             Error::UnknownCurve(ref v) => write!(f, "Unknown curve {}", v),
             #[cfg(feature = "yubikey")]
