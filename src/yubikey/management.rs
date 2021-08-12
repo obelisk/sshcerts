@@ -15,6 +15,16 @@ impl crate::yubikey::Yubikey {
         })
     }
 
+    /// Open a Yubikey from a serial
+    pub fn open(serial: u32) -> Result<Self> {
+        match YubiKey::open_by_serial(serial.into()){
+            Ok(yk) => Ok(Self {
+                yk,
+            }),
+            Err(_) => Err(Error::NoSuchYubikey),
+        }
+    }
+
     /// Reconnet to the Yubikey (if possible, if it's disconnected)
     pub fn reconnect(&mut self) -> Result <()> {
         match self.yk.reconnect() {
