@@ -1,5 +1,5 @@
-use yubikey_piv::key::{AlgorithmId, SlotId};
-use yubikey_piv::certificate::{Certificate, PublicKeyInfo};
+use yubikey::piv::{AlgorithmId, SlotId};
+use yubikey::certificate::{Certificate, PublicKeyInfo};
 
 use crate::ssh::{
     Curve,

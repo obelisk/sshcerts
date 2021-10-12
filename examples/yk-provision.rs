@@ -4,10 +4,7 @@ use clap::{App, Arg};
 
 use sshcerts::yubikey::Yubikey;
 use sshcerts::yubikey::ssh::convert_to_ssh_pubkey;
-use sshcerts::yubikey::{RetiredSlotId, SlotId};
-
-use yubikey_piv::key::AlgorithmId;
-use yubikey_piv::policy::{PinPolicy, TouchPolicy};
+use sshcerts::yubikey::{AlgorithmId, RetiredSlotId, SlotId, PinPolicy, TouchPolicy};
 
 use std::convert::TryFrom;
 
@@ -45,8 +42,6 @@ fn slot_parser(slot: &str) -> Option<SlotId> {
             Ok(v) if v <= 20 => Some(SlotId::try_from(0x81_u8 + v).unwrap()),
             _ => None,
         }
-    } else if let Ok(s) = SlotId::try_from(slot.to_owned()) {
-        Some(s)
     } else {
         None
     }

@@ -38,11 +38,12 @@ impl std::error::Error for Error {}
 type Result<T> = std::result::Result<T, Error>;
 
 // Re-export because it's used as a parameter in `sign_data`
-pub use yubikey_piv::key::{AlgorithmId, RetiredSlotId, SlotId};
+pub use yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId};
+pub use yubikey::{PinPolicy, TouchPolicy};
 
 /// Structure to wrap a yubikey and abstract actions
 pub struct Yubikey {
-    yk: yubikey_piv::yubikey::YubiKey,
+    yk: yubikey::YubiKey,
 }
 
 impl std::fmt::Debug for Yubikey {
@@ -51,8 +52,8 @@ impl std::fmt::Debug for Yubikey {
     }
 }
 
-impl From<yubikey_piv::error::Error> for Error {
-    fn from(e: yubikey_piv::error::Error) -> Self {
+impl From<yubikey::Error> for Error {
+    fn from(e: yubikey::Error) -> Self {
         Error::InternalYubiKeyError(e.to_string())
     }
 }

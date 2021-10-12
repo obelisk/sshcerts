@@ -1,9 +1,11 @@
 use ring::digest;
 
-use yubikey_piv::{MgmKey, YubiKey};
-use yubikey_piv::policy::{PinPolicy, TouchPolicy};
-use yubikey_piv::key::{attest, AlgorithmId, sign_data as yk_sign_data, SlotId};
-use yubikey_piv::certificate::{Certificate, PublicKeyInfo};
+use yubikey::{MgmKey, YubiKey};
+use yubikey::{PinPolicy, TouchPolicy};
+use yubikey::piv::{attest, AlgorithmId, sign_data as yk_sign_data, SlotId};
+use yubikey::certificate::{Certificate, PublicKeyInfo};
+
+use x509::RelativeDistinguishedName;
 
 use super::{Error, Result};
 
@@ -52,20 +54,20 @@ impl crate::yubikey::Yubikey {
 
     /// Check to see that a provided Yubikey and slot is configured for signing
     pub fn configured(&mut self, slot: &SlotId) -> Result<PublicKeyInfo> {
-        let cert = yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot)?;
+        let cert = yubikey::certificate::Certificate::read(&mut self.yk, *slot)?;
         Ok(cert.subject_pki().clone())
     }
 
     /// Check to see that a provided Yubikey and slot is configured for signing
     pub fn fetch_subject(&mut self, slot: &SlotId) -> Result<String> {
-        let cert = yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot)?;
+        let cert = yubikey::certificate::Certificate::read(&mut self.yk, *slot)?;
         Ok(cert.subject().to_string())
     }
 
     /// Fetch the certificate from a given Yubikey slot. If there is not one, this
     /// will fail
     pub fn fetch_certificate(&mut self, slot: &SlotId) -> Result<Vec<u8>> {
-        let cert = yubikey_piv::certificate::Certificate::read(&mut self.yk, *slot)?;
+        let cert = yubikey::certificate::Certificate::read(&mut self.yk, *slot)?;
         Ok(cert.as_ref().to_vec())
     }
 
@@ -82,17 +84,18 @@ impl crate::yubikey::Yubikey {
 
     /// This provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generate this way can use the attestation functionality.
-    pub fn provision(&mut self, slot: &SlotId, subject: &str, alg: AlgorithmId, touch_policy: TouchPolicy, pin_policy: PinPolicy) -> Result<PublicKeyInfo> {
-        let key_info = yubikey_piv::key::generate(&mut self.yk, *slot, alg, pin_policy, touch_policy)?;
-
+    pub fn provision(&mut self, slot: &SlotId, common_name: &str, alg: AlgorithmId, touch_policy: TouchPolicy, pin_policy: PinPolicy) -> Result<PublicKeyInfo> {
+        let key_info = yubikey::piv::generate(&mut self.yk, *slot, alg, pin_policy, touch_policy)?;
+        let extensions: &[x509::Extension<'_, &[u64]>] = &[];
         // Generate a self-signed certificate for the new key.
         Certificate::generate_self_signed(
             &mut self.yk,
             *slot,
             [0u8; 20],
             None,
-            subject.to_string(),
+            &[RelativeDistinguishedName::common_name(common_name)],
             key_info,
+            extensions,
         )?;
 
         self.configured(slot)

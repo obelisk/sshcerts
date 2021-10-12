@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.6.1"
+version = "0.7.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -13,9 +13,9 @@ categories = ["authentication"]
 [features]
 default = ["rsa-signing"]
 
-all = ["encrypted-keys", "rsa-signing", "yubikey"]
+all = ["encrypted-keys", "rsa-signing", "yubikey_support"]
 
-yubikey = ["yubikey-piv", "log"]
+yubikey_support = ["yubikey", "log", "x509", "x509-parser"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
 
@@ -24,13 +24,15 @@ base64 = "0.13"
 ring = "0.16"
 
 # Dependencies for rsa-signing
-simple_asn1 = {version = "0.5", optional = true}
-num-bigint = {version = "0.4", optional = true}
+simple_asn1 = {version = "0.5.4", optional = true}
+num-bigint = {version = "0.4.2", optional = true}
 
 # Dependencies for yubikey
 log = {version = "0.4", optional = true}
-yubikey-piv = {version = "0.1.0", features = ["untested"], optional = true}
+yubikey = {version = "0.4", features = ["untested"], optional = true}
 lexical-core = {version = ">0.7.4", optional = true}
+x509 = {version = "0.2", optional = true}
+x509-parser = {version = "0.11", optional = true}
 
 # Dependencies for encrypted keys
 aes = {version = "0.7", features = ["ctr"], optional = true}
