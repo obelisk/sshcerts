@@ -9,6 +9,56 @@ use x509::RelativeDistinguishedName;
 
 use super::{Error, Result};
 
+
+
+#[derive(Debug)]
+/// A struct that allows the generation of CSRs via the rcgen library. This is
+/// only used when calling the `generate_csr` function.
+pub struct CSRSigner {
+    slot: SlotId,
+    serial: u32,
+    public_key: Vec<u8>,
+    algorithm: AlgorithmId,
+}
+
+impl CSRSigner {
+    fn new(serial: u32, slot: SlotId) -> Self {
+        let mut yk = super::Yubikey::open(serial).unwrap();
+        let pki = yk.fetch_pubkey(&slot).unwrap();
+        let (public_key, algorithm) = match pki {
+            PublicKeyInfo::Rsa { pubkey: _, .. } => panic!("RSA keys not supported"),
+            PublicKeyInfo::EcP256(pubkey) => (pubkey.as_bytes().to_vec(), AlgorithmId::EccP256),
+            PublicKeyInfo::EcP384(pubkey) => (pubkey.as_bytes().to_vec(), AlgorithmId::EccP384),
+        };
+
+        Self {
+            slot,
+            serial,
+            public_key,
+            algorithm
+        }
+    }
+}
+
+impl rcgen::RemoteKeyPair for CSRSigner {
+    fn public_key(&self) -> &[u8] {
+        &self.public_key
+    }
+
+    fn sign(&self, message: &[u8]) -> std::result::Result<Vec<u8>, rcgen::RcgenError> {
+        let mut yk = super::Yubikey::open(self.serial).unwrap();
+        Ok(yk.sign_data(message, self.algorithm, &self.slot).unwrap())
+    }
+
+    fn algorithm(&self) -> &'static rcgen::SignatureAlgorithm {
+        match self.algorithm {
+            AlgorithmId::EccP256 => &rcgen::PKCS_ECDSA_P256_SHA256,
+            AlgorithmId::EccP384 => &rcgen::PKCS_ECDSA_P384_SHA384,
+            _ => panic!("Unimplemented")
+        }
+    }
+}
+
 impl crate::yubikey::Yubikey {
     /// Create a new YubiKey. Assumes there is only one Yubikey connected
     pub fn new() -> Result<Self> {
@@ -54,7 +104,7 @@ impl crate::yubikey::Yubikey {
 
     /// Check to see that a provided Yubikey and slot is configured for signing
     pub fn configured(&mut self, slot: &SlotId) -> Result<PublicKeyInfo> {
-        let cert = yubikey::certificate::Certificate::read(&mut self.yk, *slot)?;
+        let cert = Certificate::read(&mut self.yk, *slot)?;
         Ok(cert.subject_pki().clone())
     }
 
@@ -80,6 +130,25 @@ impl crate::yubikey::Yubikey {
     /// Generate attestation for a slot
     pub fn fetch_attestation(&mut self, slot: &SlotId) -> Result<Vec<u8>> {
         Ok(attest(&mut self.yk, *slot)?.to_vec())
+    }
+
+    /// Generate CSR for slot
+    pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str,) -> Result<Vec<u8>> {
+        let mut params = rcgen::CertificateParams::new(vec![]);
+        params.alg = match self.fetch_pubkey(&slot)? {
+            PublicKeyInfo::EcP256(_) => &rcgen::PKCS_ECDSA_P256_SHA256,
+            PublicKeyInfo::EcP384(_) => &rcgen::PKCS_ECDSA_P384_SHA384,
+            _ => return Err(Error::Unsupported),
+        };
+        params.distinguished_name.push(rcgen::DnType::CommonName, common_name.to_string());
+
+        let csr_signer = CSRSigner::new(self.yk.serial().into(), slot.clone());
+        params.key_pair = Some(rcgen::KeyPair::from_remote(Box::new(csr_signer)).unwrap());
+
+        let csr = rcgen::Certificate::from_params(params).unwrap();
+        let csr = csr.serialize_request_der().unwrap();
+    
+        Ok(csr)
     }
 
     /// This provisions the YubiKey with a new certificate generated on the device.

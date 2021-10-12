@@ -15,7 +15,7 @@ default = ["rsa-signing"]
 
 all = ["encrypted-keys", "rsa-signing", "yubikey_support"]
 
-yubikey_support = ["yubikey", "log", "x509", "x509-parser"]
+yubikey_support = ["log", "rcgen", "x509", "x509-parser", "yubikey"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
 
@@ -29,8 +29,10 @@ num-bigint = {version = "0.4.2", optional = true}
 
 # Dependencies for yubikey
 log = {version = "0.4", optional = true}
-yubikey = {version = "0.4", features = ["untested"], optional = true}
+#yubikey = {version = "0.4", features = ["untested"], optional = true}
+yubikey = {path = "../yubikey.rs", features = ["untested"], optional = true}
 lexical-core = {version = ">0.7.4", optional = true}
+rcgen = {version = "0.8", optional = true}
 x509 = {version = "0.2", optional = true}
 x509-parser = {version = "0.11", optional = true}
 
