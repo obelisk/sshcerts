@@ -2,9 +2,8 @@ use std::env;
 
 use clap::{App, Arg};
 
-use sshcerts::yubikey::Yubikey;
-use sshcerts::yubikey::ssh::convert_to_ssh_pubkey;
-use sshcerts::yubikey::{AlgorithmId, RetiredSlotId, SlotId, PinPolicy, TouchPolicy};
+use sshcerts::yubikey::piv::Yubikey;
+use sshcerts::yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId, PinPolicy, TouchPolicy};
 
 use std::convert::TryFrom;
 
@@ -27,7 +26,7 @@ fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg
     yk.unlock(pin.as_bytes(), mgm_key).unwrap();
     match yk.provision(&slot, subject, alg, policy, PinPolicy::Never) {
         Ok(pk) => {
-            convert_to_ssh_pubkey(&pk).unwrap();
+            println!("New hardware backed SSH Public Key: {}", pk);
         },
         Err(e) => panic!("Could not provision device with new key: {:?}", e),
     }

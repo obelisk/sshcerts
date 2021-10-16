@@ -1,7 +1,7 @@
 use std::env;
 
-use sshcerts::yubikey::Yubikey;
-use sshcerts::yubikey::{RetiredSlotId, SlotId};
+use sshcerts::yubikey::piv::Yubikey;
+use sshcerts::yubikey::piv::{RetiredSlotId, SlotId};
 
 use std::convert::TryFrom;
 

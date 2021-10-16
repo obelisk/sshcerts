@@ -1,3 +1,4 @@
+use crate::PublicKey;
 use ring::digest;
 
 use yubikey::{MgmKey, YubiKey};
@@ -8,8 +9,6 @@ use yubikey::certificate::{Certificate, PublicKeyInfo};
 use x509::RelativeDistinguishedName;
 
 use super::{Error, Result};
-
-
 
 #[derive(Debug)]
 /// A struct that allows the generation of CSRs via the rcgen library. This is
@@ -24,7 +23,7 @@ pub struct CSRSigner {
 impl CSRSigner {
     fn new(serial: u32, slot: SlotId) -> Self {
         let mut yk = super::Yubikey::open(serial).unwrap();
-        let pki = yk.fetch_pubkey(&slot).unwrap();
+        let pki = yk.configured(&slot).unwrap();
         let (public_key, algorithm) = match pki {
             PublicKeyInfo::Rsa { pubkey: _, .. } => panic!("RSA keys not supported"),
             PublicKeyInfo::EcP256(pubkey) => (pubkey.as_bytes().to_vec(), AlgorithmId::EccP256),
@@ -59,7 +58,7 @@ impl rcgen::RemoteKeyPair for CSRSigner {
     }
 }
 
-impl crate::yubikey::Yubikey {
+impl super::Yubikey {
     /// Create a new YubiKey. Assumes there is only one Yubikey connected
     pub fn new() -> Result<Self> {
         Ok(Self {
@@ -123,8 +122,8 @@ impl crate::yubikey::Yubikey {
 
     /// Fetch a public key from the provided slot. If there is not exactly one
     /// Yubikey this will fail.
-    pub fn fetch_pubkey(&mut self, slot: &SlotId) -> Result<PublicKeyInfo> {
-        self.configured(slot)
+    pub fn fetch_pubkey(&mut self, slot: &SlotId) -> Result<PublicKey> {
+        super::ssh::extract_ssh_pubkey_from_x509_certificate(&self.fetch_certificate(slot)?)
     }
 
     /// Generate attestation for a slot
@@ -135,7 +134,7 @@ impl crate::yubikey::Yubikey {
     /// Generate CSR for slot
     pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str,) -> Result<Vec<u8>> {
         let mut params = rcgen::CertificateParams::new(vec![]);
-        params.alg = match self.fetch_pubkey(&slot)? {
+        params.alg = match self.configured(&slot)? {
             PublicKeyInfo::EcP256(_) => &rcgen::PKCS_ECDSA_P256_SHA256,
             PublicKeyInfo::EcP384(_) => &rcgen::PKCS_ECDSA_P384_SHA384,
             _ => return Err(Error::Unsupported),
@@ -153,7 +152,7 @@ impl crate::yubikey::Yubikey {
 
     /// This provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generate this way can use the attestation functionality.
-    pub fn provision(&mut self, slot: &SlotId, common_name: &str, alg: AlgorithmId, touch_policy: TouchPolicy, pin_policy: PinPolicy) -> Result<PublicKeyInfo> {
+    pub fn provision(&mut self, slot: &SlotId, common_name: &str, alg: AlgorithmId, touch_policy: TouchPolicy, pin_policy: PinPolicy) -> Result<PublicKey> {
         let key_info = yubikey::piv::generate(&mut self.yk, *slot, alg, pin_policy, touch_policy)?;
         let extensions: &[x509::Extension<'_, &[u64]>] = &[];
         // Generate a self-signed certificate for the new key.
@@ -167,7 +166,7 @@ impl crate::yubikey::Yubikey {
             extensions,
         )?;
 
-        self.configured(slot)
+        self.fetch_pubkey(slot)
     }
 
     /// Take data, an algorithm, and a slot and attempt to sign the data field
