@@ -17,7 +17,7 @@ fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg
 
     let policy = if secure {
         println!("You're creating a secure key that will require touch to use. Touch Yubikey to continue...");
-        TouchPolicy::Cached
+        TouchPolicy::Always
     } else {
         TouchPolicy::Never
     };
@@ -40,7 +40,10 @@ fn slot_parser(slot: &str) -> Option<SlotId> {
         match slot_value {
             Ok(v) if v <= 20 => Some(SlotId::try_from(0x81_u8 + v).unwrap()),
             _ => None,
-        }
+        } 
+    } else if slot.len() == 4 && slot.starts_with("0x"){
+        let slot_value = hex::decode(&slot[2..]).unwrap()[0];
+        Some(SlotId::try_from(slot_value).unwrap())
     } else {
         None
     }
