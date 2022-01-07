@@ -120,8 +120,7 @@ impl super::Yubikey {
         Ok(cert.as_ref().to_vec())
     }
 
-    /// Fetch the certificate from a given Yubikey slot. If there is not one, this
-    /// will fail
+    /// Write the certificate from a given Yubikey slot.
     pub fn write_certificate(&mut self, slot: &SlotId, data: &[u8]) -> Result<()> {
         Ok(Certificate::from_bytes(data.to_vec())?.write(&mut self.yk, *slot, yubikey::certificate::CertInfo::Uncompressed)?)
     }
@@ -156,8 +155,8 @@ impl super::Yubikey {
         Ok(csr)
     }
 
-    /// This provisions the YubiKey with a new certificate generated on the device.
-    /// Only keys that are generate this way can use the attestation functionality.
+    /// Provisions the YubiKey with a new certificate generated on the device.
+    /// Only keys that are generated this way can use the attestation functionality.
     pub fn provision(&mut self, slot: &SlotId, common_name: &str, alg: AlgorithmId, touch_policy: TouchPolicy, pin_policy: PinPolicy) -> Result<PublicKey> {
         let key_info = yubikey::piv::generate(&mut self.yk, *slot, alg, pin_policy, touch_policy)?;
         let extensions: &[x509::Extension<'_, &[u64]>] = &[];
@@ -178,7 +177,7 @@ impl super::Yubikey {
     /// Take data, an algorithm, and a slot and attempt to sign the data field
     /// 
     /// If the requested algorithm doesn't match the key in the slot (or the slot
-    /// is empty) this will return an error.
+    /// is empty) this will error.
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>> {
         let (slot_alg, hash_alg) = match self.configured(slot) {
             Ok(PublicKeyInfo::EcP256(_)) => (AlgorithmId::EccP256, &digest::SHA256),
