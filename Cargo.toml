@@ -46,7 +46,7 @@ ctr = {version = "0.8", optional = true}
 [dev-dependencies]
 env_logger = "0.8.2"
 hex = "0.4.2"
-clap = "3.0.0-beta.2"
+clap = "3.0.5"
 criterion = "0.3"
 
 [[bench]]

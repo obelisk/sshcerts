@@ -64,7 +64,7 @@ fn main() {
         .about("A tool to provision a new key on a yubikey")
         .arg(
             Arg::new("slot")
-                .about("Numerical value for the slot on the yubikey to use for your private key")
+                .help("Numerical value for the slot on the yubikey to use for your private key")
                 .long("slot")
                 .short('s')
                 .required(true)
@@ -73,7 +73,7 @@ fn main() {
         )
         .arg(
             Arg::new("pin")
-                .about("Provision this slot with a new private key. The pin number must be passed as parameter here")
+                .help("Provision this slot with a new private key. The pin number must be passed as parameter here")
                 .default_value("123456")
                 .long("pin")
                 .short('p')
@@ -82,7 +82,7 @@ fn main() {
         )
         .arg(
             Arg::new("subject")
-                .about("They subject you would like to store in the certificate for later identification")
+                .help("They subject you would like to store in the certificate for later identification")
                 .default_value("ykProvisioned")
                 .long("subject")
                 .short('j')
@@ -90,7 +90,7 @@ fn main() {
         )
         .arg(
             Arg::new("management-key")
-                .about("Provision this slot with a new private key. The pin number must be passed as parameter here")
+                .help("Provision this slot with a new private key. The pin number must be passed as parameter here")
                 .default_value("010203040506070801020304050607080102030405060708")
                 .long("mgmkey")
                 .short('m')
@@ -99,7 +99,7 @@ fn main() {
         )
         .arg(
             Arg::new("type")
-                .about("Specify the type of key you want to provision (p256, p384)")
+                .help("Specify the type of key you want to provision (p256, p384)")
                 .long("type")
                 .short('t')
                 .possible_value("p256")
@@ -108,7 +108,7 @@ fn main() {
         )
         .arg(
             Arg::new("require-touch")
-                .about("Newly provisioned key requires touch for signing operations (touch cached for 15 seconds)")
+                .help("Newly provisioned key requires touch for signing operations (touch cached for 15 seconds)")
                 .long("require-touch")
                 .short('r')
         )
