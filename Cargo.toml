@@ -13,10 +13,9 @@ categories = ["authentication"]
 [features]
 default = ["rsa-signing"]
 
-all = ["encrypted-keys", "rsa-signing", "yubikey_piv", "yubikey_fido"]
+all = ["encrypted-keys", "rsa-signing", "yubikey_support"]
 
-yubikey_piv = ["der-parser", "log", "rcgen", "x509", "x509-parser", "yubikey"]
-yubikey_fido = ["ctap-hid-fido2"]
+yubikey_support = ["der-parser", "log", "rcgen", "x509", "x509-parser", "yubikey"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
 
@@ -29,18 +28,15 @@ hex = "*"
 simple_asn1 = {version = "0.5", optional = true}
 num-bigint = {version = "0.4", optional = true}
 
-# Dependencies for yubikey_piv
+# Dependencies for yubikey_support
 log = {version = "0.4", optional = true}
-yubikey = {version = "0.4", features = ["untested"], optional = true}
+yubikey = {version = "0.5", features = ["untested"], optional = true}
 #yubikey = {path = "../yubikey.rs", features = ["untested"], optional = true}
 lexical-core = {version = ">0.7.4", optional = true}
 rcgen = {version = "0.8", optional = true}
 x509 = {version = "0.2", optional = true}
 x509-parser = {version = "0.11", features = ["verify"], optional = true}
 der-parser = {version = "5", optional = true}
-
-# Dependencies for yubikey_fido
-ctap-hid-fido2 = {path = "../ctap-hid-fido2", optional = true}
 
 # Dependencies for encrypted keys
 aes = {version = "0.7", features = ["ctr"], optional = true}
@@ -56,19 +52,15 @@ criterion = "0.3"
 [[bench]]
 name = "certs_per_second"
 harness = false
-required-features = ["yubikey_piv"]
+required-features = ["yubikey_support"]
 
 [[example]]
 name = "yk-fingerprint"
-required-features = ["yubikey_piv"]
+required-features = ["yubikey_support"]
 
 [[example]]
 name = "yk-provision"
-required-features = ["yubikey_piv"]
-
-[[example]]
-name = "fido-provision"
-required-features = ["yubikey_fido"]
+required-features = ["yubikey_support"]
 
 [[example]]
 name = "ssh-pkey-info"

@@ -41,7 +41,7 @@
    warnings                      ,
 )]
 
-#[cfg(feature = "yubikey_piv")]
+#[cfg(feature = "yubikey_support")]
 #[macro_use]
 extern crate log;
 
@@ -62,7 +62,7 @@ pub mod utils;
 /// Functions for dealing with Yubikey signing.
 /// Also contains an SSH submodule containing helper functions to generate
 /// SSH encoded versions of it's normal functions.
-#[cfg(any(feature = "yubikey_piv", feature = "yubikey_fido"))]
+#[cfg(feature = "yubikey_support")]
 pub mod yubikey;
 
 pub use ssh::{Certificate, PublicKey, PrivateKey};
