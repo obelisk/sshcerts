@@ -2,12 +2,8 @@ use std::env;
 
 use clap::{App, Arg};
 
-use sshcerts::yubikey::Yubikey;
-use sshcerts::yubikey::ssh::convert_to_ssh_pubkey;
-use sshcerts::yubikey::{RetiredSlotId, SlotId};
-
-use yubikey_piv::key::AlgorithmId;
-use yubikey_piv::policy::{PinPolicy, TouchPolicy};
+use sshcerts::yubikey::piv::Yubikey;
+use sshcerts::yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId, PinPolicy, TouchPolicy};
 
 use std::convert::TryFrom;
 
@@ -21,7 +17,7 @@ fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg
 
     let policy = if secure {
         println!("You're creating a secure key that will require touch to use. Touch Yubikey to continue...");
-        TouchPolicy::Cached
+        TouchPolicy::Always
     } else {
         TouchPolicy::Never
     };
@@ -30,7 +26,7 @@ fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg
     yk.unlock(pin.as_bytes(), mgm_key).unwrap();
     match yk.provision(&slot, subject, alg, policy, PinPolicy::Never) {
         Ok(pk) => {
-            convert_to_ssh_pubkey(&pk).unwrap();
+            println!("New hardware backed SSH Public Key: {}", pk);
         },
         Err(e) => panic!("Could not provision device with new key: {:?}", e),
     }
@@ -44,9 +40,10 @@ fn slot_parser(slot: &str) -> Option<SlotId> {
         match slot_value {
             Ok(v) if v <= 20 => Some(SlotId::try_from(0x81_u8 + v).unwrap()),
             _ => None,
-        }
-    } else if let Ok(s) = SlotId::try_from(slot.to_owned()) {
-        Some(s)
+        } 
+    } else if slot.len() == 4 && slot.starts_with("0x"){
+        let slot_value = hex::decode(&slot[2..]).unwrap()[0];
+        Some(SlotId::try_from(slot_value).unwrap())
     } else {
         None
     }
@@ -67,7 +64,7 @@ fn main() {
         .about("A tool to provision a new key on a yubikey")
         .arg(
             Arg::new("slot")
-                .about("Numerical value for the slot on the yubikey to use for your private key")
+                .help("Numerical value for the slot on the yubikey to use for your private key")
                 .long("slot")
                 .short('s')
                 .required(true)
@@ -76,7 +73,7 @@ fn main() {
         )
         .arg(
             Arg::new("pin")
-                .about("Provision this slot with a new private key. The pin number must be passed as parameter here")
+                .help("Provision this slot with a new private key. The pin number must be passed as parameter here")
                 .default_value("123456")
                 .long("pin")
                 .short('p')
@@ -85,7 +82,7 @@ fn main() {
         )
         .arg(
             Arg::new("subject")
-                .about("They subject you would like to store in the certificate for later identification")
+                .help("They subject you would like to store in the certificate for later identification")
                 .default_value("ykProvisioned")
                 .long("subject")
                 .short('j')
@@ -93,7 +90,7 @@ fn main() {
         )
         .arg(
             Arg::new("management-key")
-                .about("Provision this slot with a new private key. The pin number must be passed as parameter here")
+                .help("Provision this slot with a new private key. The pin number must be passed as parameter here")
                 .default_value("010203040506070801020304050607080102030405060708")
                 .long("mgmkey")
                 .short('m')
@@ -102,7 +99,7 @@ fn main() {
         )
         .arg(
             Arg::new("type")
-                .about("Specify the type of key you want to provision (p256, p384)")
+                .help("Specify the type of key you want to provision (p256, p384)")
                 .long("type")
                 .short('t')
                 .possible_value("p256")
@@ -111,7 +108,7 @@ fn main() {
         )
         .arg(
             Arg::new("require-touch")
-                .about("Newly provisioned key requires touch for signing operations (touch cached for 15 seconds)")
+                .help("Newly provisioned key requires touch for signing operations (touch cached for 15 seconds)")
                 .long("require-touch")
                 .short('r')
         )
