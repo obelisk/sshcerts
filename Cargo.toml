@@ -22,7 +22,6 @@ encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
 [dependencies]
 base64 = "0.13"
 ring = "0.16"
-hex = "*"
 
 # Dependencies for rsa-signing
 simple_asn1 = {version = "0.5", optional = true}
