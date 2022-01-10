@@ -1,4 +1,5 @@
 use crate::PublicKey;
+
 use ring::digest;
 
 use yubikey::{MgmKey, YubiKey};
@@ -113,8 +114,7 @@ impl super::Yubikey {
         Ok(cert.subject().to_string())
     }
 
-    /// Fetch the certificate from a given Yubikey slot. If there is not one, this
-    /// will fail
+    /// Fetch the certificate from a given Yubikey slot.
     pub fn fetch_certificate(&mut self, slot: &SlotId) -> Result<Vec<u8>> {
         let cert = Certificate::read(&mut self.yk, *slot)?;
         Ok(cert.as_ref().to_vec())
@@ -123,12 +123,6 @@ impl super::Yubikey {
     /// Write the certificate from a given Yubikey slot.
     pub fn write_certificate(&mut self, slot: &SlotId, data: &[u8]) -> Result<()> {
         Ok(Certificate::from_bytes(data.to_vec())?.write(&mut self.yk, *slot, yubikey::certificate::CertInfo::Uncompressed)?)
-    }
-
-    /// Fetch a public key from the provided slot. If there is not exactly one
-    /// Yubikey this will fail.
-    pub fn fetch_pubkey(&mut self, slot: &SlotId) -> Result<PublicKey> {
-        super::ssh::extract_ssh_pubkey_from_x509_certificate(&self.fetch_certificate(slot)?)
     }
 
     /// Generate attestation for a slot
@@ -171,7 +165,7 @@ impl super::Yubikey {
             extensions,
         )?;
 
-        self.fetch_pubkey(slot)
+        self.ssh_cert_fetch_pubkey(slot)
     }
 
     /// Take data, an algorithm, and a slot and attempt to sign the data field

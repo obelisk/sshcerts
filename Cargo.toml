@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -13,11 +13,12 @@ categories = ["authentication"]
 [features]
 default = ["rsa-signing"]
 
-all = ["encrypted-keys", "rsa-signing", "yubikey_support"]
+all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support"]
 
-yubikey_support = ["der-parser", "log", "rcgen", "x509", "x509-parser", "yubikey"]
-rsa-signing = ["simple_asn1", "num-bigint"]
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
+rsa-signing = ["simple_asn1", "num-bigint"]
+x509-support = ["der-parser", "x509", "x509-parser"]
+yubikey-support = ["der-parser", "log", "rcgen", "x509", "x509-parser", "yubikey"]
 
 [dependencies]
 base64 = "0.13"
@@ -51,15 +52,15 @@ criterion = "0.3"
 [[bench]]
 name = "certs_per_second"
 harness = false
-required-features = ["yubikey_support"]
+required-features = ["yubikey-support"]
 
 [[example]]
 name = "yk-fingerprint"
-required-features = ["yubikey_support"]
+required-features = ["yubikey-support"]
 
 [[example]]
 name = "yk-provision"
-required-features = ["yubikey_support"]
+required-features = ["yubikey-support"]
 
 [[example]]
 name = "ssh-pkey-info"

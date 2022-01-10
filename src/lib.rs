@@ -41,7 +41,7 @@
    warnings                      ,
 )]
 
-#[cfg(feature = "yubikey_support")]
+#[cfg(feature = "yubikey-support")]
 #[macro_use]
 extern crate log;
 
@@ -62,7 +62,13 @@ pub mod utils;
 /// Functions for dealing with Yubikey signing.
 /// Also contains an SSH submodule containing helper functions to generate
 /// SSH encoded versions of it's normal functions.
-#[cfg(feature = "yubikey_support")]
+#[cfg(feature = "yubikey-support")]
 pub mod yubikey;
+
+/// Contains some helper functions for pulling SSH public keys from x509
+/// certificates and CSRs. Is enabled whenever yubikey_support is enabled
+/// because some functionality is currently shared.
+#[cfg(any(feature = "yubikey-support", feature = "x509-support"))]
+pub mod x509;
 
 pub use ssh::{Certificate, PublicKey, PrivateKey};
