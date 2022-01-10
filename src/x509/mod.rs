@@ -19,10 +19,7 @@ const OID_NIST_P384: &str = "1.3.132.0.34";
 pub fn extract_ssh_pubkey_from_x509_certificate(cert: &[u8]) -> Result<PublicKey, Error> {
     let parsed_cert = match x509_parser::parse_x509_certificate(&cert) {
         Ok((_, c)) => c,
-        Err(e) => {
-            error!("Parsing Error: {:?}", e);
-            return Err(Error::ParsingError)
-        }
+        Err(_) => return Err(Error::ParsingError)
     };
     let pki = &parsed_cert.tbs_certificate.subject_pki;
     convert_x509_pki_to_pubkey(pki)
@@ -33,10 +30,7 @@ pub fn extract_ssh_pubkey_from_x509_certificate(cert: &[u8]) -> Result<PublicKey
 pub fn extract_ssh_pubkey_from_x509_csr(csr: &[u8]) -> Result<PublicKey, Error> {
     let parsed_csr = match x509_parser::certification_request::X509CertificationRequest::from_der(&csr) {
         Ok((_, csr)) => csr,
-        Err(e) => {
-            error!("Parsing Error: {:?}", e);
-            return Err(Error::ParsingError)
-        }
+        Err(_) => return Err(Error::ParsingError)
     };
     let pki = &parsed_csr.certification_request_info.subject_pki;
     convert_x509_pki_to_pubkey(pki)
@@ -45,7 +39,6 @@ pub fn extract_ssh_pubkey_from_x509_csr(csr: &[u8]) -> Result<PublicKey, Error> 
 fn convert_x509_pki_to_pubkey(pki: &x509_parser::x509::SubjectPublicKeyInfo<'_>) -> Result<PublicKey, Error> {
     return match pki.algorithm.algorithm.to_string().as_str() {
         OID_RSA_ENCRYPTION => {
-            error!("RSA keys are not yet supported");
             Err(Error::Unsupported)
         },
         OID_EC_PUBLIC_KEY => {
