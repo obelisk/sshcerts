@@ -65,4 +65,10 @@ pub mod utils;
 #[cfg(feature = "yubikey_support")]
 pub mod yubikey;
 
+/// Contains some helper functions for pulling SSH public keys from x509
+/// certificates and CSRs. Is enabled whenever yubikey_support is enabled
+/// because some functionality is currently shared.
+#[cfg(any(feature = "yubikey_support", feature = "x509"))]
+pub mod x509;
+
 pub use ssh::{Certificate, PublicKey, PrivateKey};

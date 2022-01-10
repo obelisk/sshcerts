@@ -18,6 +18,7 @@ pub enum Error {
     /// The provided data was not a certificate
     NotCertificate,
     /// The requested signature or key was incompatible with what was previously specified
+    /// or an x509 certificate contains a public key that is not compatible with SSH.
     KeyTypeMismatch,
     /// The certificate is not signed correctly and invalid
     CertificateInvalidSignature,
@@ -32,8 +33,14 @@ pub enum Error {
     /// The curve in an ECC public/private key/signature is unknown
     UnknownCurve(String),
     /// An error occured in the yubikey module
-    #[cfg(feature = "yubikey")]
+    #[cfg(feature = "yubikey_support")]
     YubikeyError(crate::yubikey::Error),
+    /// A generic parsing error which occurs whenever data sent does not match the
+    /// expected format
+    ParsingError,
+    /// This occurs when you try to use a feature that could technically work
+    /// but is currently unimplemented.
+    Unsupported,
 }
 
 impl fmt::Display for Error {
@@ -53,8 +60,10 @@ impl fmt::Display for Error {
             Error::EncryptedPrivateKeyNotSupported => write!(f, "This method of private key encryption is not supported or sshcerts was not compiled with encrypted private key support"),
             Error::UnknownKeyType(ref v) => write!(f, "Unknown key type {}", v),
             Error::UnknownCurve(ref v) => write!(f, "Unknown curve {}", v),
-            #[cfg(feature = "yubikey")]
-            Error::YubikeyError(ref e) => write!(f, "{}", e), 
+            #[cfg(feature = "yubikey_support")]
+            Error::YubikeyError(ref e) => write!(f, "{}", e),
+            Error::ParsingError => write!(f, "Could not parse the data provided"),
+            Error::Unsupported => write!(f, "Functionality either not implemented or cannot be technically supported"),
         }
     }
 }
