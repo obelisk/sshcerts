@@ -78,7 +78,7 @@ impl From<Extensions> for HashMap<String, String> {
 }
 
 /// Type that encapsulates the normal usage of the extensions field.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Extensions {
     /// Contains the five standard extensions: agent-forwarding, port-forwarding, pty, user-rc, X11-forwarding
     Standard,
@@ -89,7 +89,7 @@ pub enum Extensions {
 /// Type that encapsulates the normal usage of the critical options field.
 /// I used a structure instead of an Option for consistency and possible future
 /// expansion into a ForceCommand type.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum CriticalOptions {
     /// Don't use any critical options
     None,
