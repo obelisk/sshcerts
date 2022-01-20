@@ -752,3 +752,69 @@ fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
     // Check CA fields
     assert_eq!(user_cert.signature_key.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
 }
+
+#[test]
+fn create_and_reparse_sign_parse_verify_ed25519ca_chained_method_invocation() {
+    let privkey = concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
+        "QyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FAAAAJiT9ajkk/Wo\n",
+        "5AAAAAtzc2gtZWQyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FA\n",
+        "AAAED6HgUU3Ps5TVdFCVO8uTpbfVdg3JBxnOz3DIWO1u1Xbc0JfpeVmfRBExbXgAFlrkZl\n",
+        "zrpT5ywSIqyCRnAYrT4UAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAg==\n",
+        "-----END OPENSSH PRIVATE KEY-----");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+
+    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
+    assert!(ssh_pubkey.is_ok());
+
+    let ssh_pubkey = ssh_pubkey.unwrap();
+    let pubkey = privkey.pubkey.clone();
+
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
+        .serial(0xFEFEFEFEFEFEFEFE)
+        .key_id("key_id")
+        .key_id("overwrite_key_id")
+        .principal("obelisk")
+        .principal("mitchell")
+        .valid_after(0)
+        .valid_before(0xFFFFFFFFFFFFFFFF)
+        .set_critical_options(CriticalOptions::None)
+        .critical_option("test", "test_value")
+        .set_extensions(Extensions::Standard)
+        .extension("extension_test", "extension_test_value")
+        .sign(create_signer(privkey));
+
+    assert!(user_cert.is_ok());
+
+    // Check user fields
+    let user_cert = user_cert.unwrap();
+    assert_eq!(user_cert.key.fingerprint().hash, "uzOtIxALSM+OuY+LmdU1xFLzY4zBvom/1Etb385O0ek");
+    assert_eq!(user_cert.key_id, String::from("overwrite_key_id"));
+    assert_eq!(user_cert.principals, vec!["obelisk", "mitchell"]);
+    assert_eq!(user_cert.critical_options.len(), 1);
+    assert!(user_cert.critical_options.get("test").is_some());
+    assert_eq!(user_cert.critical_options.get("test").unwrap(), &String::from("test_value"));
+    assert_eq!(user_cert.extensions.len(), 6);
+    assert!(user_cert.extensions.get("extension_test").is_some());
+    assert_eq!(user_cert.extensions.get("extension_test").unwrap(), &String::from("extension_test_value"));
+    assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
+    assert_eq!(user_cert.valid_after, 0);
+    assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
+
+    // Check CA fields
+    assert_eq!(user_cert.signature_key.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
+
+    // Check that we can correctly reparse the serialized certificate
+    let cert = format!("{}", user_cert);
+
+    let cert = Certificate::from_string(&cert);
+    assert!(cert.is_ok());
+}
