@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.8.1"
+version = "0.8.2"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -65,6 +65,10 @@ required-features = ["yubikey-support"]
 [[example]]
 name = "ssh-pkey-info"
 required-features = ["encrypted-keys"]
+
+[[example]]
+name = "into-ssh-pubkey"
+required-features = ["x509-support"]
 
 [[test]]
 name = "privkey-encrypted"
