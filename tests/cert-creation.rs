@@ -3,8 +3,6 @@ use ring::{rand, signature};
 use sshcerts::ssh::{Certificate, CertType, CriticalOptions, Extensions, PrivateKey, PublicKey};
 use sshcerts::ssh::{SigningFunction, create_signer};
 
-use sshcerts::utils::signature_convert_asn1_ecdsa_to_ssh;
-
 // Constants available for multiple tests
 const ECDSA256_CA_PRIVATE_KEY: &str = concat!(
     "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02",
@@ -39,14 +37,8 @@ fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let pkcs8_bytes = hex::decode(ECDSA256_CA_PRIVATE_KEY).unwrap();
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
     let rng = rand::SystemRandom::new();
-    let signature = key_pair.sign(&rng, buf).unwrap();
-
-    let sig_type = "ecdsa-sha2-nistp256";
-    let mut encoded: Vec<u8> = (sig_type.len() as u32).to_be_bytes().to_vec();
-    encoded.extend_from_slice(sig_type.as_bytes());
-    encoded.extend(signature_convert_asn1_ecdsa_to_ssh(&signature.as_ref()).unwrap());
-
-    Some(encoded)
+    let signature = key_pair.sign(&rng, buf).unwrap().as_ref().to_vec();
+    Some(signature)
 }
 
 // Test signing and parsing work together
@@ -54,15 +46,8 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
     let pkcs8_bytes = hex::decode(ECDSA384_CA_PRIVATE_KEY).unwrap();
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P384_SHA384_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
-
-    let signature = key_pair.sign(&rng, buf).unwrap();
-
-    let sig_type = "ecdsa-sha2-nistp384";
-    let mut encoded: Vec<u8> = (sig_type.len() as u32).to_be_bytes().to_vec();
-    encoded.extend_from_slice(sig_type.as_bytes());
-    encoded.extend(signature_convert_asn1_ecdsa_to_ssh(&signature.as_ref()).unwrap());
-
-    Some(encoded)
+    let signature = key_pair.sign(&rng, buf).unwrap().as_ref().to_vec();
+    Some(signature)
 }
 
 #[test]

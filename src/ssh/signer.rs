@@ -1,5 +1,5 @@
 use crate::ssh::{CurveKind, PrivateKey, PrivateKeyKind, PublicKeyKind};
-use crate::utils::signature_convert_asn1_ecdsa_to_ssh;
+//use crate::utils::signature_convert_asn1_ecdsa_to_ssh;
 
 use ring::{rand, signature};
 
@@ -44,7 +44,7 @@ impl Into<Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync>> for PrivateKey {
 pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
 
-    let (signature, sig_type) = match &privkey.kind {
+    match &privkey.kind {
         #[cfg(feature = "rsa-signing")]
         PrivateKeyKind::Rsa(key) => {
             let asn_privkey = match simple_asn1::der_encode(key) {
@@ -64,14 +64,12 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
                 return None
             }
 
-            let mut encoding = (signature.len() as u32).to_be_bytes().to_vec();
-            encoding.extend(signature);
-            (encoding, "rsa-sha2-512")
+            Some(signature)
         },
         #[cfg(not(feature = "rsa-signing"))]
         PrivateKeyKind::Rsa(_) => return None,
         PrivateKeyKind::Ecdsa(key) => {
-            let (alg, alg_name) = match key.curve.kind {
+            let (alg, _alg_name) = match key.curve.kind {
                 CurveKind::Nistp256 => (&signature::ECDSA_P256_SHA256_ASN1_SIGNING, "ecdsa-sha2-nistp256"),
                 CurveKind::Nistp384 => (&signature::ECDSA_P384_SHA384_ASN1_SIGNING, "ecdsa-sha2-nistp384"),
                 CurveKind::Nistp521 => return None
@@ -88,14 +86,9 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
                 Err(_) => return None,
             };
 
-            let signature = match key_pair.sign(&rng, &buf) {
-                Ok(sig) => signature_convert_asn1_ecdsa_to_ssh(&sig.as_ref()),
-                Err(_) => return None,
-            };
-
-            match signature {
-                Some(sig) => (sig, alg_name),
-                None => return None,
+            match key_pair.sign(&rng, &buf) {
+                Ok(sig) => Some(sig.as_ref().to_vec()),
+                Err(_) => None,
             }
         },
         PrivateKeyKind::Ed25519(key) => {
@@ -109,17 +102,7 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
                 Err(_) => return None,
             };
 
-            let signature = key_pair.sign(&buf).as_ref().to_vec();
-            let mut encoding = (signature.len() as u32).to_be_bytes().to_vec();
-            encoding.extend(signature);
-
-            (encoding, "ssh-ed25519")
+            Some(key_pair.sign(&buf).as_ref().to_vec())
         },
-    };
-
-    let mut encoded: Vec<u8> = (sig_type.len() as u32).to_be_bytes().to_vec();
-    encoded.extend_from_slice(sig_type.as_bytes());
-    encoded.extend(signature);
-
-    Some(encoded)
+    }
 }

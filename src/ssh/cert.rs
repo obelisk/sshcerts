@@ -457,23 +457,28 @@ impl Certificate {
     /// returns an error if the signature provided is not valid for the
     /// certificate under the set CA key.
     pub fn add_signature(mut self, signature: &[u8]) -> Result<Self> {
-        let signature_type_name = &self.signature_key.key_type.name.clone();
         let mut writer = super::Writer::new();
-        writer.write_string(signature_type_name);
 
         match &self.signature_key.kind {
             PublicKeyKind::Ecdsa(_) => {
+                writer.write_string(&self.signature_key.key_type.name);
                 if let Some(signature) = crate::utils::signature_convert_asn1_ecdsa_to_ssh(signature) {
                     writer.write_bytes(&signature);
                 } else {
                     return Err(Error::SigningError);
                 }
             },
+            PublicKeyKind::Rsa(_) => {
+                writer.write_string("rsa-sha2-512");
+                writer.write_bytes(&signature);
+            },
             _ => {
+                writer.write_string(&self.signature_key.key_type.name);
                 writer.write_bytes(&signature);
             }
         };
         
+        let signature = writer.into_bytes();
 
         let mut tbs = self.tbs_certificate();
         if let Err(e) = verify_signature(&signature, &tbs, &self.signature_key) {
@@ -491,24 +496,15 @@ impl Certificate {
     }
 
     /// Take the certificate settings and generate a valid signature using the provided signer function
-    pub fn sign(mut self, signer: impl FnOnce(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
-        let mut tbs_certificate = self.tbs_certificate();
+    pub fn sign(self, signer: impl FnOnce(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
+        let tbs_certificate = self.tbs_certificate();
 
         // Sign the data and write it to the cert
         let signature =  match signer(&tbs_certificate) {
             Some(sig) => sig,
             None => return Err(Error::SigningError),
         };
-
-        if let Err(e) = verify_signature(&signature, &tbs_certificate, &self.signature_key) {
-            return Err(e)
-        }
-
-        tbs_certificate.extend_from_slice(&signature);
-
-        self.signature = signature;
-        self.serialized = tbs_certificate;
-        Ok(self)
+        self.add_signature(&signature)
     }
 }
 
