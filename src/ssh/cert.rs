@@ -486,8 +486,11 @@ impl Certificate {
             return Err(e)
         }
 
+        let mut wrapped_writer = super::Writer::new();
+        wrapped_writer.write_bytes(&signature);
+
         // After this it's no longer "tbs"
-        tbs.extend_from_slice(&signature);
+        tbs.extend_from_slice(&wrapped_writer.into_bytes());
 
         self.signature = signature.to_vec();
         self.serialized = tbs;

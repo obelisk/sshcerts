@@ -71,4 +71,4 @@ pub mod yubikey;
 #[cfg(any(feature = "yubikey-support", feature = "x509-support"))]
 pub mod x509;
 
-pub use ssh::{Certificate, PublicKey, PrivateKey};
+pub use ssh::{CertType, Certificate, PublicKey, PrivateKey, CriticalOptions, Extensions};

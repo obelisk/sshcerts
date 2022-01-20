@@ -63,6 +63,10 @@ name = "yk-provision"
 required-features = ["yubikey-support"]
 
 [[example]]
+name = "sign-with-yubikey"
+required-features = ["yubikey-support"]
+
+[[example]]
 name = "ssh-pkey-info"
 required-features = ["encrypted-keys"]
 
