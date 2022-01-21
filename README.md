@@ -1,7 +1,13 @@
 # sshcerts
-sshcerts (formerly rustica-keys) is a library for parsing, creating, and signing OpenSSH certificates. It was originally based on `rust-sshkeys` by @dnaeon but has been significantly expanded to offer a greater writer API, certificate signature validation, issuing new certificates, and more.
+sshcerts (formerly rustica-keys) is a library for parsing, creating, and signing OpenSSH certificates. It was originally based on `rust-sshkeys` by @dnaeon but has been significantly expanded to offer a greater writer API, certificate signature validation, issuing new certificates, parsing encrypted private keys, and more.
 
-This library contains other optional functionality for Yubikey key management. The Yubikey management module can be used to provision slot with keys that can never leave the device and SSH module for SSH signatures backed by a Yubikey. To enable this functionality use the feature `yubikey`.
+This library contains other optional functionality for Yubikey key management. The Yubikey management module can be used to provision slot with keys that can never leave the device and SSH module for SSH signatures backed by a Yubikey. To enable this functionality use the feature `yubikey-support`.
+
+This library attempts to keep as few dependencies as possible so many features are gated behind features. For example, RSA certificates can be read in and verified but not created unless the `rsa-signing` feature is used.
+
+Support for encrypted private keys in available with the `encrypted-keys` features.
+
+Finally there is the x509 module for doing some strange things like getting the SSH public key from an x509 certificate. This is automatically included when using the Yubikey feature but can be enabled separately with `x509-support`
 
 ## Builds
 ![macOS and Ubuntu Builds](https://github.com/obelisk/sshcerts/workflows/macOS%20+%20Ubuntu/badge.svg)
