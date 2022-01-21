@@ -17,9 +17,12 @@ use ring::signature::{
 use ring::rand::{SystemRandom, SecureRandom};
 
 use crate::{error::Error, Result};
-use super::keytype::KeyType;
-use super::pubkey::{PublicKey, PublicKeyKind};
-use super::reader::Reader;
+use super::{
+    keytype::KeyType,
+    pubkey::{PublicKey, PublicKeyKind},
+    reader::Reader,
+    writer::Writer
+};
 
 use std::convert::TryFrom;
 
@@ -408,7 +411,7 @@ impl Certificate {
 
     /// Get the certificate data without the signature field at the end.
     pub fn tbs_certificate(&self) -> Vec<u8> {
-        let mut writer = super::Writer::new();
+        let mut writer = Writer::new();
         let kt_name = format!("{}-cert-v01@openssh.com", self.key.key_type.name);
         // Write the cert type
         writer.write_string(kt_name.as_str());
@@ -457,7 +460,7 @@ impl Certificate {
     /// returns an error if the signature provided is not valid for the
     /// certificate under the set CA key.
     pub fn add_signature(mut self, signature: &[u8]) -> Result<Self> {
-        let mut writer = super::Writer::new();
+        let mut writer = Writer::new();
 
         match &self.signature_key.kind {
             PublicKeyKind::Ecdsa(_) => {
@@ -486,7 +489,7 @@ impl Certificate {
             return Err(e)
         }
 
-        let mut wrapped_writer = super::Writer::new();
+        let mut wrapped_writer = Writer::new();
         wrapped_writer.write_bytes(&signature);
 
         // After this it's no longer "tbs"
