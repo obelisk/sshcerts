@@ -41,10 +41,6 @@
    warnings                      ,
 )]
 
-#[cfg(feature = "yubikey-support")]
-#[macro_use]
-extern crate log;
-
 /// The `sshcerts` error enum
 pub mod error;
 

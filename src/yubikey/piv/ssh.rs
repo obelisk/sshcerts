@@ -48,13 +48,7 @@ impl super::Yubikey {
             _ => return Err(Error::Unsupported),
         };
 
-        match self.sign_data(&buf, alg, slot) {
-            Ok(signature) => Ok(signature),
-            Err(e) => {
-                error!("SSH Cert Signer Error: {:?}", e);
-                Err(e)
-            },
-        }
+        self.sign_data(&buf, alg, slot)
     }
 
 }

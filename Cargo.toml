@@ -18,7 +18,7 @@ all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support"]
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
-yubikey-support = ["der-parser", "log", "rcgen", "x509", "x509-parser", "yubikey"]
+yubikey-support = ["der-parser", "rcgen", "x509", "x509-parser", "yubikey"]
 
 [dependencies]
 base64 = "0.13"
@@ -29,7 +29,6 @@ simple_asn1 = {version = "0.5", optional = true}
 num-bigint = {version = "0.4", optional = true}
 
 # Dependencies for yubikey-support
-log = {version = "0.4", optional = true}
 yubikey = {version = "0.5", features = ["untested"], optional = true}
 lexical-core = {version = ">0.7.4", optional = true}
 rcgen = {version = "0.8", optional = true}
