@@ -1,5 +1,4 @@
 use crate::ssh::{CurveKind, PrivateKey, PrivateKeyKind, PublicKeyKind};
-//use crate::utils::signature_convert_asn1_ecdsa_to_ssh;
 
 use ring::{rand, signature};
 
@@ -69,9 +68,9 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
         #[cfg(not(feature = "rsa-signing"))]
         PrivateKeyKind::Rsa(_) => return None,
         PrivateKeyKind::Ecdsa(key) => {
-            let (alg, _alg_name) = match key.curve.kind {
-                CurveKind::Nistp256 => (&signature::ECDSA_P256_SHA256_ASN1_SIGNING, "ecdsa-sha2-nistp256"),
-                CurveKind::Nistp384 => (&signature::ECDSA_P384_SHA384_ASN1_SIGNING, "ecdsa-sha2-nistp384"),
+            let alg = match key.curve.kind {
+                CurveKind::Nistp256 => &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                CurveKind::Nistp384 => &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
                 CurveKind::Nistp521 => return None
             };
 

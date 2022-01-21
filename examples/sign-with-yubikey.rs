@@ -4,10 +4,8 @@ use clap::{App, Arg};
 
 use sshcerts::*;
 use sshcerts::ssh::SigningFunction;
-use sshcerts::yubikey::piv::Yubikey;
-use sshcerts::yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId, PinPolicy, TouchPolicy};
+use sshcerts::yubikey::piv::{SlotId, Yubikey};
 
-use std::fs::File;
 use std::convert::TryFrom;
 
 fn create_signer(slot: SlotId) -> SigningFunction {
