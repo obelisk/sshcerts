@@ -299,10 +299,10 @@ impl Certificate {
     ///        .set_extensions(Extensions::Standard)
     ///        .sign(test_signer);
     /// 
-    ///        match cert {
-    ///            Ok(cert) => println!("{}", cert),
-    ///            Err(e) => println!("Encountered an error while creating certificate: {}", e),
-    ///        }
+    ///     match cert {
+    ///       Ok(cert) => println!("{}", cert),
+    ///       Err(e) => println!("Encountered an error while creating certificate: {}", e),
+    ///     }
     /// # }
     /// ```
     pub fn builder(pubkey: &PublicKey, cert_type: CertType, signing_key: &PublicKey) -> Result<Certificate> {
