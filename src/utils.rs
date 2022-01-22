@@ -29,18 +29,15 @@ pub fn asn_der_to_r_s(buf: &[u8]) -> Option<(&[u8], &[u8])> {
 /// This function will take an ASN1 encoded ECDSA signature and return
 /// an SSH Signature blob
 pub fn signature_convert_asn1_ecdsa_to_ssh(signature: &[u8]) -> Option<Vec<u8>> {
-    let mut encoded = vec![];
     let (r,s) = match asn_der_to_r_s(&signature) {
         Some((r,s)) => (r, s),
         None => return None,
     };
-    let mut sig_encoding = vec![];
+    let mut sig_encoding: Vec<u8> = Vec::new();
     sig_encoding.extend_from_slice(&(r.len() as u32).to_be_bytes());
     sig_encoding.extend_from_slice(r);
     sig_encoding.extend_from_slice(&(s.len() as u32).to_be_bytes());
     sig_encoding.extend_from_slice(s);
 
-    encoded.extend_from_slice(&(sig_encoding.len() as u32).to_be_bytes());
-    encoded.extend(sig_encoding);
-    Some(encoded)
+    Some(sig_encoding)
 }

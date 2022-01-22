@@ -5,7 +5,6 @@ use crate::ssh::{
     PublicKeyKind,
 };
 
-use crate::utils::signature_convert_asn1_ecdsa_to_ssh;
 use crate::x509::extract_ssh_pubkey_from_x509_certificate;
 
 use super::{Error, Result};
@@ -44,29 +43,12 @@ impl super::Yubikey {
     /// Sign the provided buffer of data and return it in an SSH Certificiate
     /// signature formatted byte vector. 
     pub fn ssh_cert_signer(&mut self, buf: &[u8], slot: &SlotId) -> Result<Vec<u8>> {
-        let (alg, sig_type) = match self.get_ssh_key_type(slot) {
-            Ok(AlgorithmId::EccP256) => (AlgorithmId::EccP256, "ecdsa-sha2-nistp256"),
-            Ok(AlgorithmId::EccP384) => (AlgorithmId::EccP384, "ecdsa-sha2-nistp384"),
+        let alg = match self.get_ssh_key_type(slot) {
+            Ok(x) => x,
             _ => return Err(Error::Unsupported),
         };
 
-        match self.sign_data(&buf, alg, slot) {
-            Ok(signature) => {
-                let mut encoded: Vec<u8> = (sig_type.len() as u32).to_be_bytes().to_vec();
-                encoded.extend_from_slice(sig_type.as_bytes());
-                let sig_encoding = match signature_convert_asn1_ecdsa_to_ssh(&signature) {
-                    Some(se) => se,
-                    None => return Err(Error::InternalYubiKeyError(String::from("Could not convert signature type"))),
-                };
-
-                encoded.extend(sig_encoding);
-                Ok(encoded)
-            },
-            Err(e) => {
-                error!("SSH Cert Signer Error: {:?}", e);
-                Err(e)
-            },
-        }
+        self.sign_data(&buf, alg, slot)
     }
 
 }

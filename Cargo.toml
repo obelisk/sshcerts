@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.8.1"
+version = "0.9.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -18,7 +18,7 @@ all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support"]
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
-yubikey-support = ["der-parser", "log", "rcgen", "x509", "x509-parser", "yubikey"]
+yubikey-support = ["der-parser", "rcgen", "x509", "x509-parser", "yubikey"]
 
 [dependencies]
 base64 = "0.13"
@@ -28,17 +28,15 @@ ring = "0.16"
 simple_asn1 = {version = "0.5", optional = true}
 num-bigint = {version = "0.4", optional = true}
 
-# Dependencies for yubikey_support
-log = {version = "0.4", optional = true}
+# Dependencies for yubikey-support
 yubikey = {version = "0.5", features = ["untested"], optional = true}
-#yubikey = {path = "../yubikey.rs", features = ["untested"], optional = true}
 lexical-core = {version = ">0.7.4", optional = true}
 rcgen = {version = "0.8", optional = true}
 x509 = {version = "0.2", optional = true}
 x509-parser = {version = "0.11", features = ["verify"], optional = true}
 der-parser = {version = "5", optional = true}
 
-# Dependencies for encrypted keys
+# Dependencies for encrypted-keys
 aes = {version = "0.7", features = ["ctr"], optional = true}
 bcrypt-pbkdf = {version = "0.6", optional = true}
 ctr = {version = "0.8", optional = true}
@@ -63,10 +61,23 @@ name = "yk-provision"
 required-features = ["yubikey-support"]
 
 [[example]]
+name = "sign-with-yubikey"
+required-features = ["yubikey-support"]
+
+[[example]]
 name = "ssh-pkey-info"
 required-features = ["encrypted-keys"]
+
+[[example]]
+name = "into-ssh-pubkey"
+required-features = ["x509-support"]
 
 [[test]]
 name = "privkey-encrypted"
 path = "tests/privkey_encrypted.rs"
+required-features = ["encrypted-keys"]
+
+[[test]]
+name = "cert-creation-parse-rsa"
+path = "tests/cert-creation-parse-rsa.rs"
 required-features = ["encrypted-keys"]

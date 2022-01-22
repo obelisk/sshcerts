@@ -17,9 +17,12 @@ use ring::signature::{
 use ring::rand::{SystemRandom, SecureRandom};
 
 use crate::{error::Error, Result};
-use super::keytype::KeyType;
-use super::pubkey::{PublicKey, PublicKeyKind};
-use super::reader::Reader;
+use super::{
+    keytype::KeyType,
+    pubkey::{PublicKey, PublicKeyKind},
+    reader::Reader,
+    writer::Writer
+};
 
 use std::convert::TryFrom;
 
@@ -296,10 +299,10 @@ impl Certificate {
     ///        .set_extensions(Extensions::Standard)
     ///        .sign(test_signer);
     /// 
-    ///        match cert {
-    ///            Ok(cert) => println!("{}", cert),
-    ///            Err(e) => println!("Encountered an error while creating certificate: {}", e),
-    ///        }
+    ///     match cert {
+    ///       Ok(cert) => println!("{}", cert),
+    ///       Err(e) => println!("Encountered an error while creating certificate: {}", e),
+    ///     }
     /// # }
     /// ```
     pub fn builder(pubkey: &PublicKey, cert_type: CertType, signing_key: &PublicKey) -> Result<Certificate> {
@@ -406,9 +409,9 @@ impl Certificate {
         self
     }
 
-    /// Take the certificate settings and generate a valid signature using the provided signer function
-    pub fn sign(mut self, signer: impl FnOnce(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
-        let mut writer = super::Writer::new();
+    /// Get the certificate data without the signature field at the end.
+    pub fn tbs_certificate(&self) -> Vec<u8> {
+        let mut writer = Writer::new();
         let kt_name = format!("{}-cert-v01@openssh.com", self.key.key_type.name);
         // Write the cert type
         writer.write_string(kt_name.as_str());
@@ -449,23 +452,68 @@ impl Certificate {
         // Write the CA public key
         writer.write_bytes(&self.signature_key.encode());
 
-        // Sign the data and write it to the cert
-        let signature =  match signer(writer.as_bytes()) {
-            Some(sig) => sig,
-            None => return Err(Error::SigningError),
-        };
+        // Return the tbs certificate data
+        writer.as_bytes().to_vec()
+    }
 
-        if let Err(e) = verify_signature(&signature, &writer.as_bytes(), &self.signature_key) {
+    /// Attempts to add the given signature to the certificate. This function
+    /// returns an error if the signature provided is not valid for the
+    /// certificate under the set CA key.
+    pub fn add_signature(mut self, signature: &[u8]) -> Result<Self> {
+        let mut writer = Writer::new();
+
+        match &self.signature_key.kind {
+            PublicKeyKind::Ecdsa(_) => {
+                writer.write_string(&self.signature_key.key_type.name);
+                if let Some(signature) = crate::utils::signature_convert_asn1_ecdsa_to_ssh(signature) {
+                    writer.write_bytes(&signature);
+                } else {
+                    return Err(Error::SigningError);
+                }
+            },
+            PublicKeyKind::Rsa(_) => {
+                writer.write_string("rsa-sha2-512");
+                writer.write_bytes(&signature);
+            },
+            _ => {
+                writer.write_string(&self.signature_key.key_type.name);
+                writer.write_bytes(&signature);
+            }
+        };
+        
+        let signature = writer.into_bytes();
+
+        let mut tbs = self.tbs_certificate();
+        if let Err(e) = verify_signature(&signature, &tbs, &self.signature_key) {
+            // Could not verify the certificate
             return Err(e)
         }
 
-        writer.write_bytes(&signature);
+        let mut wrapped_writer = Writer::new();
+        wrapped_writer.write_bytes(&signature);
 
-        self.signature = signature;
-        self.serialized = writer.into_bytes();
+        // After this it's no longer "tbs"
+        tbs.extend_from_slice(&wrapped_writer.into_bytes());
+
+        self.signature = signature.to_vec();
+        self.serialized = tbs;
+
         Ok(self)
     }
+
+    /// Take the certificate settings and generate a valid signature using the provided signer function
+    pub fn sign(self, signer: impl FnOnce(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
+        let tbs_certificate = self.tbs_certificate();
+
+        // Sign the data and write it to the cert
+        let signature =  match signer(&tbs_certificate) {
+            Some(sig) => sig,
+            None => return Err(Error::SigningError),
+        };
+        self.add_signature(&signature)
+    }
 }
+
 
 // Reads `option` values from a byte sequence.
 // The `option` values are used to represent the `critical options` and
@@ -525,10 +573,8 @@ fn read_principals(buf: &[u8]) -> Result<Vec<String>> {
                 _ => return Err(e),
             },
         };
-
         items.push(principal);
     }
-
     Ok(items)
 }
 
@@ -569,7 +615,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             // Read the S value
             let s_bytes = reader.read_mpint()?;
 
-            // *_bytes are user controlled so ensure maliciously signatures
+            // (r/s)_bytes are user controlled so ensure maliciously signatures
             // can't cause integer underflow.
             if r_bytes.len() > len || s_bytes.len() > len {
                 return Err(Error::InvalidFormat);
