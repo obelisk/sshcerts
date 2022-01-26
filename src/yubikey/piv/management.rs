@@ -133,14 +133,14 @@ impl super::Yubikey {
     /// Generate CSR for slot
     pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str,) -> Result<Vec<u8>> {
         let mut params = rcgen::CertificateParams::new(vec![]);
-        params.alg = match self.configured(&slot)? {
+        params.alg = match self.configured(slot)? {
             PublicKeyInfo::EcP256(_) => &rcgen::PKCS_ECDSA_P256_SHA256,
             PublicKeyInfo::EcP384(_) => &rcgen::PKCS_ECDSA_P384_SHA384,
             _ => return Err(Error::Unsupported),
         };
         params.distinguished_name.push(rcgen::DnType::CommonName, common_name.to_string());
 
-        let csr_signer = CSRSigner::new(self.yk.serial().into(), slot.clone());
+        let csr_signer = CSRSigner::new(self.yk.serial().into(), *slot);
         params.key_pair = Some(rcgen::KeyPair::from_remote(Box::new(csr_signer)).unwrap());
 
         let csr = rcgen::Certificate::from_params(params).unwrap();

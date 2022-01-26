@@ -30,11 +30,11 @@ pub fn create_signer(privkey: PrivateKey) -> Box<dyn Fn(&[u8]) -> Option<Vec<u8>
 
 /// This is in this file to prevent a circular dependency between PrivateKey
 /// and the signer module.
-impl Into<Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync>> for PrivateKey {
-    fn into(self) -> Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync> {
+impl From<PrivateKey> for Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync> {
+    fn from(priv_key: PrivateKey) -> Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync> {
         Box::new(move |buf: &[u8]| {
-            ssh_cert_signer(buf, &self)
-        })
+            ssh_cert_signer(buf, &priv_key)
+        }) 
     }
 }
 
@@ -59,9 +59,7 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
             let rng = rand::SystemRandom::new();
             let mut signature = vec![0; keypair.public_modulus_len()];
 
-            if let Err(_) = keypair.sign(&signature::RSA_PKCS1_SHA512, &rng, buf, &mut signature) {
-                return None
-            }
+            keypair.sign(&signature::RSA_PKCS1_SHA512, &rng, buf, &mut signature).ok()?;
 
             Some(signature)
         },
@@ -80,12 +78,12 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
             };
 
             let key = if key.key[0] == 0x0_u8 {&key.key[1..]} else {&key.key};
-            let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(alg, &key, &pubkey) {
+            let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(alg, key, pubkey) {
                 Ok(kp) => kp,
                 Err(_) => return None,
             };
 
-            match key_pair.sign(&rng, &buf) {
+            match key_pair.sign(&rng, buf) {
                 Ok(sig) => Some(sig.as_ref().to_vec()),
                 Err(_) => None,
             }
@@ -101,7 +99,7 @@ pub fn ssh_cert_signer(buf: &[u8], privkey: &PrivateKey) -> Option<Vec<u8>> {
                 Err(_) => return None,
             };
 
-            Some(key_pair.sign(&buf).as_ref().to_vec())
+            Some(key_pair.sign(buf).as_ref().to_vec())
         },
     }
 }

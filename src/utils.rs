@@ -29,7 +29,7 @@ pub fn asn_der_to_r_s(buf: &[u8]) -> Option<(&[u8], &[u8])> {
 /// This function will take an ASN1 encoded ECDSA signature and return
 /// an SSH Signature blob
 pub fn signature_convert_asn1_ecdsa_to_ssh(signature: &[u8]) -> Option<Vec<u8>> {
-    let (r,s) = match asn_der_to_r_s(&signature) {
+    let (r,s) = match asn_der_to_r_s(signature) {
         Some((r,s)) => (r, s),
         None => return None,
     };

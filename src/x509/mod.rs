@@ -83,7 +83,7 @@ pub fn der_encoding_to_ssh_public_key(key: &[u8]) -> Result<PublicKey, Error> {
 /// This function is used to extract an SSH public key from an x509
 /// certificate
 pub fn extract_ssh_pubkey_from_x509_certificate(cert: &[u8]) -> Result<PublicKey, Error> {
-    let parsed_cert = match x509_parser::parse_x509_certificate(&cert) {
+    let parsed_cert = match x509_parser::parse_x509_certificate(cert) {
         Ok((_, c)) => c,
         Err(_) => return Err(Error::ParsingError)
     };
@@ -94,7 +94,7 @@ pub fn extract_ssh_pubkey_from_x509_certificate(cert: &[u8]) -> Result<PublicKey
 /// This function is used to extract an SSH public key from an x509
 /// certificate signing request
 pub fn extract_ssh_pubkey_from_x509_csr(csr: &[u8]) -> Result<PublicKey, Error> {
-    let parsed_csr = match x509_parser::certification_request::X509CertificationRequest::from_der(&csr) {
+    let parsed_csr = match x509_parser::certification_request::X509CertificationRequest::from_der(csr) {
         Ok((_, csr)) => csr,
         Err(_) => return Err(Error::ParsingError)
     };

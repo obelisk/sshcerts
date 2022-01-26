@@ -205,17 +205,15 @@ impl Certificate {
         let mut iter = s.split_whitespace();
 
         let kt_name = iter
-            .next()
-            .ok_or_else(|| Error::InvalidFormat)?;
+            .next().ok_or(Error::InvalidFormat)?;
 
-        let key_type = KeyType::from_name(&kt_name)?;
+        let key_type = KeyType::from_name(kt_name)?;
         if !key_type.is_cert {
             return Err(Error::NotCertificate);
         }
 
         let data = iter
-            .next()
-            .ok_or_else(|| Error::InvalidFormat)?;
+            .next().ok_or(Error::InvalidFormat)?;
 
         let comment = iter.next().map(String::from);
         let decoded = base64::decode(&data)?;
@@ -228,7 +226,7 @@ impl Certificate {
         }
 
         let nonce = reader.read_bytes()?;
-        let key = PublicKey::from_reader(&kt_name, &mut reader)?;
+        let key = PublicKey::from_reader(kt_name, &mut reader)?;
         let serial = reader.read_u64()?;
 
         let cert_type = match reader.read_u32()? {
@@ -464,7 +462,7 @@ impl Certificate {
 
         match &self.signature_key.kind {
             PublicKeyKind::Ecdsa(_) => {
-                writer.write_string(&self.signature_key.key_type.name);
+                writer.write_string(self.signature_key.key_type.name);
                 if let Some(signature) = crate::utils::signature_convert_asn1_ecdsa_to_ssh(signature) {
                     writer.write_bytes(&signature);
                 } else {
@@ -473,11 +471,11 @@ impl Certificate {
             },
             PublicKeyKind::Rsa(_) => {
                 writer.write_string("rsa-sha2-512");
-                writer.write_bytes(&signature);
+                writer.write_bytes(signature);
             },
             _ => {
-                writer.write_string(&self.signature_key.key_type.name);
-                writer.write_bytes(&signature);
+                writer.write_string(self.signature_key.key_type.name);
+                writer.write_bytes(signature);
             }
         };
         
@@ -633,7 +631,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             let mut sig = r;
             sig.extend(s);
 
-            UnparsedPublicKey::new(alg, &key.key).verify(&signed_bytes, &sig)?;
+            UnparsedPublicKey::new(alg, &key.key).verify(signed_bytes, &sig)?;
             Ok(signature_buf.to_vec())
         },
         PublicKeyKind::Rsa(key) => {
@@ -645,14 +643,14 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             };
             let signature = reader.read_bytes()?;
             let public_key = RsaPublicKeyComponents { n: &key.n, e: &key.e };
-            public_key.verify(alg, &signed_bytes, &signature)?;
+            public_key.verify(alg, signed_bytes, &signature)?;
             Ok(signature_buf.to_vec())
         },
         PublicKeyKind::Ed25519(key) => {
             let alg = &ED25519;
             let signature = reader.read_bytes()?;
             let peer_public_key = UnparsedPublicKey::new(alg, &key.key);
-            peer_public_key.verify(&signed_bytes, &signature)?;
+            peer_public_key.verify(signed_bytes, &signature)?;
             Ok(signature_buf.to_vec())
         },
     }

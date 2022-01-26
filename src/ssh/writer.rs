@@ -36,7 +36,7 @@ impl Writer {
         let size = val.len() as u32;
         let mut buf = size.to_be_bytes().to_vec();
         self.inner.append(&mut buf);
-        self.inner.extend_from_slice(&val);
+        self.inner.extend_from_slice(val);
     }
 
     /// Writes a `string` value to the underlying byte sequence.

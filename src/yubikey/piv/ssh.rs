@@ -48,7 +48,7 @@ impl super::Yubikey {
             _ => return Err(Error::Unsupported),
         };
 
-        self.sign_data(&buf, alg, slot)
+        self.sign_data(buf, alg, slot)
     }
 
 }
