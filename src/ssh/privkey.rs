@@ -119,8 +119,8 @@ impl ToASN1 for RsaPrivateKey {
                 vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.d))],
                 vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.p))],
                 vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.q))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.exp.as_ref().unwrap()))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.exq.as_ref().unwrap()))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, self.exp.as_ref().unwrap()))],
+                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, self.exq.as_ref().unwrap()))],
                 vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.coefficient))],
                 Vec::new(),
             ]
@@ -168,8 +168,8 @@ fn read_private_key(reader: &mut Reader<'_>) -> Result<PrivateKey> {
                     coefficient,
                     p,
                     q,
-                    exp: exp,
-                    exq: exq,
+                    exp,
+                    exq,
                 }
             ),
                 PublicKey {
@@ -230,7 +230,7 @@ fn read_private_key(reader: &mut Reader<'_>) -> Result<PrivateKey> {
         key_type: kt,
         kind,
         pubkey,
-        comment: if comment.len() == 0 {None} else {Some(comment)},
+        comment: if comment.is_empty() {None} else {Some(comment)},
     })
 }
 
@@ -330,13 +330,13 @@ impl PrivateKey {
                 let salt = enc_reader.read_bytes()?;
                 let rounds = enc_reader.read_u32()?;
                 let mut output = [0; 48];
-                if let Err(_) = bcrypt_pbkdf(passphrase.as_str(), &salt, rounds, &mut output) {
+                if bcrypt_pbkdf(passphrase.as_str(), &salt, rounds, &mut output).is_err() {
                     return Err(Error::InvalidFormat);
                 }
 
                 let mut cipher = Aes256Ctr::new(
-                    &GenericArray::from_slice(&output[..32]),
-                    &GenericArray::from_slice(&output[32..]),
+                    GenericArray::from_slice(&output[..32]),
+                    GenericArray::from_slice(&output[32..]),
                 );
 
                 match cipher.try_apply_keystream(&mut remaining_bytes) {

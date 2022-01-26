@@ -143,9 +143,9 @@ impl Fingerprint {
     /// ```
     pub fn compute<T: ?Sized + AsRef<[u8]>>(kind: FingerprintKind, data: &T) -> Fingerprint {
         let digest = match kind {
-            FingerprintKind::Sha256 => digest::digest(&digest::SHA256, &data.as_ref()).as_ref().to_vec(),
-            FingerprintKind::Sha384 => digest::digest(&digest::SHA384, &data.as_ref()).as_ref().to_vec(),
-            FingerprintKind::Sha512 => digest::digest(&digest::SHA512, &data.as_ref()).as_ref().to_vec(),
+            FingerprintKind::Sha256 => digest::digest(&digest::SHA256, data.as_ref()).as_ref().to_vec(),
+            FingerprintKind::Sha384 => digest::digest(&digest::SHA384, data.as_ref()).as_ref().to_vec(),
+            FingerprintKind::Sha512 => digest::digest(&digest::SHA512, data.as_ref()).as_ref().to_vec(),
         };
 
         let mut encoded = base64::encode(&digest);
@@ -194,18 +194,10 @@ impl PublicKey {
     pub fn from_string(contents: &str) -> Result<PublicKey> {
         let mut iter = contents.split_whitespace();
 
-        let kt_name = iter
-            .next()
-            .ok_or_else(|| Error::InvalidFormat)?;
-
-        let data = iter
-            .next()
-            .ok_or_else(|| Error::InvalidFormat)?;
-
+        let kt_name = iter.next().ok_or(Error::InvalidFormat)?;
+        let data = iter.next().ok_or(Error::InvalidFormat)?;
         let comment = iter.next().map(String::from);
-
-        let key_type = KeyType::from_name(&kt_name)?;
-
+        let key_type = KeyType::from_name(kt_name)?;
         let decoded = base64::decode(&data)?;
         let mut reader = Reader::new(&decoded);
 
@@ -216,7 +208,7 @@ impl PublicKey {
         }
 
         // Construct a new `PublicKey` value and preserve the `comment` value.
-        let k = PublicKey::from_reader(&kt_name, &mut reader)?;
+        let k = PublicKey::from_reader(kt_name, &mut reader)?;
         let key = PublicKey {
             key_type,
             kind: k.kind,
@@ -256,7 +248,7 @@ impl PublicKey {
     /// we already have a reader for reading an OpenSSH certificate key and
     /// we want to extract the public key information from it.
     pub(crate) fn from_reader(kt_name: &str, reader: &mut Reader<'_>) -> Result<PublicKey> {
-        let kt = KeyType::from_name(&kt_name)?;
+        let kt = KeyType::from_name(kt_name)?;
 
         let kind = match kt.kind {
             KeyTypeKind::Rsa | KeyTypeKind::RsaCert => {
@@ -339,7 +331,7 @@ impl PublicKey {
                 w.write_mpint(&k.n);
             }
             PublicKeyKind::Ecdsa(ref k) => {
-                w.write_string(&k.curve.identifier);
+                w.write_string(k.curve.identifier);
                 w.write_bytes(&k.key);
             }
             PublicKeyKind::Ed25519(ref k) => {
