@@ -3,7 +3,7 @@ use std::env;
 use clap::{App, Arg};
 
 use sshcerts::*;
-use sshcerts::ssh::{SSHCertificateSigner, get_standard_extensions};
+use sshcerts::ssh::{SSHCertificateSigner};
 use sshcerts::yubikey::piv::{SlotId, Yubikey};
 
 use std::convert::TryFrom;
@@ -93,7 +93,7 @@ fn main() {
         .principal(matches.value_of("principal").unwrap())
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_extensions(get_standard_extensions())
+        .set_extensions(Certificate::standard_extensions())
         .sign(&yk_signer);
 
     println!("{}", user_cert.unwrap());

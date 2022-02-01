@@ -69,17 +69,6 @@ const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
     ("permit-X11-forwarding", ""),
 ];
 
-/// Returns the set of standard extensions used for SSH certificates. If you're
-/// unsure about what you need, using the standard extensions is probably what
-/// you want.
-pub fn get_standard_extensions() -> HashMap<String, String> {
-    let mut hm = HashMap::new();
-    for extension in &STANDARD_EXTENSIONS {
-        hm.insert(String::from(extension.0), String::from(extension.1));
-    }
-    hm
-}
-
 /// A type which represents an OpenSSH certificate key.
 /// Please refer to [PROTOCOL.certkeys] for more details about OpenSSH certificates.
 /// [PROTOCOL.certkeys]: https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.certkeys?annotate=HEAD
@@ -246,6 +235,17 @@ impl Certificate {
         })
     }
 
+    /// Returns the set of standard extensions used for SSH certificates. If you're
+    /// unsure about what you need, using the standard extensions is probably what
+    /// you want.
+    pub fn standard_extensions() -> HashMap<String, String> {
+        let mut hm = HashMap::new();
+        for extension in &STANDARD_EXTENSIONS {
+            hm.insert(String::from(extension.0), String::from(extension.1));
+        }
+        hm
+    }
+
     /// Create a new empty SSH certificate. Values must then be filled in using
     /// the mutator methods below.
     ///
@@ -253,7 +253,7 @@ impl Certificate {
     ///
     /// ```rust
     /// # use sshcerts::{Certificate, PublicKey, PrivateKey};
-    /// # use sshcerts::ssh::{CertType, get_standard_extensions};
+    /// # use sshcerts::ssh::CertType;
     /// # fn example() {
     ///     let private_key = PrivateKey::from_string(concat!(
     ///         "-----BEGIN OPENSSH PRIVATE KEY-----",
@@ -272,7 +272,7 @@ impl Certificate {
     ///        .principal("obelisk")
     ///        .valid_after(0)
     ///        .valid_before(0xFFFFFFFFFFFFFFFF)
-    ///        .set_extensions(get_standard_extensions())
+    ///        .set_extensions(Certificate::standard_extensions())
     ///        .sign(&private_key);
     /// 
     ///     match cert {

@@ -1,6 +1,6 @@
 use ring::{rand, signature};
 
-use sshcerts::ssh::{Certificate, CertType, PrivateKey, PublicKey, get_standard_extensions};
+use sshcerts::ssh::{Certificate, CertType, PrivateKey, PublicKey};
 
 use std::collections::HashMap;
 
@@ -87,7 +87,7 @@ fn create_and_reparse_sign_parse_verify_ed25519ca() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(HashMap::new())
         .critical_option("test", "test_value")
-        .set_extensions(get_standard_extensions())
+        .set_extensions(Certificate::standard_extensions())
         .extension("extension_test", "extension_test_value")
         .sign(&privkey);
 
