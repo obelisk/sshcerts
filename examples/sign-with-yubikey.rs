@@ -3,7 +3,7 @@ use std::env;
 use clap::{App, Arg};
 
 use sshcerts::*;
-use sshcerts::ssh::{SSHCertificateSigner};
+use sshcerts::ssh::SSHCertificateSigner;
 use sshcerts::yubikey::piv::{SlotId, Yubikey};
 
 use std::convert::TryFrom;
