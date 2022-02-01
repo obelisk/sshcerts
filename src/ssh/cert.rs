@@ -436,28 +436,10 @@ impl Certificate {
     /// returns an error if the signature provided is not valid for the
     /// certificate under the set CA key.
     pub fn add_signature(mut self, signature: &[u8]) -> Result<Self> {
-        let mut writer = Writer::new();
-
-        match &self.signature_key.kind {
-            PublicKeyKind::Ecdsa(_) => {
-                writer.write_string(self.signature_key.key_type.name);
-                if let Some(signature) = crate::utils::signature_convert_asn1_ecdsa_to_ssh(signature) {
-                    writer.write_bytes(&signature);
-                } else {
-                    return Err(Error::SigningError);
-                }
-            },
-            PublicKeyKind::Rsa(_) => {
-                writer.write_string("rsa-sha2-512");
-                writer.write_bytes(signature);
-            },
-            _ => {
-                writer.write_string(self.signature_key.key_type.name);
-                writer.write_bytes(signature);
-            }
+        let signature = match crate::utils::format_signature_for_ssh(&self.signature_key, signature) {
+            Some(s) => s,
+            None => return Err(Error::InvalidFormat)
         };
-        
-        let signature = writer.into_bytes();
 
         let mut tbs = self.tbs_certificate();
         verify_signature(&signature, &tbs, &self.signature_key)?;
