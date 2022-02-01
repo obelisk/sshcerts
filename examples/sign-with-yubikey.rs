@@ -3,20 +3,10 @@ use std::env;
 use clap::{App, Arg};
 
 use sshcerts::*;
-use sshcerts::ssh::SigningFunction;
+use sshcerts::ssh::SSHCertificateSigner;
 use sshcerts::yubikey::piv::{SlotId, Yubikey};
 
 use std::convert::TryFrom;
-
-fn create_signer(slot: SlotId) -> SigningFunction {
-    Box::new(move |buf: &[u8]| {
-        let mut yk = Yubikey::new().unwrap();
-        match yk.ssh_cert_signer(buf, &slot) {
-            Ok(sig) => Some(sig),
-            Err(_) => None,
-        }
-    })
-}
 
 
 fn slot_parser(slot: &str) -> Option<SlotId> {
@@ -40,6 +30,20 @@ fn slot_validator(slot: &str) -> Result<(), String> {
     match slot_parser(slot) {
         Some(_) => Ok(()),
         None => Err(String::from("Provided slot was not valid. Should be R1 - R20 or a raw hex identifier")),
+    }
+}
+
+struct YubikeySigner {
+    slot: SlotId,
+}
+
+impl SSHCertificateSigner for YubikeySigner {
+    fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
+        let mut yk = Yubikey::new().unwrap();
+        match yk.ssh_cert_signer(buffer, &self.slot) {
+            Ok(sig) => Some(sig),
+            Err(_) => None,
+        }
     }
 }
 
@@ -80,6 +84,8 @@ fn main() {
     let yk_pubkey = yk.ssh_cert_fetch_pubkey(&slot).unwrap();
     let ssh_pubkey = PublicKey::from_path(matches.value_of("key").unwrap()).unwrap();
 
+    let yk_signer = YubikeySigner{slot};
+
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &yk_pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
@@ -87,9 +93,8 @@ fn main() {
         .principal(matches.value_of("principal").unwrap())
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
-        .sign(create_signer(slot));
+        .set_extensions(Certificate::standard_extensions())
+        .sign(&yk_signer);
 
     println!("{}", user_cert.unwrap());
 }

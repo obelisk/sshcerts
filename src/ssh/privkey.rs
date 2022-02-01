@@ -4,8 +4,11 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use ring::{rand, signature};
+
 use crate::{error::Error, Result};
 use super::{
+    CurveKind,
     EcdsaPublicKey,
     Ed25519PublicKey,
     PublicKey,
@@ -126,6 +129,69 @@ impl ToASN1 for RsaPrivateKey {
             ]
             .concat(),
         )])
+    }
+}
+
+impl super::SSHCertificateSigner for PrivateKey {
+    fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
+        let rng = rand::SystemRandom::new();
+
+        match &self.kind {
+            #[cfg(feature = "rsa-signing")]
+            PrivateKeyKind::Rsa(key) => {
+                let asn_privkey = match simple_asn1::der_encode(key) {
+                    Ok(apk) => apk,
+                    Err(_) => return None,
+                };
+    
+                let keypair = match signature::RsaKeyPair::from_der(&asn_privkey) {
+                    Ok(kp) => kp,
+                    Err(_) => return None,
+                };
+    
+                let rng = rand::SystemRandom::new();
+                let mut signature = vec![0; keypair.public_modulus_len()];
+    
+                keypair.sign(&signature::RSA_PKCS1_SHA512, &rng, buffer, &mut signature).ok()?;
+    
+                Some(signature)
+            },
+            #[cfg(not(feature = "rsa-signing"))]
+            PrivateKeyKind::Rsa(_) => return None,
+            PrivateKeyKind::Ecdsa(key) => {
+                let alg = match key.curve.kind {
+                    CurveKind::Nistp256 => &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                    CurveKind::Nistp384 => &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                    CurveKind::Nistp521 => return None
+                };
+    
+                let pubkey = match &self.pubkey.kind {
+                    PublicKeyKind::Ecdsa(key) => &key.key,
+                    _ => return None,
+                };
+    
+                let key = if key.key[0] == 0x0_u8 {&key.key[1..]} else {&key.key};
+                let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(alg, key, pubkey) {
+                    Ok(kp) => kp,
+                    Err(_) => return None,
+                };
+    
+                Some(key_pair.sign(&rng, buffer).ok()?.as_ref().to_vec())
+            },
+            PrivateKeyKind::Ed25519(key) => {
+                let public_key = match &self.pubkey.kind {
+                    PublicKeyKind::Ed25519(key) => &key.key,
+                    _ => return None,
+                };
+    
+                let key_pair = match signature::Ed25519KeyPair::from_seed_and_public_key(&key.key[..32], public_key) {
+                    Ok(kp) => kp,
+                    Err(_) => return None,
+                };
+    
+                Some(key_pair.sign(buffer).as_ref().to_vec())
+            },
+        }
     }
 }
 

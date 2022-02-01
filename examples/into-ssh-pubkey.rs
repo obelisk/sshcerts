@@ -24,7 +24,7 @@ fn main() {
     };
 
     match der_encoding_to_ssh_public_key(&contents) {
-        Ok(public_key) => println!("{}", public_key.to_string()),
+        Ok(public_key) => println!("{}", public_key),
         Err(e) => println!("Error: {}", e),
     }
 }

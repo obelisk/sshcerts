@@ -17,6 +17,7 @@ use ring::signature::{
 use ring::rand::{SystemRandom, SecureRandom};
 
 use crate::{error::Error, Result};
+use super::SSHCertificateSigner;
 use super::{
     keytype::KeyType,
     pubkey::{PublicKey, PublicKeyKind},
@@ -57,6 +58,9 @@ impl fmt::Display for CertType {
     }
 }
 
+/// These are the standard extensions used in an SSH certificate. If you don't
+/// know what extensions you need, adding all of these is probably what you
+/// want.
 const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
     ("permit-agent-forwarding", ""),
     ("permit-port-forwarding", ""),
@@ -64,50 +68,6 @@ const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
     ("permit-user-rc", ""),
     ("permit-X11-forwarding", ""),
 ];
-
-impl From<Extensions> for HashMap<String, String> {
-    fn from(extensions: Extensions) -> Self {
-        match extensions {
-            Extensions::Standard => {
-                let mut hm = HashMap::new();
-                for extension in &STANDARD_EXTENSIONS {
-                    hm.insert(String::from(extension.0), String::from(extension.1));
-                }
-                hm
-            },
-            Extensions::Custom(co) => co,
-        }
-    }
-}
-
-/// Type that encapsulates the normal usage of the extensions field.
-#[derive(Clone, Debug)]
-pub enum Extensions {
-    /// Contains the five standard extensions: agent-forwarding, port-forwarding, pty, user-rc, X11-forwarding
-    Standard,
-    /// Allows a custom set of extensions to be passed in. This does not contain the standard extensions
-    Custom(HashMap<String, String>)
-}
-
-/// Type that encapsulates the normal usage of the critical options field.
-/// I used a structure instead of an Option for consistency and possible future
-/// expansion into a ForceCommand type.
-#[derive(Clone, Debug)]
-pub enum CriticalOptions {
-    /// Don't use any critical options
-    None,
-    /// Allows a custom set of critical options. Does not contain any standard options.
-    Custom(HashMap<String, String>)
-}
-
-impl From<CriticalOptions> for HashMap<String, String> {
-    fn from(critical_options: CriticalOptions) -> Self {
-        match critical_options {
-            CriticalOptions::None => HashMap::new(),
-            CriticalOptions::Custom(co) => co,
-        }
-    }
-}
 
 /// A type which represents an OpenSSH certificate key.
 /// Please refer to [PROTOCOL.certkeys] for more details about OpenSSH certificates.
@@ -275,27 +235,45 @@ impl Certificate {
         })
     }
 
+    /// Returns the set of standard extensions used for SSH certificates. If you're
+    /// unsure about what you need, using the standard extensions is probably what
+    /// you want.
+    pub fn standard_extensions() -> HashMap<String, String> {
+        let mut hm = HashMap::new();
+        for extension in &STANDARD_EXTENSIONS {
+            hm.insert(String::from(extension.0), String::from(extension.1));
+        }
+        hm
+    }
+
     /// Create a new empty SSH certificate. Values must then be filled in using
     /// the mutator methods below.
     ///
     /// # Example
     ///
     /// ```rust
-    /// # use sshcerts::{Certificate, PublicKey};
-    /// # use sshcerts::ssh::{CertType, CriticalOptions, Extensions};
-    /// # fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
-    /// # fn test_pubkey() -> Option<Vec<u8>> { None }
+    /// # use sshcerts::{Certificate, PublicKey, PrivateKey};
+    /// # use sshcerts::ssh::CertType;
     /// # fn example() {
-    ///     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan").unwrap();
-    ///     let cert = Certificate::builder(&ssh_pubkey, CertType::User, &ssh_pubkey).unwrap()
+    ///     let private_key = PrivateKey::from_string(concat!(
+    ///         "-----BEGIN OPENSSH PRIVATE KEY-----",
+    ///         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW",
+    ///         "QyNTUxOQAAACBBvD18M5xE6toNtTkIwVwl7xkJb9DBUSgHfKaKbeTW3gAAAKj3njlq9545",
+    ///         "agAAAAtzc2gtZWQyNTUxOQAAACBBvD18M5xE6toNtTkIwVwl7xkJb9DBUSgHfKaKbeTW3g",
+    ///         "AAAEBLyc6RR+xrjQFV9hhmW9z5TYEA4IMVG7+xBq0WHjdnNkG8PXwznETq2g21OQjBXCXv",
+    ///         "GQlv0MFRKAd8popt5NbeAAAAIW9iZWxpc2tATWl0Y2hlbGxzLU1CUC5sb2NhbGRvbWFpbg",
+    ///         "ECAwQ=",
+    ///         "-----END OPENSSH PRIVATE KEY-----",
+    ///     )).unwrap();
+    ///     let ssh_pubkey = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHk1jR7i5Ao85pfz0X6xAWT3N+Wicm17v3UnYw3ZEGnH").unwrap();
+    ///     let cert = Certificate::builder(&ssh_pubkey, CertType::User, &private_key.pubkey).unwrap()
     ///        .serial(0xFEFEFEFEFEFEFEFE)
     ///        .key_id("key_id")
     ///        .principal("obelisk")
     ///        .valid_after(0)
     ///        .valid_before(0xFFFFFFFFFFFFFFFF)
-    ///        .set_critical_options(CriticalOptions::None)
-    ///        .set_extensions(Extensions::Standard)
-    ///        .sign(test_signer);
+    ///        .set_extensions(Certificate::standard_extensions())
+    ///        .sign(&private_key);
     /// 
     ///     match cert {
     ///       Ok(cert) => println!("{}", cert),
@@ -384,24 +362,24 @@ impl Certificate {
     }
 
     /// Set the critical options of the certificate
-    pub fn set_critical_options(mut self, critical_options: CriticalOptions) -> Self {
-        self.critical_options = critical_options.into();
+    pub fn set_critical_options(mut self, critical_options: HashMap<String, String>) -> Self {
+        self.critical_options = critical_options;
         self
     }
 
-    /// Add a critical option to the certificate
+    /// Add an extension to the certificate
     pub fn extension<S: AsRef<str>>(mut self, option: S, value: S) -> Self {
         self.extensions.insert(option.as_ref().to_owned(), value.as_ref().to_owned());
         self
     }
 
-    /// Set the critical options of the certificate
-    pub fn set_extensions(mut self, extensions: Extensions) -> Self {
-        self.extensions = extensions.into();
+    /// Set the extensions of the certificate
+    pub fn set_extensions(mut self, extensions: HashMap<String, String>) -> Self {
+        self.extensions = extensions;
         self
     }
 
-    /// Set the critical options of the certificate
+    /// Set the comment of the certificate
     pub fn comment<S: AsRef<str>>(mut self, comment: S) -> Self {
         self.comment = Some(comment.as_ref().to_owned());
         self
@@ -482,10 +460,7 @@ impl Certificate {
         let signature = writer.into_bytes();
 
         let mut tbs = self.tbs_certificate();
-        if let Err(e) = verify_signature(&signature, &tbs, &self.signature_key) {
-            // Could not verify the certificate
-            return Err(e)
-        }
+        verify_signature(&signature, &tbs, &self.signature_key)?;
 
         let mut wrapped_writer = Writer::new();
         wrapped_writer.write_bytes(&signature);
@@ -500,14 +475,11 @@ impl Certificate {
     }
 
     /// Take the certificate settings and generate a valid signature using the provided signer function
-    pub fn sign(self, signer: impl FnOnce(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
+    pub fn sign<T: SSHCertificateSigner>(self, signer: &T) -> Result<Self> {
         let tbs_certificate = self.tbs_certificate();
 
         // Sign the data and write it to the cert
-        let signature =  match signer(&tbs_certificate) {
-            Some(sig) => sig,
-            None => return Err(Error::SigningError),
-        };
+        let signature = signer.sign(&tbs_certificate).ok_or(Error::SigningError)?;
         self.add_signature(&signature)
     }
 }

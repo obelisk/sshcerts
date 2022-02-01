@@ -13,14 +13,16 @@ mod keytype;
 mod privkey;
 mod pubkey;
 mod reader;
-mod signer;
 mod writer;
 
-/// This is a type that can be used for certificate signing when passed
-/// to Certificate::sign
-pub type SigningFunction = Box<dyn Fn(&[u8]) -> Option<Vec<u8>> + Send + Sync>;
+/// Types that implement this trait can be used to sign SSH certificates using
+/// the Certificate::sign function.
+pub trait SSHCertificateSigner {
+    /// This function is called when signing an SSH certificate.
+    fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>>;
+}
 
-pub use self::cert::{CertType, Certificate, CriticalOptions, Extensions};
+pub use self::cert::{CertType, Certificate};
 pub use self::keytype::{KeyType, KeyTypeKind, Curve, CurveKind};
 pub use self::privkey::{PrivateKey, PrivateKeyKind, RsaPrivateKey, EcdsaPrivateKey, Ed25519PrivateKey};
 pub use self::pubkey::{
@@ -28,5 +30,4 @@ pub use self::pubkey::{
     PublicKey, PublicKeyKind, RsaPublicKey,
 };
 pub use self::reader::Reader;
-pub use self::signer::{create_signer, ssh_cert_signer};
 pub use self::writer::Writer;

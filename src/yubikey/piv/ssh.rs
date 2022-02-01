@@ -40,8 +40,7 @@ impl super::Yubikey {
         }
     }
 
-    /// Sign the provided buffer of data and return it in an SSH Certificiate
-    /// signature formatted byte vector. 
+    /// Sign the provided buffer of data
     pub fn ssh_cert_signer(&mut self, buf: &[u8], slot: &SlotId) -> Result<Vec<u8>> {
         let alg = match self.get_ssh_key_type(slot) {
             Ok(x) => x,
