@@ -17,6 +17,7 @@ use ring::signature::{
 use ring::rand::{SystemRandom, SecureRandom};
 
 use crate::{error::Error, Result};
+use super::SSHCertificateSigner;
 use super::{
     keytype::KeyType,
     pubkey::{PublicKey, PublicKeyKind},
@@ -281,13 +282,21 @@ impl Certificate {
     /// # Example
     ///
     /// ```rust
-    /// # use sshcerts::{Certificate, PublicKey};
+    /// # use sshcerts::{Certificate, PublicKey, PrivateKey};
     /// # use sshcerts::ssh::{CertType, CriticalOptions, Extensions};
-    /// # fn test_signer(buf: &[u8]) -> Option<Vec<u8>> { None }
-    /// # fn test_pubkey() -> Option<Vec<u8>> { None }
     /// # fn example() {
-    ///     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan").unwrap();
-    ///     let cert = Certificate::builder(&ssh_pubkey, CertType::User, &ssh_pubkey).unwrap()
+    ///     let private_key = PrivateKey::from_string(concat!(
+    ///         "-----BEGIN OPENSSH PRIVATE KEY-----",
+    ///         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW",
+    ///         "QyNTUxOQAAACBBvD18M5xE6toNtTkIwVwl7xkJb9DBUSgHfKaKbeTW3gAAAKj3njlq9545",
+    ///         "agAAAAtzc2gtZWQyNTUxOQAAACBBvD18M5xE6toNtTkIwVwl7xkJb9DBUSgHfKaKbeTW3g",
+    ///         "AAAEBLyc6RR+xrjQFV9hhmW9z5TYEA4IMVG7+xBq0WHjdnNkG8PXwznETq2g21OQjBXCXv",
+    ///         "GQlv0MFRKAd8popt5NbeAAAAIW9iZWxpc2tATWl0Y2hlbGxzLU1CUC5sb2NhbGRvbWFpbg",
+    ///         "ECAwQ=",
+    ///         "-----END OPENSSH PRIVATE KEY-----",
+    ///     )).unwrap();
+    ///     let ssh_pubkey = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHk1jR7i5Ao85pfz0X6xAWT3N+Wicm17v3UnYw3ZEGnH").unwrap();
+    ///     let cert = Certificate::builder(&ssh_pubkey, CertType::User, &private_key.pubkey).unwrap()
     ///        .serial(0xFEFEFEFEFEFEFEFE)
     ///        .key_id("key_id")
     ///        .principal("obelisk")
@@ -295,7 +304,7 @@ impl Certificate {
     ///        .valid_before(0xFFFFFFFFFFFFFFFF)
     ///        .set_critical_options(CriticalOptions::None)
     ///        .set_extensions(Extensions::Standard)
-    ///        .sign(test_signer);
+    ///        .sign(&private_key);
     /// 
     ///     match cert {
     ///       Ok(cert) => println!("{}", cert),
@@ -482,10 +491,7 @@ impl Certificate {
         let signature = writer.into_bytes();
 
         let mut tbs = self.tbs_certificate();
-        if let Err(e) = verify_signature(&signature, &tbs, &self.signature_key) {
-            // Could not verify the certificate
-            return Err(e)
-        }
+        verify_signature(&signature, &tbs, &self.signature_key)?;
 
         let mut wrapped_writer = Writer::new();
         wrapped_writer.write_bytes(&signature);
@@ -500,14 +506,11 @@ impl Certificate {
     }
 
     /// Take the certificate settings and generate a valid signature using the provided signer function
-    pub fn sign(self, signer: impl FnOnce(&[u8]) -> Option<Vec<u8>>) -> Result<Self> {
+    pub fn sign<T: SSHCertificateSigner>(self, signer: &T) -> Result<Self> {
         let tbs_certificate = self.tbs_certificate();
 
         // Sign the data and write it to the cert
-        let signature =  match signer(&tbs_certificate) {
-            Some(sig) => sig,
-            None => return Err(Error::SigningError),
-        };
+        let signature = signer.sign(&tbs_certificate).ok_or(Error::SigningError)?;
         self.add_signature(&signature)
     }
 }

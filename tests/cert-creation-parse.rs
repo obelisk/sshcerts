@@ -1,7 +1,6 @@
 use ring::{rand, signature};
 
 use sshcerts::ssh::{Certificate, CertType, CriticalOptions, Extensions, PrivateKey, PublicKey};
-use sshcerts::ssh::create_signer;
 
 // Constants available for multiple tests
 const ECDSA256_CA_PRIVATE_KEY: &str = concat!(
@@ -88,7 +87,7 @@ fn create_and_reparse_sign_parse_verify_ed25519ca() {
         .critical_option("test", "test_value")
         .set_extensions(Extensions::Standard)
         .extension("extension_test", "extension_test_value")
-        .sign(create_signer(privkey));
+        .sign(&privkey);
 
     assert!(user_cert.is_ok());
 
@@ -125,13 +124,17 @@ fn create_and_reparse_sign_parse_verify_minimal_ecdsa256ca() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let ca_pubkey = PublicKey::from_string(ECDSA256_SSH_PUBLIC_KEY).unwrap();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
+    let user_cert_partial = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
         .key_id("key_id")
         .valid_after(0)
-        .valid_before(0xFFFFFFFFFFFFFFFF)
-        .sign(test_ecdsa256_signer);
+        .valid_before(0xFFFFFFFFFFFFFFFF);
+    
+    let signature = test_ecdsa256_signer(&user_cert_partial.tbs_certificate());
+    assert!(signature.is_some());
 
+    let user_cert = user_cert_partial.add_signature(&signature.unwrap());
     assert!(user_cert.is_ok());
+
     let user_cert = user_cert.unwrap();
 
     // Check CA fields
@@ -152,12 +155,15 @@ fn create_and_reparse_sign_parse_verify_minimal_ecdsa384ca() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let ca_pubkey = PublicKey::from_string(ECDSA384_SSH_PUBLIC_KEY).unwrap();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
+    let user_cert_partial = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
         .key_id("key_id")
         .valid_after(0)
-        .valid_before(0xFFFFFFFFFFFFFFFF)
-        .sign(test_ecdsa384_signer);
+        .valid_before(0xFFFFFFFFFFFFFFFF);
 
+    let signature = test_ecdsa384_signer(&user_cert_partial.tbs_certificate());
+    assert!(signature.is_some());
+
+    let user_cert = user_cert_partial.add_signature(&signature.unwrap());
     assert!(user_cert.is_ok());
     let user_cert = user_cert.unwrap();
 

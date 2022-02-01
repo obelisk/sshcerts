@@ -1,5 +1,4 @@
 use sshcerts::ssh::{Certificate, CertType, PrivateKey, PublicKey};
-use sshcerts::ssh::SigningFunction;
 
 // Constants available for multiple tests
 const RSA2048_CA_PRIVATE_KEY: &str = concat!(
@@ -44,13 +43,11 @@ fn create_and_reparse_sign_parse_verify_minimal_ecdsa384_rsa2048ca() {
     let private_key = PrivateKey::from_string(RSA2048_CA_PRIVATE_KEY).unwrap();
     let ca_pubkey = private_key.pubkey.clone();
 
-    let signer:SigningFunction = private_key.into();
-
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
         .key_id("key_id")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .sign(signer);
+        .sign(&private_key);
 
     assert!(user_cert.is_ok());
     let user_cert = user_cert.unwrap();
@@ -75,13 +72,11 @@ fn create_and_reparse_sign_parse_verify_minimal_ed25519_rsa2048ca() {
     let private_key = PrivateKey::from_string(RSA2048_CA_PRIVATE_KEY).unwrap();
     let ca_pubkey = private_key.pubkey.clone();
 
-    let signer:SigningFunction = private_key.into();
-
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
         .key_id("key_id")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .sign(signer);
+        .sign(&private_key);
 
     assert!(user_cert.is_ok());
     let user_cert = user_cert.unwrap();

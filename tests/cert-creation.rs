@@ -1,7 +1,6 @@
 use ring::{rand, signature};
 
 use sshcerts::ssh::{Certificate, CertType, CriticalOptions, Extensions, PrivateKey, PublicKey};
-use sshcerts::ssh::{SigningFunction, create_signer};
 
 // Constants available for multiple tests
 const ECDSA256_CA_PRIVATE_KEY: &str = concat!(
@@ -50,6 +49,7 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
     Some(signature)
 }
 
+
 #[test]
 fn create_sign_parse_verify_ecdsa256_static_function() {
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
@@ -61,16 +61,19 @@ fn create_sign_parse_verify_ecdsa256_static_function() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let ca_pubkey = ca_pubkey.unwrap();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
+    let user_cert_partial = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
-        .sign(test_ecdsa256_signer);
+        .set_extensions(Extensions::Standard);
 
+    let signature = test_ecdsa256_signer(&user_cert_partial.tbs_certificate());
+    assert!(signature.is_some());
+
+    let user_cert = user_cert_partial.add_signature(&signature.unwrap());
     assert!(user_cert.is_ok());
 
     let user_cert = user_cert.unwrap();
@@ -93,16 +96,19 @@ fn create_sign_parse_verify_ecdsa384_static_function() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let ca_pubkey = ca_pubkey.unwrap();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
+    let user_cert_partial = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
-        .sign(test_ecdsa384_signer);
+        .set_extensions(Extensions::Standard);
 
+    let signature = test_ecdsa384_signer(&user_cert_partial.tbs_certificate());
+    assert!(signature.is_some());
+
+    let user_cert = user_cert_partial.add_signature(&signature.unwrap());
     assert!(user_cert.is_ok());
 
     let user_cert = user_cert.unwrap();
@@ -138,7 +144,6 @@ fn create_sign_parse_verify_ed25519ca_into_impl() {
 
     let ssh_pubkey = ssh_pubkey.unwrap();
     let pubkey = privkey.pubkey.clone();
-    let signer:SigningFunction = privkey.into();
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
@@ -148,7 +153,7 @@ fn create_sign_parse_verify_ed25519ca_into_impl() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(signer);
+        .sign(&privkey);
 
     assert!(user_cert.is_ok());
 
@@ -198,7 +203,7 @@ fn create_sign_parse_verify_ed25519ca_create_signer() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(create_signer(privkey));
+        .sign(&privkey);
 
     assert!(user_cert.is_ok());
 
@@ -241,7 +246,6 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
 
     let ssh_pubkey = ssh_pubkey.unwrap();
     let pubkey = privkey.pubkey.clone();
-    let signer:SigningFunction = privkey.into();
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
@@ -251,7 +255,7 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(signer);
+        .sign(&privkey);
 
 
     assert!(user_cert.is_ok());
@@ -303,7 +307,7 @@ fn create_sign_parse_verify_ecdsa256_create_signer() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(create_signer(privkey));
+        .sign(&privkey);
 
     assert!(user_cert.is_ok());
 
@@ -347,7 +351,6 @@ fn create_sign_parse_verify_ecdsa384_into_impl() {
 
     let ssh_pubkey = ssh_pubkey.unwrap();
     let pubkey = privkey.pubkey.clone();
-    let signer:SigningFunction = privkey.into();
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
@@ -357,7 +360,7 @@ fn create_sign_parse_verify_ecdsa384_into_impl() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(signer);
+        .sign(&privkey);
 
     assert!(user_cert.is_ok());
 
@@ -409,7 +412,7 @@ fn create_sign_parse_verify_ecdsa384_create_signer() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(create_signer(privkey));
+        .sign(&privkey);
 
     assert!(user_cert.is_ok());
 
@@ -493,7 +496,6 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
 
     let ssh_pubkey = ssh_pubkey.unwrap();
     let priv_pubkey = privkey.pubkey.clone();
-    let signer:SigningFunction = privkey.into();
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
@@ -503,7 +505,7 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(signer);
+        .sign(&privkey);
 
     match &user_cert {
         Ok(_) => (),
@@ -582,7 +584,6 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
 
     let ssh_pubkey = ssh_pubkey.unwrap();
     let priv_pubkey = privkey.pubkey.clone();
-    let signer:SigningFunction = privkey.into();
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
@@ -592,7 +593,7 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(signer);
+        .sign(&privkey);
 
     match &user_cert {
         Ok(_) => (),
@@ -660,7 +661,6 @@ fn create_sign_parse_verify_rsa2048_impl_into() {
 
     let ssh_pubkey = ssh_pubkey.unwrap();
     let priv_pubkey = privkey.pubkey.clone();
-    let signer:SigningFunction = privkey.into();
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey).unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
@@ -670,7 +670,7 @@ fn create_sign_parse_verify_rsa2048_impl_into() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_critical_options(CriticalOptions::None)
         .set_extensions(Extensions::Standard)
-        .sign(signer);
+        .sign(&privkey);
 
     match &user_cert {
         Ok(_) => (),
@@ -730,7 +730,7 @@ fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
         .critical_option("test", "test_value")
         .set_extensions(Extensions::Standard)
         .extension("extension_test", "extension_test_value")
-        .sign(create_signer(privkey));
+        .sign(&privkey);
 
     assert!(user_cert.is_ok());
 
