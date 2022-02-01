@@ -1,6 +1,8 @@
 use ring::{rand, signature};
 
-use sshcerts::ssh::{Certificate, CertType, CriticalOptions, Extensions, PrivateKey, PublicKey};
+use sshcerts::ssh::{Certificate, CertType, PrivateKey, PublicKey, get_standard_extensions};
+
+use std::collections::HashMap;
 
 // Constants available for multiple tests
 const ECDSA256_CA_PRIVATE_KEY: &str = concat!(
@@ -83,9 +85,9 @@ fn create_and_reparse_sign_parse_verify_ed25519ca() {
         .principal("mitchell")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
+        .set_critical_options(HashMap::new())
         .critical_option("test", "test_value")
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .extension("extension_test", "extension_test_value")
         .sign(&privkey);
 

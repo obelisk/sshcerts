@@ -58,6 +58,9 @@ impl fmt::Display for CertType {
     }
 }
 
+/// These are the standard extensions used in an SSH certificate. If you don't
+/// know what extensions you need, adding all of these is probably what you
+/// want.
 const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
     ("permit-agent-forwarding", ""),
     ("permit-port-forwarding", ""),
@@ -66,48 +69,15 @@ const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
     ("permit-X11-forwarding", ""),
 ];
 
-impl From<Extensions> for HashMap<String, String> {
-    fn from(extensions: Extensions) -> Self {
-        match extensions {
-            Extensions::Standard => {
-                let mut hm = HashMap::new();
-                for extension in &STANDARD_EXTENSIONS {
-                    hm.insert(String::from(extension.0), String::from(extension.1));
-                }
-                hm
-            },
-            Extensions::Custom(co) => co,
-        }
+/// Returns the set of standard extensions used for SSH certificates. If you're
+/// unsure about what you need, using the standard extensions is probably what
+/// you want.
+pub fn get_standard_extensions() -> HashMap<String, String> {
+    let mut hm = HashMap::new();
+    for extension in &STANDARD_EXTENSIONS {
+        hm.insert(String::from(extension.0), String::from(extension.1));
     }
-}
-
-/// Type that encapsulates the normal usage of the extensions field.
-#[derive(Clone, Debug)]
-pub enum Extensions {
-    /// Contains the five standard extensions: agent-forwarding, port-forwarding, pty, user-rc, X11-forwarding
-    Standard,
-    /// Allows a custom set of extensions to be passed in. This does not contain the standard extensions
-    Custom(HashMap<String, String>)
-}
-
-/// Type that encapsulates the normal usage of the critical options field.
-/// I used a structure instead of an Option for consistency and possible future
-/// expansion into a ForceCommand type.
-#[derive(Clone, Debug)]
-pub enum CriticalOptions {
-    /// Don't use any critical options
-    None,
-    /// Allows a custom set of critical options. Does not contain any standard options.
-    Custom(HashMap<String, String>)
-}
-
-impl From<CriticalOptions> for HashMap<String, String> {
-    fn from(critical_options: CriticalOptions) -> Self {
-        match critical_options {
-            CriticalOptions::None => HashMap::new(),
-            CriticalOptions::Custom(co) => co,
-        }
-    }
+    hm
 }
 
 /// A type which represents an OpenSSH certificate key.
@@ -283,7 +253,7 @@ impl Certificate {
     ///
     /// ```rust
     /// # use sshcerts::{Certificate, PublicKey, PrivateKey};
-    /// # use sshcerts::ssh::{CertType, CriticalOptions, Extensions};
+    /// # use sshcerts::ssh::{CertType, get_standard_extensions};
     /// # fn example() {
     ///     let private_key = PrivateKey::from_string(concat!(
     ///         "-----BEGIN OPENSSH PRIVATE KEY-----",
@@ -302,8 +272,7 @@ impl Certificate {
     ///        .principal("obelisk")
     ///        .valid_after(0)
     ///        .valid_before(0xFFFFFFFFFFFFFFFF)
-    ///        .set_critical_options(CriticalOptions::None)
-    ///        .set_extensions(Extensions::Standard)
+    ///        .set_extensions(get_standard_extensions())
     ///        .sign(&private_key);
     /// 
     ///     match cert {
@@ -393,24 +362,24 @@ impl Certificate {
     }
 
     /// Set the critical options of the certificate
-    pub fn set_critical_options(mut self, critical_options: CriticalOptions) -> Self {
-        self.critical_options = critical_options.into();
+    pub fn set_critical_options(mut self, critical_options: HashMap<String, String>) -> Self {
+        self.critical_options = critical_options;
         self
     }
 
-    /// Add a critical option to the certificate
+    /// Add an extension to the certificate
     pub fn extension<S: AsRef<str>>(mut self, option: S, value: S) -> Self {
         self.extensions.insert(option.as_ref().to_owned(), value.as_ref().to_owned());
         self
     }
 
-    /// Set the critical options of the certificate
-    pub fn set_extensions(mut self, extensions: Extensions) -> Self {
-        self.extensions = extensions.into();
+    /// Set the extensions of the certificate
+    pub fn set_extensions(mut self, extensions: HashMap<String, String>) -> Self {
+        self.extensions = extensions;
         self
     }
 
-    /// Set the critical options of the certificate
+    /// Set the comment of the certificate
     pub fn comment<S: AsRef<str>>(mut self, comment: S) -> Self {
         self.comment = Some(comment.as_ref().to_owned());
         self

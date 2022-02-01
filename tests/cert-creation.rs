@@ -1,6 +1,6 @@
 use ring::{rand, signature};
 
-use sshcerts::ssh::{Certificate, CertType, CriticalOptions, Extensions, PrivateKey, PublicKey};
+use sshcerts::ssh::{Certificate, CertType, PrivateKey, PublicKey, get_standard_extensions};
 
 // Constants available for multiple tests
 const ECDSA256_CA_PRIVATE_KEY: &str = concat!(
@@ -67,8 +67,7 @@ fn create_sign_parse_verify_ecdsa256_static_function() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard);
+        .set_extensions(get_standard_extensions());
 
     let signature = test_ecdsa256_signer(&user_cert_partial.tbs_certificate());
     assert!(signature.is_some());
@@ -102,8 +101,7 @@ fn create_sign_parse_verify_ecdsa384_static_function() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard);
+        .set_extensions(get_standard_extensions());
 
     let signature = test_ecdsa384_signer(&user_cert_partial.tbs_certificate());
     assert!(signature.is_some());
@@ -151,8 +149,7 @@ fn create_sign_parse_verify_ed25519ca_into_impl() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
     assert!(user_cert.is_ok());
@@ -201,8 +198,7 @@ fn create_sign_parse_verify_ed25519ca_create_signer() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
     assert!(user_cert.is_ok());
@@ -253,8 +249,7 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
 
@@ -305,8 +300,7 @@ fn create_sign_parse_verify_ecdsa256_create_signer() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
     assert!(user_cert.is_ok());
@@ -358,8 +352,7 @@ fn create_sign_parse_verify_ecdsa384_into_impl() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
     assert!(user_cert.is_ok());
@@ -410,8 +403,7 @@ fn create_sign_parse_verify_ecdsa384_create_signer() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
     assert!(user_cert.is_ok());
@@ -503,8 +495,7 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
     match &user_cert {
@@ -591,8 +582,7 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
     match &user_cert {
@@ -668,8 +658,7 @@ fn create_sign_parse_verify_rsa2048_impl_into() {
         .principal("obelisk")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .sign(&privkey);
 
     match &user_cert {
@@ -726,9 +715,8 @@ fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
         .principal("mitchell")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        .set_critical_options(CriticalOptions::None)
         .critical_option("test", "test_value")
-        .set_extensions(Extensions::Standard)
+        .set_extensions(get_standard_extensions())
         .extension("extension_test", "extension_test_value")
         .sign(&privkey);
 

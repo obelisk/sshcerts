@@ -46,8 +46,8 @@ pub mod error;
 
 type Result<T> = std::result::Result<T, error::Error>;
 
-pub use ssh::{CertType, Certificate, PublicKey, PrivateKey, CriticalOptions, Extensions};
 
+pub use ssh::{CertType, Certificate, PublicKey, PrivateKey};
 
 /// Functions or structs for dealing with SSH Certificates.
 /// Parsing, and creating certs happens here.
