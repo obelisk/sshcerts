@@ -1,3 +1,5 @@
+use crate::ssh::{PublicKey, PublicKeyKind, Writer};
+
 /// Takes an ASN1 encoded ECDSA signature and attempts to
 /// parse it into it's R and S constituent parts
 pub fn asn_der_to_r_s(buf: &[u8]) -> Option<(&[u8], &[u8])> {
@@ -40,4 +42,31 @@ pub fn signature_convert_asn1_ecdsa_to_ssh(signature: &[u8]) -> Option<Vec<u8>> 
     sig_encoding.extend_from_slice(s);
 
     Some(sig_encoding)
+}
+
+/// Some protocols require the signature be in SSH format. This function takes
+/// a DER encoded signature and formats it for SSH compatibility.
+pub fn format_signature_for_ssh(public_key: &PublicKey, signature: &[u8]) -> Option<Vec<u8>> {
+    let mut writer = Writer::new();
+
+    match public_key.kind {
+        PublicKeyKind::Ecdsa(_) => {
+            writer.write_string(public_key.key_type.name);
+            if let Some(signature) = signature_convert_asn1_ecdsa_to_ssh(signature) {
+                writer.write_bytes(&signature);
+            } else {
+                return None;
+            }
+        },
+        PublicKeyKind::Rsa(_) => {
+            writer.write_string("rsa-sha2-512");
+            writer.write_bytes(signature);
+        },
+        PublicKeyKind::Ed25519(_) => {
+            writer.write_string(public_key.key_type.name);
+            writer.write_bytes(signature);
+        }
+    };
+
+    Some(writer.into_bytes())
 }
