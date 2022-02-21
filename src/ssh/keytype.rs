@@ -209,7 +209,7 @@ impl KeyType {
             "sk-ssh-ed25519-cert-v01@openssh.com" => KeyType {
                 name: "sk-ssh-ed25519-cert-v01@openssh.com",
                 plain: "sk-ssh-ed25519@openssh.com",
-                short_name: "ED25519-SK",
+                short_name: "ED25519-SK-CERT",
                 is_cert: true,
                 is_sk: true,
                 kind: KeyTypeKind::Ed25519,
