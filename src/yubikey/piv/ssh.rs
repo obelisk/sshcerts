@@ -49,5 +49,4 @@ impl super::Yubikey {
 
         self.sign_data(buf, alg, slot)
     }
-
 }

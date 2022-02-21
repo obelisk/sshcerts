@@ -1,6 +1,7 @@
 use ring::{rand, signature};
 
 use sshcerts::ssh::{Certificate, CertType, PrivateKey, PublicKey};
+use sshcerts::utils::format_signature_for_ssh;
 
 use std::collections::HashMap;
 
@@ -15,7 +16,7 @@ const ECDSA256_CA_PRIVATE_KEY: &str = concat!(
 const ECDSA256_SSH_PUBLIC_KEY: &str = concat!(
     "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAy",
     "NTYAAABBBNw/RHLOp3M1pu+ax7xzo3qsnyNKWNYFZqGUaxNYeduJoKNG+8b0257l",
-    "wwOA9HkoDWLJpltvUIH7xrb3AEjGKQ8= testuser");
+    "wwOA9HkoDWLJpltvUIH7xrb3AEjGKQ8= obelisk@exclave.lan");
 
 const ECDSA384_CA_PRIVATE_KEY: &str = concat!(
     "3081b6020100301006072a8648ce3d020106052b8104002204819e30819b020",
@@ -29,7 +30,7 @@ const ECDSA384_SSH_PUBLIC_KEY: &str = concat!(
     "ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAz",
     "ODQAAABhBMiV0GdqalUMCeQb0LaO6k5ml6BgrEOTPLHFRNmRVc2Tzy758EFCmpnu",
     "NEP2waV00AugPDLPwjOGdZ6mDx1DQT3rTIbC8yb9V1saL0PnBt8vtrIoJ1qtaY95",
-    "rvpiL2Y+Sg== testuser"
+    "rvpiL2Y+Sg== obelisk@exclave.lan"
 );
 // End constants
 
@@ -38,17 +39,19 @@ fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let pkcs8_bytes = hex::decode(ECDSA256_CA_PRIVATE_KEY).unwrap();
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
     let rng = rand::SystemRandom::new();
-    let signature = key_pair.sign(&rng, buf).unwrap().as_ref().to_vec();
-    Some(signature)
+
+    let pubkey = PublicKey::from_string(ECDSA256_SSH_PUBLIC_KEY).unwrap();
+    format_signature_for_ssh(&pubkey, &key_pair.sign(&rng, buf).ok()?.as_ref().to_vec())
 }
 
 // Test signing and parsing work together
 fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
-    let rng = rand::SystemRandom::new();
     let pkcs8_bytes = hex::decode(ECDSA384_CA_PRIVATE_KEY).unwrap();
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P384_SHA384_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
-    let signature = key_pair.sign(&rng, buf).unwrap().as_ref().to_vec();
-    Some(signature)
+    let rng = rand::SystemRandom::new();
+    
+    let pubkey = PublicKey::from_string(ECDSA384_SSH_PUBLIC_KEY).unwrap();
+    format_signature_for_ssh(&pubkey, &key_pair.sign(&rng, buf).ok()?.as_ref().to_vec())
 }
 
 

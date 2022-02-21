@@ -236,8 +236,18 @@ impl KeyType {
                 ))
             }
         };
-
         Ok(kt)
+    }
+
+    /// The SK types change the convention of plain vs name. So this provides
+    /// an easy way to convert a name into the certificate version of it.
+    pub fn as_cert_name(&self) -> String {
+        if !self.is_sk {
+            format!("{}-cert-v01@openssh.com", &self.plain)
+        } else {
+            format!("{}-cert-v01@openssh.com", &self.plain[..self.plain.len() - 12])
+        }
+        
     }
 }
 

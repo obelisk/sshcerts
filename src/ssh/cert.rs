@@ -288,7 +288,7 @@ impl Certificate {
     /// # }
     /// ```
     pub fn builder(pubkey: &PublicKey, cert_type: CertType, signing_key: &PublicKey) -> Result<Certificate> {
-        let kt_name = format!("{}-cert-v01@openssh.com", pubkey.key_type.name);
+        let kt_name = pubkey.key_type.as_cert_name();
         let key_type = KeyType::from_name(kt_name.as_str()).unwrap();
         let rng = SystemRandom::new();
 
@@ -442,11 +442,6 @@ impl Certificate {
     /// returns an error if the signature provided is not valid for the
     /// certificate under the set CA key.
     pub fn add_signature(mut self, signature: &[u8]) -> Result<Self> {
-        let signature = match crate::utils::format_signature_for_ssh(&self.signature_key, signature) {
-            Some(s) => s,
-            None => return Err(Error::InvalidFormat)
-        };
-
         let mut tbs = self.tbs_certificate();
         verify_signature(&signature, &tbs, &self.signature_key)?;
 
@@ -583,7 +578,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
                 let mut data_hash = digest::digest(&digest::SHA256, signed_bytes.as_ref()).as_ref().to_vec();
                 
                 app_hash.push(flags);
-                app_hash.append(&mut signature_counter.to_be_bytes().to_vec());
+                app_hash.extend_from_slice(&signature_counter.to_be_bytes());
                 app_hash.append(&mut data_hash);
 
                 UnparsedPublicKey::new(alg, &key.key).verify(&app_hash, &sig)?;
@@ -618,7 +613,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
                 let mut data_hash = digest::digest(&digest::SHA256, signed_bytes.as_ref()).as_ref().to_vec();
                 
                 app_hash.push(flags);
-                app_hash.append(&mut signature_counter.to_be_bytes().to_vec());
+                app_hash.extend_from_slice(&signature_counter.to_be_bytes());
                 app_hash.append(&mut data_hash);
 
                 peer_public_key.verify(&app_hash, &signature)?;

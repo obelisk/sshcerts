@@ -9,7 +9,11 @@ use ring::{
     signature,
 };
 
-use crate::{error::Error, Result};
+use crate::{
+    error::Error,
+    Result,
+    utils::format_signature_for_ssh,
+};
 use super::{
     CurveKind,
     EcdsaPublicKey,
@@ -202,7 +206,7 @@ impl super::SSHCertificateSigner for PrivateKey {
     
                 keypair.sign(&signature::RSA_PKCS1_SHA512, &rng, buffer, &mut signature).ok()?;
     
-                Some(signature)
+                format_signature_for_ssh(&self.pubkey, &signature)
             },
             #[cfg(not(feature = "rsa-signing"))]
             PrivateKeyKind::Rsa(_) => return None,
@@ -223,8 +227,8 @@ impl super::SSHCertificateSigner for PrivateKey {
                     Ok(kp) => kp,
                     Err(_) => return None,
                 };
-    
-                Some(key_pair.sign(&rng, buffer).ok()?.as_ref().to_vec())
+
+                format_signature_for_ssh(&self.pubkey, &key_pair.sign(&rng, buffer).ok()?.as_ref().to_vec())
             },
             PrivateKeyKind::Ed25519(key) => {
                 let public_key = match &self.pubkey.kind {
@@ -236,8 +240,8 @@ impl super::SSHCertificateSigner for PrivateKey {
                     Ok(kp) => kp,
                     Err(_) => return None,
                 };
-    
-                Some(key_pair.sign(buffer).as_ref().to_vec())
+
+                format_signature_for_ssh(&self.pubkey, &key_pair.sign(buffer).as_ref().to_vec())
             },
             #[cfg(feature = "fido-support")]
             PrivateKeyKind::EcdsaSk(key) => {
@@ -250,15 +254,12 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 let challenge = ring::digest::digest(&digest::SHA256, buffer).as_ref().to_vec();
 
-                println!("Credential: {:?}", key.handle);
-
                 let key_handle = KeyHandle {
                     credential: key.handle.clone(),
                     transports: AuthenticatorTransports::empty(),
                 };
                 let mut manager = AuthenticatorService::new().expect("The auth service should initialize safely");
                 manager.add_u2f_usb_hid_platform_transports();
-                //let flags = SignFlags::from_bits(key.flags as u64).unwrap();
                 let flags = SignFlags::empty();
 
                 let (sign_tx, sign_rx) = channel();
@@ -284,9 +285,14 @@ impl super::SSHCertificateSigner for PrivateKey {
                 let sign_result = sign_rx
                     .recv()
                     .expect("Problem receiving, unable to continue");
-                let (_, _handle_used, sign_data, _device_info) = sign_result.expect("Sign failed");
 
-                Some(sign_data)
+                let (_, _handle_used, sign_data, _device_info) = sign_result.expect("Sign failed");
+                let flags_and_counter = &sign_data[..5];
+                let signature = &sign_data[5..];
+                let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
+                format.extend_from_slice(&flags_and_counter);
+
+                Some(format)
             },
             #[cfg(not(feature = "fido-support"))]
             PrivateKeyKind::EcdsaSk(_) => None,
@@ -301,8 +307,6 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 let challenge = ring::digest::digest(&digest::SHA256, buffer).as_ref().to_vec();
 
-                println!("Credential: {:?}", key.handle);
-
                 let key_handle = KeyHandle {
                     credential: key.handle.clone(),
                     transports: AuthenticatorTransports::empty(),
@@ -337,7 +341,11 @@ impl super::SSHCertificateSigner for PrivateKey {
                     .expect("Problem receiving, unable to continue");
                 let (_, _handle_used, sign_data, _device_info) = sign_result.expect("Sign failed");
 
-                Some(sign_data)
+                let flags_and_counter = &sign_data[..5];
+                let signature = &sign_data[5..];
+                let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
+                format.extend_from_slice(&flags_and_counter);
+                Some(format)
             },
             #[cfg(not(feature = "fido-support"))]
             PrivateKeyKind::Ed25519Sk(_) => None,
