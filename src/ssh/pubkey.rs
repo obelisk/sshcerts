@@ -46,6 +46,9 @@ pub struct EcdsaPublicKey {
 
     /// The public key.
     pub key: Vec<u8>,
+
+    /// If this is an SK key, the associated application
+    pub sk_application: Option<String>,
 }
 
 /// ED25519 public key.
@@ -54,6 +57,9 @@ pub struct EcdsaPublicKey {
 pub struct Ed25519PublicKey {
     /// The public key.
     pub key: Vec<u8>,
+
+    /// If this is an SK key, the associated application
+    pub sk_application: Option<String>,
 }
 
 
@@ -263,16 +269,27 @@ impl PublicKey {
                 let identifier = reader.read_string()?;
                 let curve = Curve::from_identifier(&identifier)?;
                 let key = reader.read_bytes()?;
+                let sk_application = match kt.is_sk {
+                    true => Some(reader.read_string()?),
+                    false => None,
+                };
                 let k = EcdsaPublicKey {
                     curve,
                     key,
+                    sk_application,
                 };
 
                 PublicKeyKind::Ecdsa(k)
             }
             KeyTypeKind::Ed25519 | KeyTypeKind::Ed25519Cert => {
+                let key = reader.read_bytes()?;
+                let sk_application = match kt.is_sk {
+                    true => Some(reader.read_string()?),
+                    false => None,
+                };
                 let k = Ed25519PublicKey {
-                    key: reader.read_bytes()?,
+                    key,
+                    sk_application,
                 };
 
                 PublicKeyKind::Ed25519(k)
@@ -333,9 +350,15 @@ impl PublicKey {
             PublicKeyKind::Ecdsa(ref k) => {
                 w.write_string(k.curve.identifier);
                 w.write_bytes(&k.key);
+                if self.key_type.is_sk {
+                    w.write_string(&k.sk_application.as_ref().unwrap());
+                }
             }
             PublicKeyKind::Ed25519(ref k) => {
                 w.write_bytes(&k.key);
+                if self.key_type.is_sk {
+                    w.write_string(&k.sk_application.as_ref().unwrap());
+                }
             }
         }
 

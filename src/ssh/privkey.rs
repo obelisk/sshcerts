@@ -72,6 +72,20 @@ pub struct EcdsaPrivateKey {
     pub key: Vec<u8>,
 }
 
+/// Hardware backed ECDSA private key.
+#[derive(Debug, PartialEq, Clone)]
+pub struct EcdsaSkPrivateKey {
+    /// Flags set on the private key
+    pub flags: u8,
+
+    /// The private key handle
+    pub handle: Vec<u8>,
+
+    /// Space reserved for future use
+    pub reserved: Vec<u8>,
+}
+
+
 /// ED25519 private key.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Ed25519PrivateKey {
@@ -79,20 +93,39 @@ pub struct Ed25519PrivateKey {
     pub key: Vec<u8>,
 }
 
+/// Hardware backed Ed25519 private key.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Ed25519SkPrivateKey {
+    /// Flags set on the private key
+    pub flags: u8,
+
+    /// The private key handle
+    pub handle: Vec<u8>,
+
+    /// Space reserved for future use
+    pub reserved: Vec<u8>,
+}
+
 /// A type which represents the different kinds a public key can be.
 #[derive(Debug, PartialEq, Clone)]
 pub enum PrivateKeyKind {
-    /// Represents an RSA public key.
+    /// Represents an RSA prviate key.
     Rsa(RsaPrivateKey),
 
-    /// Represents an ECDSA public key.
+    /// Represents an ECDSA private key.
     Ecdsa(EcdsaPrivateKey),
 
-    /// Represents an ED25519 public key.
+    /// Represents an ECDSA private key stored in a hardware device
+    EcdsaSk(EcdsaSkPrivateKey),
+
+    /// Represents an Ed25519 private key.
     Ed25519(Ed25519PrivateKey),
+
+    /// Represents an Ed25519 private key stored in a hardware device
+    Ed25519Sk(Ed25519SkPrivateKey),
 }
 
-/// A type which represents an OpenSSH public key.
+/// A type which represents an OpenSSH private key.
 #[derive(Debug, PartialEq, Clone)]
 pub struct PrivateKey {
     /// Key type.
@@ -191,6 +224,8 @@ impl super::SSHCertificateSigner for PrivateKey {
     
                 Some(key_pair.sign(buffer).as_ref().to_vec())
             },
+            PrivateKeyKind::EcdsaSk(_) => unimplemented!("TODO: Working on it!"),
+            PrivateKeyKind::Ed25519Sk(_) => unimplemented!("TODO: Working on it!"),
         }
     }
 }
@@ -252,19 +287,35 @@ fn read_private_key(reader: &mut Reader<'_>) -> Result<PrivateKey> {
             let identifier = reader.read_string()?;
             let curve = Curve::from_identifier(&identifier)?;
             let pubkey = reader.read_bytes()?;
-            let key = reader.read_bytes()?;
-            let k = EcdsaPrivateKey {
-                curve: curve.clone(),
-                key,
-            };
 
+            let (private_key, sk_application) = match kt.is_sk {
+                true => {
+                    let sk_application = Some(reader.read_string()?);
+                    let k = EcdsaSkPrivateKey {
+                        flags: reader.read_raw_bytes(1)?[0],
+                        handle: reader.read_bytes()?,
+                        reserved: reader.read_bytes()?,
+                    };
+                    
+                    (PrivateKeyKind::EcdsaSk(k), sk_application)
+                },
+                false => {
+                    let key = reader.read_bytes()?;
+                    let k = EcdsaPrivateKey {
+                        curve: curve.clone(),
+                        key,
+                    };
+                    (PrivateKeyKind::Ecdsa(k), None)
+                }
+            };
             (
-                PrivateKeyKind::Ecdsa(k),
+                private_key,
                 PublicKey {
                     key_type: kt.clone(),
                     kind: PublicKeyKind::Ecdsa(EcdsaPublicKey {
                         curve,
                         key: pubkey,
+                        sk_application,
                     }),
                     comment: None,
                 }
@@ -272,16 +323,33 @@ fn read_private_key(reader: &mut Reader<'_>) -> Result<PrivateKey> {
         }
         KeyTypeKind::Ed25519 => {
             let pubkey = reader.read_bytes()?;
-            let k = Ed25519PrivateKey {
-                key: reader.read_bytes()?,
-            };
 
+            let (private_key, sk_application) = match kt.is_sk {
+                true => {
+                    let sk_application = Some(reader.read_string()?);
+                    let k = Ed25519SkPrivateKey {
+                        flags: reader.read_raw_bytes(1)?[0],
+                        handle: reader.read_bytes()?,
+                        reserved: reader.read_bytes()?,
+                    };
+
+                    (PrivateKeyKind::Ed25519Sk(k), sk_application)
+                },
+                false => {
+                    let k = Ed25519PrivateKey {
+                        key: reader.read_bytes()?,
+                    };
+
+                    (PrivateKeyKind::Ed25519(k), None)
+                }
+            };
             (
-                PrivateKeyKind::Ed25519(k),
+                private_key,
                 PublicKey {
                     key_type: kt.clone(),
                     kind: PublicKeyKind::Ed25519(Ed25519PublicKey {
                         key: pubkey,
+                        sk_application,
                     }),
                     comment: None,
                 }
@@ -362,7 +430,7 @@ impl PrivateKey {
             return Err(Error::InvalidFormat);
         }
 
-        // These values are for encrypted keys which are not supported
+        // These values are for encrypted keys
         let cipher_name = reader.read_string()?;
         let kdf = reader.read_string()?;
 
@@ -377,8 +445,8 @@ impl PrivateKey {
 
         // A full pubkey with the same format as seen in certificates
         let pubkey = reader
-        .read_bytes()
-        .and_then(|v| PublicKey::from_bytes(&v))?;
+            .read_bytes()
+            .and_then(|v| PublicKey::from_bytes(&v))?;
 
         let remaining_length = match reader.read_u32()?.try_into() {
             Ok(rl) => rl,
