@@ -247,6 +247,7 @@ impl super::SSHCertificateSigner for PrivateKey {
             PrivateKeyKind::EcdsaSk(key) => {
                 let sk_application = if let PublicKeyKind::Ecdsa(pubkey) = &self.pubkey.kind {
                     let ska = pubkey.sk_application.as_ref().unwrap().clone();
+                    println!("SKA: {}", ska);
                     ring::digest::digest(&digest::SHA256, ska.as_ref()).as_ref().to_vec()
                 } else {
                     return None;
@@ -300,22 +301,24 @@ impl super::SSHCertificateSigner for PrivateKey {
             PrivateKeyKind::Ed25519Sk(key) => {
                 let sk_application = if let PublicKeyKind::Ed25519(pubkey) = &self.pubkey.kind {
                     let ska = pubkey.sk_application.as_ref().unwrap().clone();
+                    println!("SKA: {}", ska);
                     ring::digest::digest(&digest::SHA256, ska.as_ref()).as_ref().to_vec()
                 } else {
                     return None;
                 };
 
                 let challenge = ring::digest::digest(&digest::SHA256, buffer).as_ref().to_vec();
+                println!("Handle: {:02x?}", key.handle);
 
                 let key_handle = KeyHandle {
                     credential: key.handle.clone(),
                     transports: AuthenticatorTransports::empty(),
                 };
+
                 let mut manager = AuthenticatorService::new().expect("The auth service should initialize safely");
                 manager.add_u2f_usb_hid_platform_transports();
-                //let flags = SignFlags::from_bits(key.flags as u64).unwrap();
-                let flags = SignFlags::empty();
 
+                let flags = SignFlags::empty();
                 let (sign_tx, sign_rx) = channel();
 
                 let callback = StateCallback::new(Box::new(move |rv| {
