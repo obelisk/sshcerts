@@ -13,9 +13,10 @@ categories = ["authentication"]
 [features]
 default = ["rsa-signing"]
 
-all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support"]
+all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support", "fido-support"]
 
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
+fido-support = ["authenticator"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
 yubikey-support = ["der-parser", "rcgen", "x509", "x509-parser", "yubikey"]
@@ -40,6 +41,10 @@ der-parser = {version = "5", optional = true}
 aes = {version = "0.7", features = ["ctr"], optional = true}
 bcrypt-pbkdf = {version = "0.6", optional = true}
 ctr = {version = "0.8", optional = true}
+
+# Dependencies for fido-support
+#authenticator = {version = "0.3", optional = true}
+authenticator = {path = "../authenticator-rs/", optional = true}
 
 [dev-dependencies]
 env_logger = "0.8.2"

@@ -4,7 +4,10 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use ring::{rand, signature};
+use ring::{
+    rand,
+    signature,
+};
 
 use crate::{error::Error, Result};
 use super::{
@@ -32,6 +35,18 @@ use aes::{
 
 #[cfg(feature = "encrypted-keys")]
 use bcrypt_pbkdf::bcrypt_pbkdf;
+
+#[cfg(feature = "fido-support")]
+use authenticator::{
+    authenticatorservice::AuthenticatorService, statecallback::StateCallback,
+    AuthenticatorTransports, KeyHandle, SignFlags, StatusUpdate,
+};
+
+#[cfg(feature = "fido-support")]
+use std::sync::mpsc::{channel};
+
+#[cfg(feature = "fido-support")]
+use ring::digest;
 
 
 /// RSA private key.
@@ -224,8 +239,108 @@ impl super::SSHCertificateSigner for PrivateKey {
     
                 Some(key_pair.sign(buffer).as_ref().to_vec())
             },
-            PrivateKeyKind::EcdsaSk(_) => unimplemented!("TODO: Working on it!"),
-            PrivateKeyKind::Ed25519Sk(_) => unimplemented!("TODO: Working on it!"),
+            #[cfg(feature = "fido-support")]
+            PrivateKeyKind::EcdsaSk(key) => {
+                let sk_application = if let PublicKeyKind::Ecdsa(pubkey) = &self.pubkey.kind {
+                    let ska = pubkey.sk_application.as_ref().unwrap().clone();
+                    ring::digest::digest(&digest::SHA256, ska.as_ref()).as_ref().to_vec()
+                } else {
+                    return None;
+                };
+
+                let challenge = ring::digest::digest(&digest::SHA256, buffer).as_ref().to_vec();
+
+                println!("Credential: {:?}", key.handle);
+
+                let key_handle = KeyHandle {
+                    credential: key.handle.clone(),
+                    transports: AuthenticatorTransports::empty(),
+                };
+                let mut manager = AuthenticatorService::new().expect("The auth service should initialize safely");
+                manager.add_u2f_usb_hid_platform_transports();
+                //let flags = SignFlags::from_bits(key.flags as u64).unwrap();
+                let flags = SignFlags::empty();
+
+                let (sign_tx, sign_rx) = channel();
+
+                let callback = StateCallback::new(Box::new(move |rv| {
+                    sign_tx.send(rv).unwrap();
+                }));
+                
+                let (status_tx, _status_rx) = channel::<StatusUpdate>();
+
+                if let Err(e) = manager.sign(
+                    flags,
+                    15_000,
+                    challenge,
+                    vec![sk_application],
+                    vec![key_handle],
+                    status_tx,
+                    callback,
+                ) {
+                    panic!("Couldn't sign: {:?}", e);
+                }
+
+                let sign_result = sign_rx
+                    .recv()
+                    .expect("Problem receiving, unable to continue");
+                let (_, _handle_used, sign_data, _device_info) = sign_result.expect("Sign failed");
+
+                Some(sign_data)
+            },
+            #[cfg(not(feature = "fido-support"))]
+            PrivateKeyKind::EcdsaSk(_) => None,
+            #[cfg(feature = "fido-support")]
+            PrivateKeyKind::Ed25519Sk(key) => {
+                let sk_application = if let PublicKeyKind::Ed25519(pubkey) = &self.pubkey.kind {
+                    let ska = pubkey.sk_application.as_ref().unwrap().clone();
+                    ring::digest::digest(&digest::SHA256, ska.as_ref()).as_ref().to_vec()
+                } else {
+                    return None;
+                };
+
+                let challenge = ring::digest::digest(&digest::SHA256, buffer).as_ref().to_vec();
+
+                println!("Credential: {:?}", key.handle);
+
+                let key_handle = KeyHandle {
+                    credential: key.handle.clone(),
+                    transports: AuthenticatorTransports::empty(),
+                };
+                let mut manager = AuthenticatorService::new().expect("The auth service should initialize safely");
+                manager.add_u2f_usb_hid_platform_transports();
+                //let flags = SignFlags::from_bits(key.flags as u64).unwrap();
+                let flags = SignFlags::empty();
+
+                let (sign_tx, sign_rx) = channel();
+
+                let callback = StateCallback::new(Box::new(move |rv| {
+                    sign_tx.send(rv).unwrap();
+                }));
+                
+                let (status_tx, _status_rx) = channel::<StatusUpdate>();
+
+                if let Err(e) = manager.sign(
+                    flags,
+                    15_000,
+                    challenge,
+                    vec![sk_application],
+                    vec![key_handle],
+                    status_tx,
+                    callback,
+                ) {
+                    panic!("Couldn't sign: {:?}", e);
+                }
+
+                let sign_result = sign_rx
+                    .recv()
+                    .expect("Problem receiving, unable to continue");
+                let (_, _handle_used, sign_data, _device_info) = sign_result.expect("Sign failed");
+
+                Some(sign_data)
+            },
+            #[cfg(not(feature = "fido-support"))]
+            PrivateKeyKind::Ed25519Sk(_) => None,
         }
     }
 }

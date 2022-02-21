@@ -206,6 +206,14 @@ impl KeyType {
                 is_sk: true,
                 kind: KeyTypeKind::Ed25519,
             },
+            "sk-ssh-ed25519-cert-v01@openssh.com" => KeyType {
+                name: "sk-ssh-ed25519-cert-v01@openssh.com",
+                plain: "sk-ssh-ed25519@openssh.com",
+                short_name: "ED25519-SK",
+                is_cert: true,
+                is_sk: true,
+                kind: KeyTypeKind::Ed25519,
+            },
             "sk-ecdsa-sha2-nistp256@openssh.com" => KeyType {
                 name: "sk-ecdsa-sha2-nistp256@openssh.com",
                 plain: "sk-ecdsa-sha2-nistp256@openssh.com",
@@ -214,11 +222,11 @@ impl KeyType {
                 is_sk: true,
                 kind: KeyTypeKind::Ecdsa,
             },
-            "sk-ecdsa-sha2-nistp384@openssh.com" => KeyType {
-                name: "sk-ecdsa-sha2-nistp384@openssh.com",
-                plain: "sk-ecdsa-sha2-nistp384@openssh.com",
+            "sk-ecdsa-sha2-nistp256-cert-v01@openssh.com" => KeyType {
+                name: "sk-ecdsa-sha2-nistp256-cert-v01@openssh.com",
+                plain: "sk-ecdsa-sha2-nistp256@openssh.com",
                 short_name: "ECDSA-SK",
-                is_cert: false,
+                is_cert: true,
                 is_sk: true,
                 kind: KeyTypeKind::Ecdsa,
             },
