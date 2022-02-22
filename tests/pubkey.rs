@@ -2,29 +2,41 @@ use sshcerts::ssh::{PublicKey};
 
 #[test]
 fn parse_ed25519_publickey() {
-    let ssh_pubkey = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH447ysO2G10q6wS6KveQWYJNr7Ux5WjtbDJr/MQ4Xpw obelisk@exclave.lan");
+    let in_data = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH447ysO2G10q6wS6KveQWYJNr7Ux5WjtbDJr/MQ4Xpw obelisk@exclave.lan";
+    let ssh_pubkey = PublicKey::from_string(in_data);
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
     assert_eq!(ssh_pubkey.fingerprint().hash, "c4X5mQt9f37ZkdQUbNckivACZmY52rZw0jJUCA1DfkI");
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(in_data, out_data);
 }
 
 #[test]
 fn parse_ecdsa384_publickey() {
-    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCVw+mPwQPcohKD0L9hDOfbtzMvBUq7WE4RQZ2y7j4dMhdww0Ux0rv3gbhTsvL8GbrfZLOwVkra3WEY1qBDGPLGn1Ym6RLWMqo5qHBjcyDJZGzG0+bAa7np6mtU7ydpkvw== obelisk@exclave.lan");
+    let in_data = "ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCVw+mPwQPcohKD0L9hDOfbtzMvBUq7WE4RQZ2y7j4dMhdww0Ux0rv3gbhTsvL8GbrfZLOwVkra3WEY1qBDGPLGn1Ym6RLWMqo5qHBjcyDJZGzG0+bAa7np6mtU7ydpkvw== obelisk@exclave.lan";
+    let ssh_pubkey = PublicKey::from_string(in_data);
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
     assert_eq!(ssh_pubkey.fingerprint().hash, "huOgP+FbGDQ830OcBfh2j3WwGn+E66sxfZp3NwXA4jg");
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(in_data, out_data);
 }
 
 #[test]
 fn parse_ecdsa256_publickey() {
-    let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
+    let in_data = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan";
+    let ssh_pubkey = PublicKey::from_string(in_data);
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
     assert_eq!(ssh_pubkey.fingerprint().hash, "BAJ7Md5+hfu6I6ojHoJpSNVXNRnxM8XfNnA8Pf1X/2I");
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(in_data, out_data);
 }
 
 #[test]
@@ -47,9 +59,13 @@ fn parse_rsa3072_publickey() {
 
 #[test]
 fn parse_rsa2048_publickey() {
-    let ssh_pubkey = PublicKey::from_string("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDfqT0yXZzoHYrTDBrvFbjrjOVQ9wDOL6PEmEToPVrNavjXOAfmZDLd6azKYDifveVXjBUV+Rum7cz5MXHBh046NxfG4g6OVmVQxF+czWP0Oly3L4Vwx3Q4mbD3shTLF36Yv3Ehb6DzGj/SDvCFgTjYqzkuupN7KKrk4DUxTbCvgoA7W0SIGYD7frIw64Kxp1Mb7AAyh5z0WSzYyl15lRVGnEBRb5BEEMQO8cvkmUEUvl0jALY+hawejjedzWjXiQd/xO4E8FfKNuIe0SUTHZM0DbeBvWbsef5PI1/Hw3TCtFXEOBsMYTQwSbDGiFEDqNQ+97dhctKyueoFdfbodkF obelisk@exclave.lan");
+    let in_data = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDfqT0yXZzoHYrTDBrvFbjrjOVQ9wDOL6PEmEToPVrNavjXOAfmZDLd6azKYDifveVXjBUV+Rum7cz5MXHBh046NxfG4g6OVmVQxF+czWP0Oly3L4Vwx3Q4mbD3shTLF36Yv3Ehb6DzGj/SDvCFgTjYqzkuupN7KKrk4DUxTbCvgoA7W0SIGYD7frIw64Kxp1Mb7AAyh5z0WSzYyl15lRVGnEBRb5BEEMQO8cvkmUEUvl0jALY+hawejjedzWjXiQd/xO4E8FfKNuIe0SUTHZM0DbeBvWbsef5PI1/Hw3TCtFXEOBsMYTQwSbDGiFEDqNQ+97dhctKyueoFdfbodkF obelisk@exclave.lan";
+    let ssh_pubkey = PublicKey::from_string(in_data);
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
     assert_eq!(ssh_pubkey.fingerprint().hash, "A7S6yWfLWgKphtN5UzBbKbhSE71bK/NB6x6NE0DJOpU");
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(in_data, out_data);
 }

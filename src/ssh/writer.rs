@@ -168,18 +168,24 @@ impl Writer {
     pub fn write_pub_key(&mut self, key: &PublicKey) {
          // Write the public key
          match &key.kind {
-            PublicKeyKind::Ecdsa(key) => {
-                self.write_string(key.curve.identifier);
-                self.write_bytes(&key.key);
-            },
-            PublicKeyKind::Rsa(key) => {
-                self.write_mpint(&key.e);
-                self.write_mpint(&key.n);
-            },
-            PublicKeyKind::Ed25519(key) => {
-                self.write_bytes(&key.key);
+            PublicKeyKind::Rsa(ref k) => {
+                self.write_mpint(&k.e);
+                self.write_mpint(&k.n);
             }
-        };
+            PublicKeyKind::Ecdsa(ref k) => {
+                self.write_string(k.curve.identifier);
+                self.write_bytes(&k.key);
+                if key.key_type.is_sk {
+                    self.write_string(&k.sk_application.as_ref().unwrap());
+                }
+            }
+            PublicKeyKind::Ed25519(ref k) => {
+                self.write_bytes(&k.key);
+                if key.key_type.is_sk {
+                    self.write_string(&k.sk_application.as_ref().unwrap());
+                }
+            }
+        }
     }
 
     /// Converts the `Writer` into a byte sequence.
