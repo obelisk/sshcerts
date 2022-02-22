@@ -394,7 +394,7 @@ impl Certificate {
     /// Get the certificate data without the signature field at the end.
     pub fn tbs_certificate(&self) -> Vec<u8> {
         let mut writer = Writer::new();
-        let kt_name = format!("{}-cert-v01@openssh.com", self.key.key_type.name);
+        let kt_name = self.key_type.as_cert_name();
         // Write the cert type
         writer.write_string(kt_name.as_str());
 
