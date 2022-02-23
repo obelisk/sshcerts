@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 use std::fmt;
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read};
 use std::path::Path;
 
 use ring::{
@@ -10,19 +10,20 @@ use ring::{
 };
 
 use crate::{
+    ssh::{
+        CurveKind,
+        EcdsaPublicKey,
+        Ed25519PublicKey,
+        PublicKey,
+        PublicKeyKind,
+        RsaPublicKey,
+        keytype::{Curve, KeyType, KeyTypeKind},
+        reader::Reader,
+        writer::Writer,
+    },
     error::Error,
     Result,
     utils::format_signature_for_ssh,
-};
-use super::{
-    CurveKind,
-    EcdsaPublicKey,
-    Ed25519PublicKey,
-    PublicKey,
-    PublicKeyKind,
-    RsaPublicKey,
-    keytype::{Curve, KeyType, KeyTypeKind},
-    reader::Reader,
 };
 
 #[cfg(feature = "rsa-signing")]
@@ -149,6 +150,11 @@ pub struct PrivateKey {
 
     /// The corresponding public key
     pub pubkey: PublicKey,
+
+    /// This is the magic value used to ensure decoding happens correctly.
+    /// We store it so that we can guarantee deserialization of unencrypted
+    /// keys is bytes for byte.
+    pub magic: u32,
 
     /// Associated comment, if any.
     pub comment: Option<String>,
@@ -289,6 +295,10 @@ impl super::SSHCertificateSigner for PrivateKey {
                     return None;
                 };
 
+                println!("App: {}", &sk_application);
+                println!("Buffer: {:02x?}", &buffer);
+                println!("Handle: {:02x?}", &key.handle);
+
                 let assert = ctap_hid_fido2::get_assertion(
                     &Cfg::init(),
                     &sk_application,
@@ -309,148 +319,148 @@ impl super::SSHCertificateSigner for PrivateKey {
         }
     }
 }
-
-fn read_private_key(reader: &mut Reader<'_>) -> Result<PrivateKey> {
-    let key_type = reader.read_string()?;
-    let kt = KeyType::from_name(&key_type)?;
-
-    let (kind, pubkey) = match kt.kind {
-        KeyTypeKind::Rsa => {
-            let n = reader.read_mpint()?;
-            let e = reader.read_mpint()?;
-            let d = reader.read_mpint()?;
-            let coefficient = reader.read_mpint()?;
-            let p = reader.read_mpint()?;
-            let q = reader.read_mpint()?;
-
-            #[cfg(feature = "rsa-signing")]
-            let exp = Some(BigUint::from_bytes_be(&d)
-                .modpow(
-                    &BigUint::from_slice(&[0x1]),
-                    &(BigUint::from_bytes_be(&p) - 1_u8)
-                ).to_bytes_be());
-            #[cfg(not(feature = "rsa-signing"))]
-            let exp = None;
-
-            #[cfg(feature = "rsa-signing")]
-            let exq = Some(BigUint::from_bytes_be(&d)
-                .modpow(
-                    &BigUint::from_slice(&[0x1]),
-                    &(BigUint::from_bytes_be(&q) - 1_u8)
-                ).to_bytes_be());
-            #[cfg(not(feature = "rsa-signing"))]
-            let exq = None;
-
-            (
-                PrivateKeyKind::Rsa(RsaPrivateKey {
-                    n: n.clone(),
-                    e: e.clone(),
-                    d,
-                    coefficient,
-                    p,
-                    q,
-                    exp,
-                    exq,
-                }
-            ),
-                PublicKey {
-                    key_type: kt.clone(),
-                    kind: PublicKeyKind::Rsa(RsaPublicKey{
-                        e,
-                        n
-                    }),
-                    comment: None,
-                }
-            )
-        },
-        KeyTypeKind::Ecdsa => {
-            let identifier = reader.read_string()?;
-            let curve = Curve::from_identifier(&identifier)?;
-            let pubkey = reader.read_bytes()?;
-
-            let (private_key, sk_application) = match kt.is_sk {
-                true => {
-                    let sk_application = Some(reader.read_string()?);
-                    let k = EcdsaSkPrivateKey {
-                        flags: reader.read_raw_bytes(1)?[0],
-                        handle: reader.read_bytes()?,
-                        reserved: reader.read_bytes()?,
-                    };
-                    
-                    (PrivateKeyKind::EcdsaSk(k), sk_application)
-                },
-                false => {
-                    let key = reader.read_bytes()?;
-                    let k = EcdsaPrivateKey {
-                        curve: curve.clone(),
-                        key,
-                    };
-                    (PrivateKeyKind::Ecdsa(k), None)
-                }
-            };
-            (
-                private_key,
-                PublicKey {
-                    key_type: kt.clone(),
-                    kind: PublicKeyKind::Ecdsa(EcdsaPublicKey {
-                        curve,
-                        key: pubkey,
-                        sk_application,
-                    }),
-                    comment: None,
-                }
-            )
-        }
-        KeyTypeKind::Ed25519 => {
-            let pubkey = reader.read_bytes()?;
-
-            let (private_key, sk_application) = match kt.is_sk {
-                true => {
-                    let sk_application = Some(reader.read_string()?);
-                    let k = Ed25519SkPrivateKey {
-                        flags: reader.read_raw_bytes(1)?[0],
-                        handle: reader.read_bytes()?,
-                        reserved: reader.read_bytes()?,
-                    };
-
-                    (PrivateKeyKind::Ed25519Sk(k), sk_application)
-                },
-                false => {
-                    let k = Ed25519PrivateKey {
-                        key: reader.read_bytes()?,
-                    };
-
-                    (PrivateKeyKind::Ed25519(k), None)
-                }
-            };
-            (
-                private_key,
-                PublicKey {
-                    key_type: kt.clone(),
-                    kind: PublicKeyKind::Ed25519(Ed25519PublicKey {
-                        key: pubkey,
-                        sk_application,
-                    }),
-                    comment: None,
-                }
-            )
-        }
-        _ => return Err(Error::UnknownKeyType(kt.name.to_string())),
-    };
-
-    let comment = reader.read_string()?;
-
-    Ok(PrivateKey {
-        key_type: kt,
-        kind,
-        pubkey,
-        comment: if comment.is_empty() {None} else {Some(comment)},
-    })
-}
-
 impl PrivateKey {
+    fn read_private_key(reader: &mut Reader<'_>) -> Result<Self> {
+        let key_type = reader.read_string()?;
+        let kt = KeyType::from_name(&key_type)?;
+
+        let (kind, pubkey) = match kt.kind {
+            KeyTypeKind::Rsa => {
+                let n = reader.read_mpint()?;
+                let e = reader.read_mpint()?;
+                let d = reader.read_mpint()?;
+                let coefficient = reader.read_mpint()?;
+                let p = reader.read_mpint()?;
+                let q = reader.read_mpint()?;
+
+                #[cfg(feature = "rsa-signing")]
+                let exp = Some(BigUint::from_bytes_be(&d)
+                    .modpow(
+                        &BigUint::from_slice(&[0x1]),
+                        &(BigUint::from_bytes_be(&p) - 1_u8)
+                    ).to_bytes_be());
+                #[cfg(not(feature = "rsa-signing"))]
+                let exp = None;
+
+                #[cfg(feature = "rsa-signing")]
+                let exq = Some(BigUint::from_bytes_be(&d)
+                    .modpow(
+                        &BigUint::from_slice(&[0x1]),
+                        &(BigUint::from_bytes_be(&q) - 1_u8)
+                    ).to_bytes_be());
+                #[cfg(not(feature = "rsa-signing"))]
+                let exq = None;
+
+                (
+                    PrivateKeyKind::Rsa(RsaPrivateKey {
+                        n: n.clone(),
+                        e: e.clone(),
+                        d,
+                        coefficient,
+                        p,
+                        q,
+                        exp,
+                        exq,
+                    }
+                ),
+                    PublicKey {
+                        key_type: kt.clone(),
+                        kind: PublicKeyKind::Rsa(RsaPublicKey{
+                            e,
+                            n
+                        }),
+                        comment: None,
+                    }
+                )
+            },
+            KeyTypeKind::Ecdsa => {
+                let identifier = reader.read_string()?;
+                let curve = Curve::from_identifier(&identifier)?;
+                let pubkey = reader.read_bytes()?;
+
+                let (private_key, sk_application) = match kt.is_sk {
+                    true => {
+                        let sk_application = Some(reader.read_string()?);
+                        let k = EcdsaSkPrivateKey {
+                            flags: reader.read_raw_bytes(1)?[0],
+                            handle: reader.read_bytes()?,
+                            reserved: reader.read_bytes()?,
+                        };
+                        
+                        (PrivateKeyKind::EcdsaSk(k), sk_application)
+                    },
+                    false => {
+                        let key = reader.read_bytes()?;
+                        let k = EcdsaPrivateKey {
+                            curve: curve.clone(),
+                            key,
+                        };
+                        (PrivateKeyKind::Ecdsa(k), None)
+                    }
+                };
+                (
+                    private_key,
+                    PublicKey {
+                        key_type: kt.clone(),
+                        kind: PublicKeyKind::Ecdsa(EcdsaPublicKey {
+                            curve,
+                            key: pubkey,
+                            sk_application,
+                        }),
+                        comment: None,
+                    }
+                )
+            }
+            KeyTypeKind::Ed25519 => {
+                let pubkey = reader.read_bytes()?;
+
+                let (private_key, sk_application) = match kt.is_sk {
+                    true => {
+                        let sk_application = Some(reader.read_string()?);
+                        let k = Ed25519SkPrivateKey {
+                            flags: reader.read_raw_bytes(1)?[0],
+                            handle: reader.read_bytes()?,
+                            reserved: reader.read_bytes()?,
+                        };
+
+                        (PrivateKeyKind::Ed25519Sk(k), sk_application)
+                    },
+                    false => {
+                        let k = Ed25519PrivateKey {
+                            key: reader.read_bytes()?,
+                        };
+
+                        (PrivateKeyKind::Ed25519(k), None)
+                    }
+                };
+                (
+                    private_key,
+                    PublicKey {
+                        key_type: kt.clone(),
+                        kind: PublicKeyKind::Ed25519(Ed25519PublicKey {
+                            key: pubkey,
+                            sk_application,
+                        }),
+                        comment: None,
+                    }
+                )
+            }
+            _ => return Err(Error::UnknownKeyType(kt.name.to_string())),
+        };
+
+        let comment = reader.read_string()?;
+
+        Ok(Self {
+            key_type: kt,
+            kind,
+            pubkey,
+            magic: 0x0,
+            comment: if comment.is_empty() {None} else {Some(comment)},
+        })
+    }
+
     /// Reads an OpenSSH private key from a given path and passphrase
-    pub fn from_path_with_passphrase<P: AsRef<Path>>(path: P, passphrase: Option<String>) -> Result<PrivateKey> {
+    pub fn from_path_with_passphrase<P: AsRef<Path>>(path: P, passphrase: Option<String>) -> Result<Self> {
         let mut contents = String::new();
         File::open(path)?.read_to_string(&mut contents)?;
 
@@ -458,12 +468,12 @@ impl PrivateKey {
     }
 
     /// Reads an OpenSSH private key from a given path.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<PrivateKey> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         PrivateKey::from_path_with_passphrase(path, None)
     }
 
     /// Reads an OpenSSH private key from a given string and passphrase
-    pub fn from_string_with_passphrase(contents: &str, passphrase: Option<String>) -> Result<PrivateKey> {
+    pub fn from_string_with_passphrase(contents: &str, passphrase: Option<String>) -> Result<Self> {
         let mut iter = contents.lines();
         let header = iter.next().unwrap_or("");
         if header != "-----BEGIN OPENSSH PRIVATE KEY-----" {
@@ -499,7 +509,7 @@ impl PrivateKey {
     /// Create a private key from just the decrypted private bytes
     pub fn from_bytes<T: ?Sized + AsRef<[u8]>>(buffer: &T) -> Result<PrivateKey> {
         let mut reader = Reader::new(buffer);
-        read_private_key(&mut reader)
+        PrivateKey::read_private_key(&mut reader)
     }
 
     /// This function is used for extracting a private key from an existing reader.
@@ -564,19 +574,102 @@ impl PrivateKey {
 
         let mut reader = Reader::new(&remaining_bytes);
 
-        // These four bytes are repeated and are used to checks that a key has
+        // These four bytes are repeated and are used to check that a key has
         // been decrypted successfully
-        if reader.read_u32()? != reader.read_u32()? {
+        let m1 = reader.read_u32()?;
+        let m2 = reader.read_u32()?;
+        
+        if m1 != m2 {
             return Err(Error::InvalidFormat);
         }
         
-        let private_key = read_private_key(&mut reader)?;
+        let mut private_key = PrivateKey::read_private_key(&mut reader)?;
+        private_key.magic = m1;
 
         if private_key.pubkey != pubkey {
             return Err(Error::InvalidFormat);
         }
 
         Ok(private_key)
+    }
+
+    /// Encode the PrivateKey into a bytes representation
+    pub fn encode(&self) -> Vec<u8> {
+        let mut serializer = Writer::new();
+        serializer.write_cstring("openssh-key-v1"); // Preamble
+        serializer.write_string("none");        // cipher_namer
+        serializer.write_string("none");        // kdf
+        serializer.write_bytes(&vec![]);        // encryption_data
+        serializer.write_u32(1);                // number_of_keys
+        serializer.write_pub_key(&self.pubkey);     // public key
+
+        let mut w = Writer::new();
+        w.write_u32(self.magic);                // magic
+        w.write_u32(self.magic);                // repeated magic
+
+        w.write_string(&self.pubkey.key_type.name);
+        match &self.kind {
+            PrivateKeyKind::Rsa(rsa) => {
+                w.write_mpint(&rsa.n);          // These are in fact in a diff-
+                w.write_mpint(&rsa.e);          // erent order than a public key
+                w.write_mpint(&rsa.d);
+                w.write_mpint(&rsa.coefficient);
+                w.write_mpint(&rsa.p);
+                w.write_mpint(&rsa.q);
+            },
+            PrivateKeyKind::Ecdsa(ecdsa) => {
+                w.write_pub_key_data(&self.pubkey);
+                w.write_bytes(&ecdsa.key);
+            },
+            PrivateKeyKind::EcdsaSk(ecdsask) => {
+                w.write_pub_key_data(&self.pubkey);
+                w.write_raw_bytes(&vec![ecdsask.flags]);
+                w.write_bytes(&ecdsask.handle);
+                w.write_bytes(&vec![]);
+            },
+            PrivateKeyKind::Ed25519(ed25519) => {
+                w.write_pub_key_data(&self.pubkey);
+                w.write_bytes(&ed25519.key);
+            },
+            PrivateKeyKind::Ed25519Sk(ed25519sk) => {
+                w.write_pub_key_data(&self.pubkey);
+                w.write_raw_bytes(&vec![ed25519sk.flags]);
+                w.write_bytes(&ed25519sk.handle);
+                w.write_bytes(&vec![]);
+            },
+        };
+
+        if let Some(c) = &self.comment {
+            w.write_string(c);
+        }
+
+        // Padding to make the length of the private key part of the file
+        // congruent to 8
+        let pad_bytes = (8 - (w.as_bytes().len() % 8)) % 8;
+        let padding = vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7];
+        w.write_raw_bytes(&padding[..pad_bytes]);
+
+        serializer.write_bytes(w.as_bytes());
+        serializer.into_bytes()
+    }
+
+    /// Writes the private key to a given writer.
+    pub fn write<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        let encoded = self.encode();
+        let data = base64::encode(&encoded);
+        let split = data.chars()
+            .enumerate()
+            .flat_map(|(i, c)| {
+                if i != 0 && i % 70 == 0 {
+                    Some('\n')
+                } else {
+                    None
+                }
+                .into_iter()
+                .chain(std::iter::once(c))
+            })
+            .collect::<String>();
+        write!(w, "-----BEGIN OPENSSH PRIVATE KEY-----\n{}\n-----END OPENSSH PRIVATE KEY-----\n", split)
     }
 }
 

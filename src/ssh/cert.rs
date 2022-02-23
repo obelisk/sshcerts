@@ -402,7 +402,7 @@ impl Certificate {
         writer.write_bytes(&self.nonce);
 
         // Write the user public key
-        writer.write_pub_key(&self.key);
+        writer.write_pub_key_data(&self.key);
 
         // Write the serial number
         writer.write_u64(self.serial);

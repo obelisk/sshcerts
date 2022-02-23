@@ -43,10 +43,10 @@ fn main() {
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_private_key.pubkey).unwrap()
         .serial(0x0)
         .key_id("key_id")
-        //.principal(matches.value_of("principal").unwrap())
+        .principal(matches.value_of("principal").unwrap())
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
-        //.set_extensions(Certificate::standard_extensions())
+        .set_extensions(Certificate::standard_extensions())
         .sign(&ca_private_key);
 
     println!("{}", user_cert.unwrap());

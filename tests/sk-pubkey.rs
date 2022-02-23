@@ -2,7 +2,7 @@ use sshcerts::ssh::{PublicKey};
 
 #[test]
 fn parse_sk_ed25519() {
-    let ssh_pubkey = PublicKey::from_string(include_str!("keys/sk_ed25519.pub"));
+    let ssh_pubkey = PublicKey::from_string(include_str!("keys/sk/ed25519.pub"));
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
@@ -11,7 +11,7 @@ fn parse_sk_ed25519() {
 
 #[test]
 fn parse_sk_ecdsa256() {
-    let in_data = include_str!("keys/sk_ecdsa.pub").trim();
+    let in_data = include_str!("keys/sk/ecdsa.pub").trim();
     let ssh_pubkey = PublicKey::from_string(in_data);
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();

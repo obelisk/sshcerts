@@ -20,6 +20,22 @@ impl Writer {
         Writer { inner: Vec::new() }
     }
 
+    /// Write a cstring to the underlying vector
+    ///
+    /// # Example
+    /// ```rust
+    /// # use sshcerts::ssh::Writer;
+    /// let mut writer = Writer::new();
+    /// writer.write_cstring("AAAA");
+    /// let bytes = writer.into_bytes();
+    /// assert_eq!(bytes, vec![65, 65, 65, 65, 00]);
+    /// ```
+    pub fn write_cstring(&mut self, s: &str) {
+        let bytes = s.as_bytes();
+        self.inner.extend_from_slice(bytes);
+        self.inner.push(0x0);
+    }
+
     /// Writes a byte sequence to the underlying vector.
     /// The value is represented as a the byte sequence length,
     /// followed by the actual byte sequence.
@@ -36,6 +52,20 @@ impl Writer {
         let size = val.len() as u32;
         let mut buf = size.to_be_bytes().to_vec();
         self.inner.append(&mut buf);
+        self.inner.extend_from_slice(val);
+    }
+
+    /// Writes a raw byte sequence to the underlying vector.e.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use sshcerts::ssh::Writer;
+    /// let mut writer = Writer::new();
+    /// writer.write_raw_bytes(&[0, 0, 0, 42]);
+    /// let bytes = writer.into_bytes();
+    /// assert_eq!(bytes, vec![0, 0, 0, 42]);
+    /// ```
+    pub fn write_raw_bytes(&mut self, val: &[u8]) {
         self.inner.extend_from_slice(val);
     }
 
@@ -166,6 +196,20 @@ impl Writer {
     /// ```
     /// ```
     pub fn write_pub_key(&mut self, key: &PublicKey) {
+        let mut inner_writer = Writer::new();
+        inner_writer.write_string(key.key_type.name);
+        inner_writer.write_pub_key_data(key);
+
+        let pubkey_bytes = inner_writer.as_bytes();
+        self.write_bytes(pubkey_bytes);
+   }
+
+    /// Writes `PublicKey` data to the underlying byte sequence.
+    ///
+    /// # Example
+    /// ```
+    /// ```
+    pub fn write_pub_key_data(&mut self, key: &PublicKey) {
          // Write the public key
          match &key.kind {
             PublicKeyKind::Rsa(ref k) => {
