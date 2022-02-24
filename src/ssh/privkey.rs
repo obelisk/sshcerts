@@ -295,10 +295,6 @@ impl super::SSHCertificateSigner for PrivateKey {
                     return None;
                 };
 
-                println!("App: {}", &sk_application);
-                println!("Buffer: {:02x?}", &buffer);
-                println!("Handle: {:02x?}", &key.handle);
-
                 let assert = ctap_hid_fido2::get_assertion(
                     &Cfg::init(),
                     &sk_application,
