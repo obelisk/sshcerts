@@ -47,6 +47,12 @@ impl super::Yubikey {
             _ => return Err(Error::Unsupported),
         };
 
-        self.sign_data(buf, alg, slot)
+        let buf = self.sign_data(buf, alg, slot)?;
+        let pub_key = self.ssh_cert_fetch_pubkey(&slot)?;
+
+        match crate::utils::format_signature_for_ssh(&pub_key, &buf) {
+            Some(x) => Ok(x),
+            None => Err(super::Error::ParsingError),
+        }
     }
 }
