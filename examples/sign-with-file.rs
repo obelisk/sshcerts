@@ -23,6 +23,7 @@ fn main() {
                 .help("Add this principal to the certificate")
                 .long("principal")
                 .short('n')
+                .default_value("ubuntu")
                 .takes_value(true)
         )
         .arg(

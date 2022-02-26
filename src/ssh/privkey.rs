@@ -42,11 +42,16 @@ use aes::{
 use bcrypt_pbkdf::bcrypt_pbkdf;
 
 #[cfg(feature = "fido-support")]
-use ctap_hid_fido2::{
-    Cfg,
-    auth_data::Flags,
-};
+use ring::digest;
 
+#[cfg(feature = "fido-support")]
+use::std::sync::mpsc::{channel};
+
+#[cfg(feature = "fido-support")]
+use authenticator::{
+    authenticatorservice::AuthenticatorService, statecallback::StateCallback,
+    AuthenticatorTransports, KeyHandle, SignFlags, StatusUpdate,
+};
 
 /// RSA private key.
 #[derive(Debug, PartialEq, Clone)]
@@ -184,25 +189,6 @@ impl ToASN1 for RsaPrivateKey {
     }
 }
 
-#[cfg(feature = "fido-support")]
-fn convert_flags_to_byte(flags: &Flags) -> u8 {
-    let mut ret = 0x0;
-    if flags.user_present_result {
-        ret = ret | 0x01;
-    }
-    if flags.user_verified_result {
-        ret = ret | 0x04;
-    }
-    if flags.attested_credential_data_included {
-        ret = ret | 0x40;
-    }
-    if flags.extension_data_included {
-        ret = ret | 0x80;
-    }
-
-    ret
-}
-
 impl super::SSHCertificateSigner for PrivateKey {
     fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
         let rng = rand::SystemRandom::new();
@@ -265,49 +251,101 @@ impl super::SSHCertificateSigner for PrivateKey {
             #[cfg(feature = "fido-support")]
             PrivateKeyKind::EcdsaSk(key) => {
                 let sk_application = if let PublicKeyKind::Ecdsa(pubkey) = &self.pubkey.kind {
-                    pubkey.sk_application.as_ref().unwrap().clone()
+                    let ska = pubkey.sk_application.as_ref().unwrap().clone();
+                    ring::digest::digest(&digest::SHA256, ska.as_ref()).as_ref().to_vec()
                 } else {
                     return None;
                 };
 
-                let assert = ctap_hid_fido2::get_assertion(
-                    &Cfg::init(),
-                    &sk_application,
-                    &buffer,
-                    &key.handle,
-                    None,
-                ).unwrap();
+                let challenge = ring::digest::digest(&digest::SHA256, buffer).as_ref().to_vec();
 
-                let signature = &assert.signature;
-                let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
-                format.push(convert_flags_to_byte(&assert.flags));
-                format.extend_from_slice(&assert.sign_count.to_be_bytes());
+                let key_handle = KeyHandle {
+                    credential: key.handle.clone(),
+                    transports: AuthenticatorTransports::empty(),
+                };
+                let mut manager = AuthenticatorService::new().expect("The auth service should initialize safely");
+                manager.add_u2f_usb_hid_platform_transports();
+                let flags = SignFlags::empty();
+
+                let (sign_tx, sign_rx) = channel();
+                let callback = StateCallback::new(Box::new(move |rv| {
+                    sign_tx.send(rv).unwrap();
+                }));
                 
+                let (status_tx, _status_rx) = channel::<StatusUpdate>();
+                if let Err(e) = manager.sign(
+                    flags,
+                    15_000,
+                    challenge,
+                    vec![sk_application],
+                    vec![key_handle],
+                    status_tx,
+                    callback,
+                ) {
+                    panic!("Couldn't sign: {:?}", e);
+                }
+                let sign_result = sign_rx
+                    .recv()
+                    .expect("Problem receiving, unable to continue");
+
+                let (_, _handle_used, sign_data, _device_info) = sign_result.expect("Sign failed");
+                let flags_and_counter = &sign_data[..5];
+                let signature = &sign_data[5..];
+                let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
+                format.extend_from_slice(&flags_and_counter);
+
                 Some(format)
             },
             #[cfg(not(feature = "fido-support"))]
             PrivateKeyKind::EcdsaSk(_) => None,
             #[cfg(feature = "fido-support")]
             PrivateKeyKind::Ed25519Sk(key) => {
+                println!("Starting Ed25519 SK Signing");
                 let sk_application = if let PublicKeyKind::Ed25519(pubkey) = &self.pubkey.kind {
-                    pubkey.sk_application.as_ref().unwrap().clone()
+                    let ska = pubkey.sk_application.as_ref().unwrap().clone();
+                    ring::digest::digest(&digest::SHA256, ska.as_ref()).as_ref().to_vec()
                 } else {
+                    println!("Could not find application");
                     return None;
                 };
+                println!("Stage One");
+                let challenge = ring::digest::digest(&digest::SHA256, buffer).as_ref().to_vec();
 
-                let assert = ctap_hid_fido2::get_assertion(
-                    &Cfg::init(),
-                    &sk_application,
-                    &buffer,
-                    &key.handle,
-                    None,
-                ).unwrap();
+                let key_handle = KeyHandle {
+                    credential: key.handle.clone(),
+                    transports: AuthenticatorTransports::empty(),
+                };
+                let mut manager = AuthenticatorService::new().expect("The auth service should initialize safely");
+                manager.add_u2f_usb_hid_platform_transports();
+                let flags = SignFlags::empty();
 
-                let signature = &assert.signature;
-                let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
-                format.push(convert_flags_to_byte(&assert.flags));
-                format.extend_from_slice(&assert.sign_count.to_be_bytes());
+                let (sign_tx, sign_rx) = channel();
+                let callback = StateCallback::new(Box::new(move |rv| {
+                    sign_tx.send(rv).unwrap();
+                }));
                 
+                let (status_tx, _status_rx) = channel::<StatusUpdate>();
+                if let Err(e) = manager.sign(
+                    flags,
+                    15_000,
+                    challenge,
+                    vec![sk_application],
+                    vec![key_handle],
+                    status_tx,
+                    callback,
+                ) {
+                    panic!("Couldn't sign: {:?}", e);
+                }
+                let sign_result = sign_rx
+                    .recv()
+                    .expect("Problem receiving, unable to continue");
+
+                let (_, _handle_used, sign_data, _device_info) = sign_result.expect("Sign failed");
+                let flags_and_counter = &sign_data[..5];
+                let signature = &sign_data[5..];
+                let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
+                format.extend_from_slice(&flags_and_counter);
+
                 Some(format)
             },
             #[cfg(not(feature = "fido-support"))]
