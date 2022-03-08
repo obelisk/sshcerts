@@ -258,7 +258,6 @@ impl PublicKey {
     /// we already have a reader for reading an OpenSSH certificate key and
     /// we want to extract the public key information from it.
     pub(crate) fn from_reader(kt_name: &str, reader: &mut Reader<'_>) -> Result<PublicKey> {
-        println!("Trying to build a public key of type name: {}", kt_name);
         let kt = KeyType::from_name(kt_name)?;
 
         let kind = match kt.kind {
