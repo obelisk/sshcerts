@@ -192,7 +192,7 @@ impl Certificate {
         }
 
         let nonce = reader.read_bytes()?;
-        let key = PublicKey::from_reader(kt_name, &mut reader)?;
+        let key = PublicKey::from_reader(&key_type.as_pubkey_name(), &mut reader)?;
         let serial = reader.read_u64()?;
 
         let cert_type = match reader.read_u32()? {

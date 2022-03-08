@@ -78,18 +78,22 @@ pub struct PublicKey {
 
 impl fmt::Display for PublicKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let comment = match &self.comment {
-            Some(c) => c,
-            None => "",
-        };
-
-        write!(
-            f,
-            "{} {} {}",
-            self.key_type,
-            base64::encode(&self.encode()),
-            comment
-        )
+        if let Some(comment) = &self.comment {
+            write!(
+                f,
+                "{} {} {}",
+                self.key_type,
+                base64::encode(&self.encode()),
+                comment
+            )
+        } else {
+            write!(
+                f,
+                "{} {}",
+                self.key_type,
+                base64::encode(&self.encode()),
+            )
+        }
     }
 }
 
@@ -254,6 +258,7 @@ impl PublicKey {
     /// we already have a reader for reading an OpenSSH certificate key and
     /// we want to extract the public key information from it.
     pub(crate) fn from_reader(kt_name: &str, reader: &mut Reader<'_>) -> Result<PublicKey> {
+        println!("Trying to build a public key of type name: {}", kt_name);
         let kt = KeyType::from_name(kt_name)?;
 
         let kind = match kt.kind {
