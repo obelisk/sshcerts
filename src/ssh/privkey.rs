@@ -44,7 +44,6 @@ use bcrypt_pbkdf::bcrypt_pbkdf;
 #[cfg(feature = "fido-support")]
 use ctap_hid_fido2::{
     Cfg,
-    auth_data::Flags,
 };
 
 
@@ -184,25 +183,6 @@ impl ToASN1 for RsaPrivateKey {
     }
 }
 
-#[cfg(feature = "fido-support")]
-fn convert_flags_to_byte(flags: &Flags) -> u8 {
-    let mut ret = 0x0;
-    if flags.user_present_result {
-        ret = ret | 0x01;
-    }
-    if flags.user_verified_result {
-        ret = ret | 0x04;
-    }
-    if flags.attested_credential_data_included {
-        ret = ret | 0x40;
-    }
-    if flags.extension_data_included {
-        ret = ret | 0x80;
-    }
-
-    ret
-}
-
 impl super::SSHCertificateSigner for PrivateKey {
     fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
         let rng = rand::SystemRandom::new();
@@ -280,7 +260,7 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 let signature = &assert.signature;
                 let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
-                format.push(convert_flags_to_byte(&assert.flags));
+                format.push(assert.flags.as_u8());
                 format.extend_from_slice(&assert.sign_count.to_be_bytes());
                 
                 Some(format)
@@ -305,7 +285,7 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 let signature = &assert.signature;
                 let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
-                format.push(convert_flags_to_byte(&assert.flags));
+                format.push(assert.flags.as_u8());
                 format.extend_from_slice(&assert.sign_count.to_be_bytes());
                 
                 Some(format)
