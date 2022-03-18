@@ -13,7 +13,7 @@ fn main() {
         .arg(
             Arg::new("sign")
                 .help("The private key file you want to use as the signing authority")
-                .long("sign")
+                .long("signing_key")
                 .short('s')
                 .required(true)
                 .takes_value(true)
