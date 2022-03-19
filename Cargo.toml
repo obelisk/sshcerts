@@ -45,7 +45,7 @@ ctr = {version = "0.8", optional = true}
 # Dependencies for fido-support
 # Move to 2.2.1 when released
 #ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="remove_pi", optional = true}
-authenticator = {path = "../authenticator-rs", optional = true}
+authenticator = {git = "https://github.com/mozilla/authenticator-rs", branch = "ctap2-2021", optional = true}
 
 [dev-dependencies]
 env_logger = "0.8.2"

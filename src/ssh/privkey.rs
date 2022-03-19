@@ -49,8 +49,7 @@ use::std::sync::mpsc::{channel};
 
 #[cfg(feature = "fido-support")]
 use authenticator::{
-    authenticatorservice::AuthenticatorService, statecallback::StateCallback,
-    AuthenticatorTransports, KeyHandle, SignFlags, StatusUpdate,
+    authenticatorservice::AuthenticatorService, statecallback::StateCallback, StatusUpdate,
 };
 
 /// RSA private key.
@@ -248,7 +247,7 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 format_signature_for_ssh(&self.pubkey, &key_pair.sign(buffer).as_ref().to_vec())
             },
-            #[cfg(feature = "fido-support")]
+            /*#[cfg(feature = "fido-support")]
             PrivateKeyKind::EcdsaSk(key) => {
                 let sk_application = if let PublicKeyKind::Ecdsa(pubkey) = &self.pubkey.kind {
                     let ska = pubkey.sk_application.as_ref().unwrap().clone();
@@ -296,10 +295,19 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 Some(format)
             },
-            #[cfg(not(feature = "fido-support"))]
+            #[cfg(not(feature = "fido-support"))]*/
             PrivateKeyKind::EcdsaSk(_) => None,
             #[cfg(feature = "fido-support")]
             PrivateKeyKind::Ed25519Sk(key) => {
+                use authenticator::authenticatorservice::SignArgsCtap2;
+                use authenticator::authenticatorservice::CtapVersion;
+                use authenticator::authenticatorservice::GetAssertionOptions;
+                use authenticator::authenticatorservice::GetAssertionExtensions;
+                use authenticator::ctap2::server::Transport;
+                use authenticator::ctap2::server::PublicKeyCredentialDescriptor;
+                use authenticator::SignResult;
+                use authenticator::errors::{AuthenticatorError, PinError};
+
                 println!("Starting Ed25519 SK Signing");
                 let sk_application = if let PublicKeyKind::Ed25519(pubkey) = &self.pubkey.kind {
                     let ska = pubkey.sk_application.as_ref().unwrap().clone();
@@ -311,13 +319,26 @@ impl super::SSHCertificateSigner for PrivateKey {
                 println!("Stage One");
                 let challenge = ring::digest::digest(&digest::SHA256, buffer).as_ref().to_vec();
 
-                let key_handle = KeyHandle {
-                    credential: key.handle.clone(),
-                    transports: AuthenticatorTransports::empty(),
+                let allow_list = vec![
+                    PublicKeyCredentialDescriptor {
+                        id: key.handle.clone(),
+                        transports: vec![Transport::USB],
+                    }
+                ];
+
+                let ctap_args = SignArgsCtap2 {
+                    challenge,
+                    origin: format!(""),
+                    relying_party_id: String::from_utf8_lossy(&sk_application).to_string(),
+                    allow_list,
+                    options: GetAssertionOptions::default(),
+                    extensions: GetAssertionExtensions::default(),
+                    pin: None,
                 };
-                let mut manager = AuthenticatorService::new().expect("The auth service should initialize safely");
+            
+
+                let mut manager = AuthenticatorService::new(CtapVersion::CTAP2).expect("The auth service should initialize safely");
                 manager.add_u2f_usb_hid_platform_transports();
-                let flags = SignFlags::empty();
 
                 let (sign_tx, sign_rx) = channel();
                 let callback = StateCallback::new(Box::new(move |rv| {
@@ -326,12 +347,9 @@ impl super::SSHCertificateSigner for PrivateKey {
                 
                 let (status_tx, _status_rx) = channel::<StatusUpdate>();
                 if let Err(e) = manager.sign(
-                    flags,
                     15_000,
-                    challenge,
-                    vec![sk_application],
-                    vec![key_handle],
-                    status_tx,
+                    ctap_args.clone().into(),
+                    status_tx.clone(),
                     callback,
                 ) {
                     panic!("Couldn't sign: {:?}", e);
@@ -340,13 +358,24 @@ impl super::SSHCertificateSigner for PrivateKey {
                     .recv()
                     .expect("Problem receiving, unable to continue");
 
+                match sign_result {
+                    Ok(SignResult::CTAP2(_a, _c)) => {
+                        println!("Got signing result!");
+                    }
+                    Err(AuthenticatorError::PinError(PinError::PinRequired)) => {
+                        println!("PIN needed but not provided!");
+                    }
+                    _ => println!("Some other error!")
+                };
+                /*
                 let (_, _handle_used, sign_data, _device_info) = sign_result.expect("Sign failed");
                 let flags_and_counter = &sign_data[..5];
                 let signature = &sign_data[5..];
                 let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
                 format.extend_from_slice(&flags_and_counter);
 
-                Some(format)
+                Some(format)*/
+                None
             },
             #[cfg(not(feature = "fido-support"))]
             PrivateKeyKind::Ed25519Sk(_) => None,
