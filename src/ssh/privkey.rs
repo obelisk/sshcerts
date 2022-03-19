@@ -96,6 +96,10 @@ pub struct EcdsaSkPrivateKey {
 
     /// Space reserved for future use
     pub reserved: Vec<u8>,
+
+    /// Pin to use with external device when doing signing
+    /// operations
+    pin: Option<String>,
 }
 
 
@@ -117,6 +121,10 @@ pub struct Ed25519SkPrivateKey {
 
     /// Space reserved for future use
     pub reserved: Vec<u8>,
+
+    /// Pin to use with external device when doing signing
+    /// operations
+    pin: Option<String>,
 }
 
 /// A type which represents the different kinds a public key can be.
@@ -255,7 +263,7 @@ impl super::SSHCertificateSigner for PrivateKey {
                     &sk_application,
                     &buffer,
                     &key.handle,
-                    None,
+                    key.pin.as_ref().map(|x| &**x),
                 ).unwrap();
 
                 let signature = &assert.signature;
@@ -280,7 +288,7 @@ impl super::SSHCertificateSigner for PrivateKey {
                     &sk_application,
                     &buffer,
                     &key.handle,
-                    None,
+                    key.pin.as_ref().map(|x| &**x),
                 ).unwrap();
 
                 let signature = &assert.signature;
@@ -361,6 +369,7 @@ impl PrivateKey {
                             flags: reader.read_raw_bytes(1)?[0],
                             handle: reader.read_bytes()?,
                             reserved: reader.read_bytes()?,
+                            pin: None,
                         };
                         
                         (PrivateKeyKind::EcdsaSk(k), sk_application)
@@ -397,6 +406,7 @@ impl PrivateKey {
                             flags: reader.read_raw_bytes(1)?[0],
                             handle: reader.read_bytes()?,
                             reserved: reader.read_bytes()?,
+                            pin: None,
                         };
 
                         (PrivateKeyKind::Ed25519Sk(k), sk_application)
@@ -568,6 +578,21 @@ impl PrivateKey {
 
         Ok(private_key)
     }
+
+    /// If using an SK key, this allows you set the pin to use when communicating with the
+    /// external device
+    pub fn set_pin(&mut self, pin: &str) {
+        match &mut self.kind {
+            PrivateKeyKind::EcdsaSk(key) => {
+                key.pin = Some(pin.to_string());
+            },
+            PrivateKeyKind::Ed25519Sk(key) => {
+                key.pin = Some(pin.to_string());
+            },
+            _ => ()
+        };
+    }
+
 
     /// Encode the PrivateKey into a bytes representation
     pub fn encode(&self) -> Vec<u8> {

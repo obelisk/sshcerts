@@ -19,6 +19,14 @@ fn main() {
                 .takes_value(true)
         )
         .arg(
+            Arg::new("pin")
+                .help("If using an SK key handle, what PIN to use with the key (not always needed)")
+                .long("pin")
+                .short('p')
+                .required(false)
+                .takes_value(true)
+        )
+        .arg(
             Arg::new("principal")
                 .help("Add this principal to the certificate")
                 .long("principal")
@@ -38,7 +46,11 @@ fn main() {
 
 
     let ssh_pubkey = PublicKey::from_path(matches.value_of("file").unwrap()).unwrap();
-    let ca_private_key = PrivateKey::from_path(matches.value_of("sign").unwrap()).unwrap();
+    let mut ca_private_key = PrivateKey::from_path(matches.value_of("sign").unwrap()).unwrap();
+
+    if let Some(pin) = matches.value_of("pin") {
+        ca_private_key.set_pin(pin);
+    }
 
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_private_key.pubkey).unwrap()
