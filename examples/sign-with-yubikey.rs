@@ -1,6 +1,6 @@
 use std::env;
 
-use clap::{App, Arg};
+use clap::{Command, Arg};
 
 use sshcerts::*;
 use sshcerts::ssh::SSHCertificateSigner;
@@ -49,7 +49,7 @@ impl SSHCertificateSigner for YubikeySigner {
 
 fn main() {
     env_logger::init();
-    let matches = App::new("sign-with-yubikey")
+    let matches = Command::new("sign-with-yubikey")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Mitchell Grenier <mitchell@confurious.io>")
         .about("Sign an OpenSSH private key with a Yubikey")

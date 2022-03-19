@@ -24,6 +24,7 @@ yubikey-support = ["der-parser", "rcgen", "x509", "x509-parser", "yubikey"]
 [dependencies]
 base64 = "0.13"
 ring = "0.16"
+zeroize = {version = "1", features = ["zeroize_derive"]}
 
 # Dependencies for rsa-signing
 simple_asn1 = {version = "0.5", optional = true}

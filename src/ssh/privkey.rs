@@ -9,6 +9,8 @@ use ring::{
     signature,
 };
 
+use zeroize::Zeroize;
+
 use crate::{
     ssh::{
         CurveKind,
@@ -48,7 +50,7 @@ use ctap_hid_fido2::{
 
 
 /// RSA private key.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Zeroize)]
 pub struct RsaPrivateKey {
     /// Modulus of key.
     pub n: Vec<u8>,
@@ -76,7 +78,7 @@ pub struct RsaPrivateKey {
 }
 
 /// ECDSA private key.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Zeroize)]
 pub struct EcdsaPrivateKey {
     /// The curve being used.
     pub curve: Curve,
@@ -86,7 +88,7 @@ pub struct EcdsaPrivateKey {
 }
 
 /// Hardware backed ECDSA private key.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Zeroize)]
 pub struct EcdsaSkPrivateKey {
     /// Flags set on the private key
     pub flags: u8,
@@ -104,14 +106,14 @@ pub struct EcdsaSkPrivateKey {
 
 
 /// ED25519 private key.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Zeroize)]
 pub struct Ed25519PrivateKey {
     /// The private key.
     pub key: Vec<u8>,
 }
 
 /// Hardware backed Ed25519 private key.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Zeroize)]
 pub struct Ed25519SkPrivateKey {
     /// Flags set on the private key
     pub flags: u8,
@@ -128,7 +130,7 @@ pub struct Ed25519SkPrivateKey {
 }
 
 /// A type which represents the different kinds a public key can be.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Zeroize)]
 pub enum PrivateKeyKind {
     /// Represents an RSA prviate key.
     Rsa(RsaPrivateKey),
@@ -678,4 +680,10 @@ impl fmt::Display for PrivateKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {}", &self.pubkey.fingerprint(), self.comment.as_ref().unwrap_or(&String::new()))
     }
+}
+
+impl Drop for PrivateKey {
+    fn drop(&mut self) { 
+        self.kind.zeroize();
+     }
 }
