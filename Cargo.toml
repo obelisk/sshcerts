@@ -16,7 +16,7 @@ default = ["rsa-signing"]
 all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support", "fido-support"]
 
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
-fido-support = ["ctap-hid-fido2"]
+fido-support = ["ctap-hid-fido2", "minicbor"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
 yubikey-support = ["der-parser", "rcgen", "x509", "x509-parser", "yubikey"]
@@ -45,6 +45,7 @@ ctr = {version = "0.8", optional = true}
 
 # Dependencies for fido-support
 ctap-hid-fido2 = {version = "2.2.2", optional = true}
+minicbor = {version = "0.14", optional = true}
 #ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", optional = true}
 #ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="remove_pi", optional = true}
 #ctap-hid-fido2 = {path = "../ctap-hid-fido2", optional = true}
@@ -79,6 +80,10 @@ required-features = ["encrypted-keys"]
 [[example]]
 name = "into-ssh-pubkey"
 required-features = ["x509-support"]
+
+[[example]]
+name = "new-fido-sshkey"
+required-features = ["fido-support"]
 
 [[test]]
 name = "privkey-encrypted"

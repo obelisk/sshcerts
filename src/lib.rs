@@ -68,3 +68,7 @@ pub mod yubikey;
 /// because some functionality is currently shared.
 #[cfg(any(feature = "yubikey-support", feature = "x509-support"))]
 pub mod x509;
+
+/// For dealing with FIDO/U2F tokens such as generating new SSH keys
+#[cfg(feature = "fido-support")]
+pub mod fido;

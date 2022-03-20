@@ -101,7 +101,7 @@ pub struct EcdsaSkPrivateKey {
 
     /// Pin to use with external device when doing signing
     /// operations
-    pin: Option<String>,
+    pub pin: Option<String>,
 }
 
 
@@ -126,7 +126,7 @@ pub struct Ed25519SkPrivateKey {
 
     /// Pin to use with external device when doing signing
     /// operations
-    pin: Option<String>,
+    pub pin: Option<String>,
 }
 
 /// A type which represents the different kinds a public key can be.
