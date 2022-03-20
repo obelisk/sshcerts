@@ -142,7 +142,6 @@ pub fn parse_auth_data(auth_data_raw: &[u8], application: &[u8]) -> Result<AuthD
 
     let app = String::from_utf8(application.to_vec()).map_err(|_| Error::ParsingError)?;
 
-    // This code should probably be moved into SSHCerts
     let (kind, key_type) = match cose_key.algorithm {
         // ECDSA
         -7 => {

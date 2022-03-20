@@ -32,12 +32,15 @@ pub enum Error {
     UnknownKeyType(String),
     /// The curve in an ECC public/private key/signature is unknown
     UnknownCurve(String),
-    /// An error occured in the yubikey module
-    #[cfg(feature = "yubikey_support")]
-    YubikeyError(crate::yubikey::Error),
     /// A generic parsing error which occurs whenever data sent does not match the
     /// expected format
     ParsingError,
+    /// An error occured in the yubikey module
+    #[cfg(feature = "yubikey-support")]
+    YubikeyError(crate::yubikey::Error),
+    /// An error occured in the FIDO module
+    #[cfg(feature = "fido-support")]
+    FidoError(String),
     /// This occurs when you try to use a feature that could technically work
     /// but is currently unimplemented.
     Unsupported,
@@ -60,9 +63,11 @@ impl fmt::Display for Error {
             Error::EncryptedPrivateKeyNotSupported => write!(f, "This method of private key encryption is not supported or sshcerts was not compiled with encrypted private key support"),
             Error::UnknownKeyType(ref v) => write!(f, "Unknown key type {}", v),
             Error::UnknownCurve(ref v) => write!(f, "Unknown curve {}", v),
-            #[cfg(feature = "yubikey_support")]
-            Error::YubikeyError(ref e) => write!(f, "{}", e),
             Error::ParsingError => write!(f, "Could not parse the data provided"),
+            #[cfg(feature = "yubikey-support")]
+            Error::YubikeyError(ref e) => write!(f, "{}", e),
+            #[cfg(feature = "fido-support")]
+            Error::FidoError(ref e) => write!(f, "{}", e),
             Error::Unsupported => write!(f, "Functionality either not implemented or cannot be technically supported"),
         }
     }

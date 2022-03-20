@@ -7,6 +7,7 @@ use ctap_hid_fido2::{
 use super::parsing;
 
 use crate::{
+    error::Error,
     PrivateKey,
     ssh::{
         KeyType,
@@ -41,7 +42,7 @@ pub struct FIDOSSHKey {
 }
 
 /// Generate a new SSH key on a FIDO/U2F device
-pub fn generate_new_ssh_key(application: &str, pin: Option<String>) -> Result<FIDOSSHKey, ()> {
+pub fn generate_new_ssh_key(application: &str, pin: Option<String>) -> Result<FIDOSSHKey, Error> {
     let challenge = verifier::create_challenge();
     let att = ctap_hid_fido2::make_credential_with_key_type(
         &Cfg::init(),
@@ -49,7 +50,7 @@ pub fn generate_new_ssh_key(application: &str, pin: Option<String>) -> Result<FI
         &challenge,
         pin.as_ref().map(|x| &**x),
         Some(CredentialSupportedKeyType::Ed25519),
-    ).unwrap();
+    ).map_err(|e| Error::FidoError(e.to_string()))?;
 
     let mut ret = 0x0;
     if att.flags_user_present_result {
