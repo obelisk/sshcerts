@@ -23,8 +23,8 @@ fn main() {
         .arg(
             Arg::new("out")
                 .help("Path to write the resultant private key handle to")
-                .long("file")
-                .short('f')
+                .long("out")
+                .short('o')
                 .required(false)
                 .takes_value(true)
         )
