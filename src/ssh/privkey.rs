@@ -436,14 +436,17 @@ impl PrivateKey {
             _ => return Err(Error::UnknownKeyType(kt.name.to_string())),
         };
 
-        let comment = reader.read_string()?;
+        let comment = match reader.read_string() {
+            Ok(comment) => if !comment.is_empty() { Some(comment) } else { None },
+            Err(_) => None,
+        };
 
         Ok(Self {
             key_type: kt,
             kind,
             pubkey,
             magic: 0x0,
-            comment: if comment.is_empty() {None} else {Some(comment)},
+            comment,
         })
     }
 

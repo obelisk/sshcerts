@@ -130,3 +130,18 @@ fn parse_rsa_2048_private_key() {
     let serialized = String::from_utf8(buf.into_inner().unwrap()).unwrap();
     assert_eq!(include_str!("keys/unencrypted/rsa_2048_1"), serialized);
 }
+
+#[test]
+fn parse_ed25519_no_comment() {
+    let privkey = include_str!("keys/sk/no_comment_ed25519");
+
+    let privkey = PrivateKey::from_string(privkey);
+    match &privkey {
+        Ok(_) => (),
+        Err(e) => println!("{}", e),
+    };
+
+    assert!(privkey.is_ok());
+    let privkey = privkey.unwrap();
+    assert_eq!(privkey.pubkey.fingerprint().hash, "ILUM+3gS4bZHPRYBj0myEsEeb42lsIgHVRORMaPQbKM");
+}
