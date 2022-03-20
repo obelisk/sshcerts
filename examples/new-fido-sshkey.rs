@@ -2,9 +2,6 @@ use std::env;
 
 use clap::{Command, Arg};
 
-use ring::signature::KeyPair;
-use sshcerts::*;
-
 use sshcerts::fido::generate::generate_new_ssh_key;
 
 use std::fs::File;
@@ -34,11 +31,13 @@ fn main() {
         .get_matches();
 
 
-    if let Some(pin) = matches.value_of("pin") {
-    //    ca_private_key.set_pin(pin);
-    }
+    let pin = if let Some(pin) = matches.value_of("pin") {
+        Some(format!("{}", pin))
+    } else {
+        None
+    };
 
-    if let Ok(key) = generate_new_ssh_key("test_sk_key", None) {
+    if let Ok(key) = generate_new_ssh_key("test_sk_key", pin) {
         println!("{:#}", key.private_key.pubkey);
 
         if let Some(out) = matches.value_of("out")  {
