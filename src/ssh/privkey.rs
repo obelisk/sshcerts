@@ -165,8 +165,9 @@ pub struct PrivateKey {
     /// keys is bytes for byte.
     pub magic: u32,
 
-    /// Associated comment, if any.
-    pub comment: Option<String>,
+    /// Associated comment. It appears, unlike public keys, private keys must
+    /// have comments to be valid.
+    pub comment: String,
 }
 
 #[cfg(feature = "rsa-signing")]
@@ -436,10 +437,7 @@ impl PrivateKey {
             _ => return Err(Error::UnknownKeyType(kt.name.to_string())),
         };
 
-        let comment = match reader.read_string() {
-            Ok(comment) => if !comment.is_empty() { Some(comment) } else { None },
-            Err(_) => None,
-        };
+        let comment = reader.read_string()?;
 
         Ok(Self {
             key_type: kt,
@@ -645,9 +643,7 @@ impl PrivateKey {
             },
         };
 
-        if let Some(c) = &self.comment {
-            w.write_string(c);
-        }
+        w.write_string(&self.comment);
 
         // Padding to make the length of the private key part of the file
         // congruent to 8
@@ -681,7 +677,7 @@ impl PrivateKey {
 
 impl fmt::Display for PrivateKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}", &self.pubkey.fingerprint(), self.comment.as_ref().unwrap_or(&String::new()))
+        write!(f, "{} {}", &self.pubkey.fingerprint(), self.comment)
     }
 }
 

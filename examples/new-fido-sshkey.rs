@@ -37,7 +37,7 @@ fn main() {
         None
     };
 
-    if let Ok(key) = generate_new_ssh_key("test_sk_key", pin) {
+    if let Ok(key) = generate_new_ssh_key("ssh:test_sk_key", "new-fido-sshkey", pin) {
         println!("{:#}", key.private_key.pubkey);
 
         if let Some(out) = matches.value_of("out")  {
