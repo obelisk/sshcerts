@@ -21,7 +21,7 @@ gj+HqUxSiAOuRA5cDU+SykIfb7TLvteZOpl2I=
     let privkey = privkey.unwrap();
     assert_eq!(privkey.pubkey.fingerprint().hash, "bTkq+BEqfkYOgyPk2ziLwtkxDFcj531SfwEpl3IyutU");
 
-    let key = match privkey.kind {
+    let key = match &privkey.kind {
         PrivateKeyKind::Ed25519(key) => key,
         _ => panic!("Wrong key type detected"),
     };
@@ -51,7 +51,7 @@ JcR8y21R5hqNGhTlx0F8kqAGg2nW3PmsiGCwKl7Iz7IMf4iaUuufHG2RtTaFpN0n9gxbpQ
     let privkey = privkey.unwrap();
     assert_eq!(privkey.pubkey.fingerprint().hash, "nTCuabo74eqb8zYiqsg8x7sfgzsu1Egv0XGzaiip9XU");
 
-    let key = match privkey.kind {
+    let key = match &privkey.kind {
         PrivateKeyKind::Ed25519(key) => key,
         _ => panic!("Wrong key type detected"),
     };
@@ -82,7 +82,7 @@ Gd5VYX4HxsQZWQixs9DSZyCexueq7Fw+57AW9z1XFySUhHdiRlgeXSxsF8Q=
     let privkey = privkey.unwrap();
     assert_eq!(privkey.pubkey.fingerprint().hash, "aeK6cuLIzfIddiLtlP+kaZqA5lo4ExdXM8ksWeJPPp8");
 
-    match privkey.kind {
+    match &privkey.kind {
         PrivateKeyKind::Ecdsa(key) => key,
         _ => panic!("Wrong key type detected"),
     };
@@ -111,7 +111,7 @@ N9Rg7yGs2leAkts+8G8w+tgJJQ==
     let privkey = privkey.unwrap();
     assert_eq!(privkey.pubkey.fingerprint().hash, "SvNs3N/ZVtfktcRjlcgpvOs4qFnQTIVGTt2L2S2nVI8");
 
-    match privkey.kind {
+    match &privkey.kind {
         PrivateKeyKind::Ecdsa(key) => key,
         _ => panic!("Wrong key type detected"),
     };
@@ -168,7 +168,7 @@ cRts9Ge+2sCv9AYgd/SipxopCqw=
     let privkey = privkey.unwrap();
     assert_eq!(privkey.pubkey.fingerprint().hash, "+fZGegm7Lmc5SJJQRXZjvWhT25Ybqb8H4Vvq91Z1JEY");
 
-    match privkey.kind {
+    match &privkey.kind {
         PrivateKeyKind::Rsa(key) => key,
         _ => panic!("Wrong key type detected"),
     };

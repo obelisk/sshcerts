@@ -161,7 +161,7 @@ pub struct PrivateKey {
     pub pubkey: PublicKey,
 
     /// This is the magic value used to ensure decoding happens correctly.
-    /// We store it so that we can guarantee deserialization of unencrypted
+    /// We store it so that we can guarantee reserialization of unencrypted
     /// keys is bytes for byte.
     pub magic: u32,
 
