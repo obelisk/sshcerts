@@ -24,7 +24,7 @@ fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg
 
     let mut yk = Yubikey::new().unwrap();
     yk.unlock(pin.as_bytes(), mgm_key).unwrap();
-    match yk.provision(&slot, subject, alg, policy, PinPolicy::Always) {
+    match yk.provision(&slot, subject, alg, policy, PinPolicy::Never) {
         Ok(pk) => {
             println!("New hardware backed SSH Public Key: {}", pk);
         },

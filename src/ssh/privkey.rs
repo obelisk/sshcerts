@@ -44,9 +44,7 @@ use aes::{
 use bcrypt_pbkdf::bcrypt_pbkdf;
 
 #[cfg(feature = "fido-support")]
-use ctap_hid_fido2::{
-    Cfg,
-};
+use crate::fido::signing;
 
 
 /// RSA private key.
@@ -254,55 +252,9 @@ impl super::SSHCertificateSigner for PrivateKey {
                 format_signature_for_ssh(&self.pubkey, &key_pair.sign(buffer).as_ref().to_vec())
             },
             #[cfg(feature = "fido-support")]
-            PrivateKeyKind::EcdsaSk(key) => {
-                let sk_application = if let PublicKeyKind::Ecdsa(pubkey) = &self.pubkey.kind {
-                    pubkey.sk_application.as_ref().unwrap().clone()
-                } else {
-                    return None;
-                };
-
-                let assert = ctap_hid_fido2::get_assertion(
-                    &Cfg::init(),
-                    &sk_application,
-                    &buffer,
-                    &key.handle,
-                    key.pin.as_ref().map(|x| &**x),
-                ).unwrap();
-
-                let signature = &assert.signature;
-                let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
-                format.push(assert.flags.as_u8());
-                format.extend_from_slice(&assert.sign_count.to_be_bytes());
-                
-                Some(format)
-            },
+            PrivateKeyKind::Ed25519Sk(_) | PrivateKeyKind::EcdsaSk(_) => signing::sign_with_private_key(&self, buffer),
             #[cfg(not(feature = "fido-support"))]
-            PrivateKeyKind::EcdsaSk(_) => None,
-            #[cfg(feature = "fido-support")]
-            PrivateKeyKind::Ed25519Sk(key) => {
-                let sk_application = if let PublicKeyKind::Ed25519(pubkey) = &self.pubkey.kind {
-                    pubkey.sk_application.as_ref().unwrap().clone()
-                } else {
-                    return None;
-                };
-
-                let assert = ctap_hid_fido2::get_assertion(
-                    &Cfg::init(),
-                    &sk_application,
-                    &buffer,
-                    &key.handle,
-                    key.pin.as_ref().map(|x| &**x),
-                ).unwrap();
-
-                let signature = &assert.signature;
-                let mut format = format_signature_for_ssh(&self.pubkey, &signature).unwrap();
-                format.push(assert.flags.as_u8());
-                format.extend_from_slice(&assert.sign_count.to_be_bytes());
-                
-                Some(format)
-            },
-            #[cfg(not(feature = "fido-support"))]
-            PrivateKeyKind::Ed25519Sk(_) => None,
+            PrivateKeyKind::Ed25519Sk(_) | PrivateKeyKind::EcdsaSk(_) => None,
         }
     }
 }
