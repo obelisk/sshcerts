@@ -21,6 +21,14 @@ fn main() {
                 .takes_value(true)
         )
         .arg(
+            Arg::new("device")
+                .help("Manually specify a device to use. If not provided, one will be chosen randomly or by user tap selection (when implemented)")
+                .long("device")
+                .short('d')
+                .required(false)
+                .takes_value(true)
+        )
+        .arg(
             Arg::new("out")
                 .help("Path to write the resultant private key handle to")
                 .long("out")
@@ -32,25 +40,34 @@ fn main() {
 
 
     let pin = if let Some(pin) = matches.value_of("pin") {
-        Some(format!("{}", pin))
+        Some(pin.to_owned())
     } else {
         None
     };
 
-    if let Ok(key) = generate_new_ssh_key("ssh:test_sk_key", "new-fido-sshkey", pin) {
-        println!("{:#}", key.private_key.pubkey);
-
-        if let Some(out) = matches.value_of("out")  {
-            let mut out = File::create(out).unwrap();
-            key.private_key.write(&mut out).unwrap();
-        } else {
-            let mut buf = std::io::BufWriter::new(Vec::new());
-            key.private_key.write(&mut buf).unwrap();
-            let serialized = String::from_utf8(buf.into_inner().unwrap()).unwrap();
-            println!("Your new private key handle:\n{}", serialized);
-        }
-
+    let device_path = if let Some(dev) = matches.value_of("device") {
+        Some(dev.to_owned())
     } else {
-        println!("Failed to generate new SSH Key");
+        None
+    };
+
+    match generate_new_ssh_key("ssh:test_sk_key", "new-fido-sshkey", pin, device_path) {
+        Ok(key) => {
+            println!("{:#}", key.private_key.pubkey);
+
+            if let Some(out) = matches.value_of("out")  {
+                let mut out = File::create(out).unwrap();
+                key.private_key.write(&mut out).unwrap();
+            } else {
+                let mut buf = std::io::BufWriter::new(Vec::new());
+                key.private_key.write(&mut buf).unwrap();
+                let serialized = String::from_utf8(buf.into_inner().unwrap()).unwrap();
+                println!("Your new private key handle:\n{}", serialized);
+            }
+
+        },
+        Err(e) => {
+            println!("Failed to generate new SSH Key: {}", e.to_string());
+        }
     }
 }

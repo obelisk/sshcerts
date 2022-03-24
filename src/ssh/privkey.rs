@@ -100,6 +100,11 @@ pub struct EcdsaSkPrivateKey {
     /// Pin to use with external device when doing signing
     /// operations
     pub pin: Option<String>,
+
+    /// Path to hardware device to use for signing. If not
+    /// provided, the system will choose one (either randomly
+    /// or by user selection)
+    pub device_path: Option<String>,
 }
 
 
@@ -125,6 +130,11 @@ pub struct Ed25519SkPrivateKey {
     /// Pin to use with external device when doing signing
     /// operations
     pub pin: Option<String>,
+
+    /// Path to hardware device to use for signing. If not
+    /// provided, the system will choose one (either randomly
+    /// or by user selection)
+    pub device_path: Option<String>,
 }
 
 /// A type which represents the different kinds a public key can be.
@@ -325,6 +335,7 @@ impl PrivateKey {
                             handle: reader.read_bytes()?,
                             reserved: reader.read_bytes()?,
                             pin: None,
+                            device_path: None,
                         };
                         
                         (PrivateKeyKind::EcdsaSk(k), sk_application)
@@ -362,6 +373,7 @@ impl PrivateKey {
                             handle: reader.read_bytes()?,
                             reserved: reader.read_bytes()?,
                             pin: None,
+                            device_path: None,
                         };
 
                         (PrivateKeyKind::Ed25519Sk(k), sk_application)
@@ -548,6 +560,19 @@ impl PrivateKey {
         };
     }
 
+    /// If using an SK key, this allows you specify a hardware device path to use for the
+    /// signing operation
+    pub fn set_device_path(&mut self, path: &str) {
+        match &mut self.kind {
+            PrivateKeyKind::EcdsaSk(key) => {
+                key.device_path = Some(path.to_string());
+            },
+            PrivateKeyKind::Ed25519Sk(key) => {
+                key.device_path = Some(path.to_string());
+            },
+            _ => ()
+        };
+    }
 
     /// Encode the PrivateKey into a bytes representation
     pub fn encode(&self) -> Vec<u8> {

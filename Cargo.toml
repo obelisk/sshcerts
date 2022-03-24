@@ -46,8 +46,8 @@ ctr = {version = "0.8", optional = true}
 # Dependencies for fido-support
 #ctap-hid-fido2 = {version = "2.2.2", optional = true}
 minicbor = {version = "0.14", optional = true}
-ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", rev="8d7d58b333b9824512b56009dd2ed4e995ef90ea", optional = true}
-#ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="remove_pi", optional = true}
+#ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", rev="8d7d58b333b9824512b56009dd2ed4e995ef90ea", optional = true}
+ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="device_by_path", optional = true}
 #ctap-hid-fido2 = {path = "../ctap-hid-fido2", optional = true}
 
 [dev-dependencies]

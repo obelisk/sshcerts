@@ -5,14 +5,15 @@ use crate::utils::format_signature_for_ssh;
 
 use ctap_hid_fido2::{
     Cfg,
+    HidParam,
 };
 
 
 /// Sign data with a SK type private key
 pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Option<Vec<u8>> {
-    let (handle, pin) = match &private_key.kind {
-        PrivateKeyKind::EcdsaSk(key) => (key.handle.as_ref(), key.pin.as_ref()),
-        PrivateKeyKind::Ed25519Sk(key) => (key.handle.as_ref(), key.pin.as_ref()),
+    let (handle, pin, device_path) = match &private_key.kind {
+        PrivateKeyKind::EcdsaSk(key) => (key.handle.as_ref(), key.pin.as_ref(), key.device_path.as_ref()),
+        PrivateKeyKind::Ed25519Sk(key) => (key.handle.as_ref(), key.pin.as_ref(), key.device_path.as_ref()),
         _ => return None,
     };
 
@@ -24,8 +25,13 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
         _ => return None,
     };
 
+    let mut cfg = Cfg::init();
+    if let Some(path) = &device_path {
+        cfg.hid_params.push(HidParam::Path(path.to_string()));
+    }
+
     let assert = ctap_hid_fido2::get_assertion(
-        &Cfg::init(),
+        &cfg,
         &sk_application,
         challenge,
         &handle,
