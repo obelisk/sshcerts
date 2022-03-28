@@ -7,6 +7,7 @@ use std::path::Path;
 use ring::{
     rand,
     signature,
+    signature::KeyPair,
 };
 
 use zeroize::Zeroize;
@@ -410,6 +411,45 @@ impl PrivateKey {
             magic: 0x0,
             comment,
         })
+    }
+
+    /// Generate a new SSH private key. Currently this only supports Ed25519.
+    pub fn new(kind: KeyTypeKind, comment: &str) -> Result<Self> {
+        let rng = rand::SystemRandom::new();
+        match kind {
+            KeyTypeKind::Ed25519 => {
+                let key_type = KeyType::from_name("ed25519").unwrap();
+                // Ring does not expose access to the private key without
+                // PKCS#8 wrapping. So we either need to do this, or write/pull
+                // in code to parse it.
+                let seed: [u8; 32] = rand::generate(&rng).unwrap().expose();
+                let magic: [u8; 4] = rand::generate(&rng).unwrap().expose();
+                let public_key_bytes = ring::signature::Ed25519KeyPair::from_seed_unchecked(&seed).unwrap().public_key().as_ref().to_vec();
+                let key = Ed25519PrivateKey {
+                    key: seed.to_vec(),
+                };
+
+                let pubkey = PublicKey {
+                    key_type: key_type.clone(),
+                    kind: PublicKeyKind::Ed25519(Ed25519PublicKey {
+                        key: public_key_bytes,
+                        sk_application: None,
+                    }),
+                    comment: None,
+                };
+
+                Ok(Self {
+                    key_type,
+                    kind: PrivateKeyKind::Ed25519(key),
+                    pubkey,
+                    magic: u32::from_be_bytes(magic),
+                    comment: comment.to_owned(),
+                })
+            },
+            KeyTypeKind::Ecdsa => return Err(Error::Unsupported),
+            KeyTypeKind::Rsa => return Err(Error::Unsupported),
+            _ => return Err(Error::KeyTypeMismatch),
+        }
     }
 
     /// Reads an OpenSSH private key from a given path and passphrase
