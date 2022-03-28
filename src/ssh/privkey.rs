@@ -418,7 +418,7 @@ impl PrivateKey {
         let rng = rand::SystemRandom::new();
         match kind {
             KeyTypeKind::Ed25519 => {
-                let key_type = KeyType::from_name("ed25519").unwrap();
+                let key_type = KeyType::from_name("ssh-ed25519").unwrap();
                 // Ring does not expose access to the private key without
                 // PKCS#8 wrapping. So we either need to do this, or write/pull
                 // in code to parse it.
