@@ -16,7 +16,7 @@ use ring::{
 };
 
 
-const YUBICO_U2F_ROOT_CA: &[u8] = "-----BEGIN CERTIFICATE-----
+const YUBICO_U2F_ROOT_CA: &str = "-----BEGIN CERTIFICATE-----
 MIIDHjCCAgagAwIBAgIEG0BT9zANBgkqhkiG9w0BAQsFADAuMSwwKgYDVQQDEyNZ
 dWJpY28gVTJGIFJvb3QgQ0EgU2VyaWFsIDQ1NzIwMDYzMTAgFw0xNDA4MDEwMDAw
 MDBaGA8yMDUwMDkwNDAwMDAwMFowLjEsMCoGA1UEAxMjWXViaWNvIFUyRiBSb290
@@ -34,7 +34,7 @@ hX7Y+9XFN9NpmYxr+ekVY5xOxi8h9JDIgoMP4VB1uS0aunL1IGqrNooL9mmFnL2k
 LVVee6/VR6C5+KSTCMCWppMuJIZII2v9o4dkoZ8Y7QRjQlLfYzd3qGtKbw7xaF1U
 sG/5xUb/Btwb2X2g4InpiB/yt/3CpQXpiWX/K4mBvUKiGn05ZsqeY1gx4g0xLBqc
 U9psmyPzK+Vsgw2jeRQ5JlKDyqE0hebfC1tvFu0CCrJFcw==
------END CERTIFICATE-----".as_bytes();
+-----END CERTIFICATE-----";
 
 /// Defines the transports supported by the FIDO standard
 #[derive(Clone, Debug, PartialEq)]
@@ -139,14 +139,16 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
 }
 
 /// Verify a provided U2F attestation, signature, and certificate are valid
-/// against the Yubico U2F Root CA.
-pub fn verify_auth_data(auth_data: &[u8], auth_data_signature: &[u8], intermediate: &[u8], alg: i32, challenge: &[u8]) -> Result<ValidAttestation, Error> {
+/// against the root. If no root is given, the Yubico U2F Root is used.
+pub fn verify_auth_data(auth_data: &[u8], auth_data_signature: &[u8], challenge: &[u8], alg: i32, intermediate: &[u8], root_pem: Option<&str>) -> Result<ValidAttestation, Error> {
     match alg {
         // Verify using ECDSA256
         -7 => {
-            // Parse the U2F root CA. This should never fail
-            let (_, root_ca) = parse_x509_pem(YUBICO_U2F_ROOT_CA).unwrap();
-            let root_ca = Pem::parse_x509(&root_ca).unwrap();
+            let root_ca_pem = root_pem.unwrap_or(YUBICO_U2F_ROOT_CA);
+
+            // Parse the U2F root CA
+            let (_, root_ca) = parse_x509_pem(root_ca_pem.as_bytes()).map_err(|_| Error::ParsingError)?;
+            let root_ca = Pem::parse_x509(&root_ca).map_err(|_| Error::ParsingError)?;
             
             let (_, parsed_intermediate) = X509Certificate::from_der(intermediate).map_err(|_| Error::ParsingError)?;
 

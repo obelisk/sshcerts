@@ -131,7 +131,7 @@ const YUBIKEY_5C_NFC_INTERMEDIATE: [u8; 705] = [
 
 #[test]
 fn verify_and_parse_auth_data_yubikey_bio() {
-    let verified_data = verification::verify_auth_data(&YUBIKEY_BIO_AUTH_DATA_ED25519, &YUBIKEY_BIO_AUTH_SIG_ED25519, &YUBIKEY_BIO_INTERMEDIATE, -7, &YUBIKEY_BIO_CHALLENGE_ED25519).unwrap();
+    let verified_data = verification::verify_auth_data(&YUBIKEY_BIO_AUTH_DATA_ED25519, &YUBIKEY_BIO_AUTH_SIG_ED25519,&YUBIKEY_BIO_CHALLENGE_ED25519, -7, &YUBIKEY_BIO_INTERMEDIATE, None).unwrap();
 
     // Verify data pulled from the intermediate certificate
     assert_eq!(verified_data.transports, Some(vec![Transport::USB]));
@@ -145,7 +145,7 @@ fn verify_and_parse_auth_data_yubikey_bio() {
 
 #[test]
 fn verify_and_parse_auth_data_yubikey_5c_nfc() {
-    let verified_data = verification::verify_auth_data(&YUBIKEY_5C_NFC_AUTH_DATA_ED25519, &YUBIKEY_5C_NFC_AUTH_SIG_ED25519, &YUBIKEY_5C_NFC_INTERMEDIATE, -7, &YUBIKEY_5C_NFC_CHALLENGE_ED25519).unwrap();
+    let verified_data = verification::verify_auth_data(&YUBIKEY_5C_NFC_AUTH_DATA_ED25519, &YUBIKEY_5C_NFC_AUTH_SIG_ED25519, &YUBIKEY_5C_NFC_CHALLENGE_ED25519, -7, &YUBIKEY_5C_NFC_INTERMEDIATE, None).unwrap();
 
     assert_eq!(verified_data.transports, Some(vec![Transport::USB, Transport::NFC]));
     assert_eq!(verified_data.aaguid, Some(hex::decode("2fc0579f811347eab116bb5a8db9202a").unwrap()));
