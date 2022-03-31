@@ -23,7 +23,8 @@ fido-support = ["ctap-hid-fido2", "fido-lite"]
 fido-lite = ["minicbor", "x509-parser"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
-yubikey-support = ["der-parser", "rcgen", "x509", "x509-parser", "yubikey"]
+yubikey-support = ["rcgen", "yubikey", "yubikey-lite"]
+yubikey-lite = ["x509-support"]
 
 [dependencies]
 base64 = "0.13"

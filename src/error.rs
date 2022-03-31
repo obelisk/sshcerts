@@ -37,7 +37,7 @@ pub enum Error {
     ParsingError,
     /// An error occured in the yubikey module
     #[cfg(feature = "yubikey-support")]
-    YubikeyError(crate::yubikey::Error),
+    YubikeyPIVError(crate::yubikey::piv::Error),
     /// An error occured in the FIDO module
     #[cfg(any(feature = "fido-support", feature = "fido-lite"))]
     FidoError(String),
@@ -65,7 +65,7 @@ impl fmt::Display for Error {
             Error::UnknownCurve(ref v) => write!(f, "Unknown curve {}", v),
             Error::ParsingError => write!(f, "Could not parse the data provided"),
             #[cfg(feature = "yubikey-support")]
-            Error::YubikeyError(ref e) => write!(f, "{}", e),
+            Error::YubikeyPIVError(ref e) => write!(f, "{}", e),
             #[cfg(any(feature = "fido-support", feature = "fido-lite"))]
             Error::FidoError(ref e) => write!(f, "{}", e),
             Error::Unsupported => write!(f, "Functionality either not implemented or cannot be technically supported"),
