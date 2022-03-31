@@ -1,4 +1,5 @@
 use x509_parser::prelude::*;
+use x509_parser::der_parser::der::parse_der_octetstring;
 use x509_parser::der_parser::ber::{BerObjectContent, parse_ber_bitstring};
 
 use crate::error::Error;
@@ -74,8 +75,6 @@ pub struct ValidAttestation {
     pub auth_data: AuthData,
     /// The extracted firmware from the certificate
     pub firmware: Option<String>,
-    /// The U2F Device Identifier
-    pub u2f_device_identifier: Option<Vec<u8>>,
     /// The device AAGUID
     pub aaguid: Option<Vec<u8>>,
     /// The transports the device supports
@@ -86,7 +85,6 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
     let mut valid_attestation = ValidAttestation {
         auth_data,
         firmware: None,
-        u2f_device_identifier: None,
         aaguid: None,
         transports: None,
     };
@@ -95,15 +93,29 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
     for ext in extensions.iter() {
 
         match ext.oid.to_id_string().as_str() {
+            // Yubico Serial Number
             "1.3.6.1.4.1.41482.13.1" => {
-                // There are two bytes at the beginning and I'm not sure what they do
-                if ext.value.len() != 5 {
-                    return Err(Error::ParsingError)
+                let (_, obj) = parse_der_octetstring(ext.value).map_err(|_| Error::ParsingError)?;
+                if let BerObjectContent::OctetString(s) = obj.content {
+                    if s.len() != 3 {
+                        continue;
+                    }
+                    valid_attestation.firmware = Some(format!("{}.{}.{}", s[0], s[1], s[2]));
                 }
-                valid_attestation.firmware = Some(format!("{}.{}.{}", ext.value[2], ext.value[3], ext.value[4]));
             },
-            "1.3.6.1.4.1.41482.2" => valid_attestation.u2f_device_identifier = Some(ext.value.to_vec()),
-            "1.3.6.1.4.1.45724.1.1.4" => valid_attestation.aaguid = Some(ext.value.to_vec()),
+
+            // FIDO AAGUID
+            "1.3.6.1.4.1.45724.1.1.4" => {
+                let (_, obj) = parse_der_octetstring(ext.value).map_err(|_| Error::ParsingError)?;
+                if let BerObjectContent::OctetString(s) = obj.content {
+                    if s.len() != 16 {
+                        continue;
+                    }
+                    valid_attestation.aaguid = Some(s.to_vec());
+                }
+            },
+
+            // fidoU2FTransports
             "1.3.6.1.4.1.45724.2.1.1" => {
                 let (_, obj) = parse_ber_bitstring(ext.value).map_err(|_| Error::ParsingError)?;
                 if let BerObjectContent::BitString(_, bs) = obj.content {
@@ -118,8 +130,6 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
                     }
                     valid_attestation.transports = Some(transports);
                 }
-
-                
             },
             _ => (),
         }
@@ -142,7 +152,6 @@ pub fn verify_auth_data(auth_data: &[u8], auth_data_signature: &[u8], intermedia
 
             // Check the root CA has signed the intermediate, return error if not
             parsed_intermediate.verify_signature(Some(&root_ca.tbs_certificate.public_key())).map_err(|_| Error::InvalidSignature)?;
-            println!("Mad it");
 
             // Extract public key from verified intermediate certificate
             let key_bytes = parsed_intermediate.tbs_certificate.subject_pki.subject_public_key.data.to_vec();
