@@ -5,7 +5,7 @@ use ctap_hid_fido2::{
     make_credential_params::CredentialSupportedKeyType,
 };
 
-use super::parsing;
+use super::AuthData;
 
 use crate::{
     error::Error,
@@ -72,7 +72,7 @@ pub fn generate_new_ssh_key(application: &str, comment: &str, pin: Option<String
         ret = ret | 0x80;
     }
 
-    let key_type = KeyType::from_name("sk-ssh-ed25519@openssh.com").unwrap();
+    let key_type = KeyType::from_name("sk-ssh-ed25519@openssh.com")?;
     let kind = PrivateKeyKind::Ed25519Sk(Ed25519SkPrivateKey {
         flags: ret,
         handle: att.credential_descriptor.id.clone(),
@@ -81,12 +81,12 @@ pub fn generate_new_ssh_key(application: &str, comment: &str, pin: Option<String
         device_path,
     });
 
-    let auth_data = parsing::parse_auth_data(&att.auth_data, application.as_bytes()).unwrap();
+    let auth_data = AuthData::parse(&att.auth_data)?;
 
     let private_key = PrivateKey {
         key_type,
         kind,
-        pubkey: auth_data.public_key,
+        pubkey: auth_data.ssh_public_key(application)?,
         magic: 0x0,
         comment: comment.to_string(),
     };
