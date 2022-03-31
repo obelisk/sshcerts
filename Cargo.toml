@@ -14,9 +14,11 @@ categories = ["authentication"]
 default = ["rsa-signing"]
 
 all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support", "fido-support"]
+fido-support = ["fido-full", "fido-lite"]
 
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
-fido-support = ["ctap-hid-fido2", "minicbor"]
+fido-full = ["ctap-hid-fido2", "minicbor"]
+fido-lite = ["minicbor"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
 yubikey-support = ["der-parser", "rcgen", "x509", "x509-parser", "yubikey"]

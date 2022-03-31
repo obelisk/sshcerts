@@ -70,5 +70,5 @@ pub mod yubikey;
 pub mod x509;
 
 /// For dealing with FIDO/U2F tokens such as generating new SSH keys
-#[cfg(feature = "fido-support")]
+#[cfg(any(feature = "fido-full", feature = "fido-lite"))]
 pub mod fido;

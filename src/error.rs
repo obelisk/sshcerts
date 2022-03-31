@@ -39,7 +39,7 @@ pub enum Error {
     #[cfg(feature = "yubikey-support")]
     YubikeyError(crate::yubikey::Error),
     /// An error occured in the FIDO module
-    #[cfg(feature = "fido-support")]
+    #[cfg(any(feature = "fido-full", feature = "fido-lite"))]
     FidoError(String),
     /// This occurs when you try to use a feature that could technically work
     /// but is currently unimplemented.
@@ -66,7 +66,7 @@ impl fmt::Display for Error {
             Error::ParsingError => write!(f, "Could not parse the data provided"),
             #[cfg(feature = "yubikey-support")]
             Error::YubikeyError(ref e) => write!(f, "{}", e),
-            #[cfg(feature = "fido-support")]
+            #[cfg(any(feature = "fido-full", feature = "fido-lite"))]
             Error::FidoError(ref e) => write!(f, "{}", e),
             Error::Unsupported => write!(f, "Functionality either not implemented or cannot be technically supported"),
         }
