@@ -5,6 +5,10 @@ use crate::{
 };
 
 use x509_parser::prelude::*;
+use x509_parser::der_parser::der::parse_der_integer;
+use x509_parser::der_parser::ber::{BerObjectContent};
+
+use std::convert::TryInto;
 
 const YUBICO_PIV_ROOT_CA: &str = "-----BEGIN CERTIFICATE-----
 MIIDFzCCAf+gAwIBAgIDBAZHMA0GCSqGSIb3DQEBCwUAMCsxKTAnBgNVBAMMIFl1
@@ -44,20 +48,37 @@ pub struct ValidPIVKey {
 }
 
 fn extract_certificate_extension_data(public_key: PublicKey, certificate: &X509Certificate<'_>) -> Result<ValidPIVKey, Error> {
-    let firmware: Option<String> = None;
-    let serial: Option<u64> = None;
-    let policies: Option<[u8; 2]> = None;
+    let mut firmware: Option<String> = None;
+    let mut serial: Option<u64> = None;
+    let mut policies: Option<[u8; 2]> = None;
 
     let extensions = certificate.extensions();
     for ext in extensions.iter() {
-
         match ext.oid.to_id_string().as_str() {
             // Firmware
-            "1.3.6.1.4.1.41482.3.3" => (),
+            "1.3.6.1.4.1.41482.3.3" => {
+                if ext.value.len() != 3 {
+                    continue
+                }
+                firmware = Some(format!("{}.{}.{}", ext.value[0], ext.value[1], ext.value[2]));
+            },
             // Serial
-            "1.3.6.1.4.1.41482.3.7" => (),
+            "1.3.6.1.4.1.41482.3.7" => {
+                let (_, obj) = parse_der_integer(ext.value).map_err(|_| Error::ParsingError)?;
+                if let BerObjectContent::Integer(s) = obj.content {
+                    if s.len() > 8 {
+                        continue;
+                    }
+
+                    let mut padded_serial = vec![0; 8 - s.len()];
+                    padded_serial.extend_from_slice(s);
+                    serial = Some(u64::from_be_bytes(padded_serial.try_into().map_err(|_| Error::ParsingError)?));
+                }
+            },
             // Policy
-            "1.3.6.1.4.1.41482.3.8" => (),
+            "1.3.6.1.4.1.41482.3.8" => {
+                policies = Some([ext.value[0], ext.value[1]]);
+            },
             _ => (),
         }
     }

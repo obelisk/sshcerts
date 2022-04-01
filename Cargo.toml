@@ -104,3 +104,8 @@ required-features = ["encrypted-keys"]
 name = "fido-lite"
 path = "tests/fido-lite.rs"
 required-features = ["fido-support"]
+
+[[test]]
+name = "yubikey-lite"
+path = "tests/yubikey-lite.rs"
+required-features = ["yubikey-lite"]
