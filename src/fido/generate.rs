@@ -2,7 +2,8 @@ use ctap_hid_fido2::{
     Cfg,
     HidParam,
     verifier,
-    make_credential_params::CredentialSupportedKeyType,
+    fidokey::make_credential::CredentialSupportedKeyType,
+    FidoKeyHid,
 };
 
 use super::AuthData;
@@ -44,14 +45,16 @@ pub struct FIDOSSHKey {
 
 /// Generate a new SSH key on a FIDO/U2F device
 pub fn generate_new_ssh_key(application: &str, comment: &str, pin: Option<String>, device_path: Option<String>) -> Result<FIDOSSHKey, Error> {
-    let mut cfg = Cfg::init();
-    if let Some(path) = &device_path {
-        cfg.hid_params.push(HidParam::Path(path.clone()));
-    }
+    let device = if let Some(path) = &device_path {
+        FidoKeyHid::new(&[HidParam::Path(path.clone())], &Cfg::init())
+    } else {
+        FidoKeyHid::new(&[], &Cfg::init())
+    };
+     
+    let device = device.map_err(|e| Error::FidoError(e.to_string()))?;
 
     let challenge = verifier::create_challenge();
-    let att = ctap_hid_fido2::make_credential_with_key_type(
-        &cfg,
+    let att = device.make_credential_with_key_type(
         &application,
         &challenge,
         pin.as_ref().map(|x| &**x),
