@@ -46,9 +46,10 @@ pub struct FIDOSSHKey {
 /// Generate a new SSH key on a FIDO/U2F device
 pub fn generate_new_ssh_key(application: &str, comment: &str, pin: Option<String>, device_path: Option<String>) -> Result<FIDOSSHKey, Error> {
     let device = if let Some(path) = &device_path {
-        FidoKeyHid::new(&[HidParam::Path(path.clone())], &Cfg::init())
+        FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init())
     } else {
-        FidoKeyHid::new(&[], &Cfg::init())
+        let fido_devices: Vec<HidParam> = ctap_hid_fido2::get_fidokey_devices().into_iter().map(|x| x.param).collect();
+        FidoKeyHid::new(&fido_devices, &Cfg::init())
     };
      
     let device = device.map_err(|e| Error::FidoError(e.to_string()))?;

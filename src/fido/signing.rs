@@ -29,7 +29,8 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
     let device = if let Some(path) = &device_path {
         FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init())
     } else {
-        FidoKeyHid::new(&[], &Cfg::init())
+        let fido_devices: Vec<HidParam> = ctap_hid_fido2::get_fidokey_devices().into_iter().map(|x| x.param).collect();
+        FidoKeyHid::new(&fido_devices, &Cfg::init())
     };
 
     let device = device.ok()?;
