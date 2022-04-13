@@ -7,6 +7,9 @@ use ctap_hid_fido2::{
     Cfg,
     HidParam,
     FidoKeyHid,
+    fidokey::{
+        GetAssertionArgsBuilder,
+    },
 };
 
 
@@ -34,13 +37,17 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
     };
 
     let device = device.ok()?;
-     
-    let assert = device.get_assertion(
-        &sk_application,
-        challenge,
-        &[handle.to_vec()],
-        pin.map(|x| &**x),
-    ).unwrap();
+
+    let args = GetAssertionArgsBuilder::new(&sk_application, &challenge).credential_id(handle);
+
+    let args = if let Some(pin) = pin {
+        args.pin(pin)
+    } else {
+        args.without_pin_and_uv()
+    };
+
+    let mut assert = device.get_assertion_with_args(&args.build()).ok()?;
+    let assert = assert.pop()?;
 
     let signature = &assert.signature;
     let mut format = format_signature_for_ssh(&private_key.pubkey, &signature).unwrap();

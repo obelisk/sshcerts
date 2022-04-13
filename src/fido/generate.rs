@@ -2,7 +2,10 @@ use ctap_hid_fido2::{
     Cfg,
     HidParam,
     verifier,
-    fidokey::make_credential::CredentialSupportedKeyType,
+    fidokey::make_credential::{
+        CredentialSupportedKeyType,
+        MakeCredentialArgsBuilder,
+    },
     FidoKeyHid,
 };
 
@@ -51,16 +54,19 @@ pub fn generate_new_ssh_key(application: &str, comment: &str, pin: Option<String
         let fido_devices: Vec<HidParam> = ctap_hid_fido2::get_fidokey_devices().into_iter().map(|x| x.param).collect();
         FidoKeyHid::new(&fido_devices, &Cfg::init())
     };
-     
-    let device = device.map_err(|e| Error::FidoError(e.to_string()))?;
 
     let challenge = verifier::create_challenge();
-    let att = device.make_credential_with_key_type(
-        &application,
-        &challenge,
-        pin.as_ref().map(|x| &**x),
-        Some(CredentialSupportedKeyType::Ed25519),
-    ).map_err(|e| Error::FidoError(e.to_string()))?;
+    let args = MakeCredentialArgsBuilder::new(&application, &challenge)
+        .key_type(CredentialSupportedKeyType::Ed25519);
+
+    let args = if let Some(pin) = &pin {
+        args.pin(pin)
+    } else {
+        args.without_pin_and_uv()
+    };
+
+    let device = device.map_err(|e| Error::FidoError(e.to_string()))?;
+    let att = device.make_credential_with_args(&args.build()).map_err(|e| Error::FidoError(e.to_string()))?;
 
     let mut ret = 0x0;
     if att.flags_user_present_result {
