@@ -46,6 +46,9 @@ pub struct EcdsaPublicKey {
 
     /// The public key.
     pub key: Vec<u8>,
+
+    /// If this is an SK key, the associated application
+    pub sk_application: Option<String>,
 }
 
 /// ED25519 public key.
@@ -54,6 +57,9 @@ pub struct EcdsaPublicKey {
 pub struct Ed25519PublicKey {
     /// The public key.
     pub key: Vec<u8>,
+
+    /// If this is an SK key, the associated application
+    pub sk_application: Option<String>,
 }
 
 
@@ -72,18 +78,22 @@ pub struct PublicKey {
 
 impl fmt::Display for PublicKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let comment = match &self.comment {
-            Some(c) => c,
-            None => "",
-        };
-
-        write!(
-            f,
-            "{} {} {}",
-            self.key_type,
-            base64::encode(&self.encode()),
-            comment
-        )
+        if let Some(comment) = &self.comment {
+            write!(
+                f,
+                "{} {} {}",
+                self.key_type,
+                base64::encode(&self.encode()),
+                comment
+            )
+        } else {
+            write!(
+                f,
+                "{} {}",
+                self.key_type,
+                base64::encode(&self.encode()),
+            )
+        }
     }
 }
 
@@ -263,16 +273,27 @@ impl PublicKey {
                 let identifier = reader.read_string()?;
                 let curve = Curve::from_identifier(&identifier)?;
                 let key = reader.read_bytes()?;
+                let sk_application = match kt.is_sk {
+                    true => Some(reader.read_string()?),
+                    false => None,
+                };
                 let k = EcdsaPublicKey {
                     curve,
                     key,
+                    sk_application,
                 };
 
                 PublicKeyKind::Ecdsa(k)
             }
             KeyTypeKind::Ed25519 | KeyTypeKind::Ed25519Cert => {
+                let key = reader.read_bytes()?;
+                let sk_application = match kt.is_sk {
+                    true => Some(reader.read_string()?),
+                    false => None,
+                };
                 let k = Ed25519PublicKey {
-                    key: reader.read_bytes()?,
+                    key,
+                    sk_application,
                 };
 
                 PublicKeyKind::Ed25519(k)
@@ -333,9 +354,15 @@ impl PublicKey {
             PublicKeyKind::Ecdsa(ref k) => {
                 w.write_string(k.curve.identifier);
                 w.write_bytes(&k.key);
+                if self.key_type.is_sk {
+                    w.write_string(&k.sk_application.as_ref().unwrap());
+                }
             }
             PublicKeyKind::Ed25519(ref k) => {
                 w.write_bytes(&k.key);
+                if self.key_type.is_sk {
+                    w.write_string(&k.sk_application.as_ref().unwrap());
+                }
             }
         }
 

@@ -1,6 +1,6 @@
 use std::env;
 
-use clap::{App, Arg};
+use clap::{Command, Arg};
 
 use sshcerts::yubikey::piv::Yubikey;
 use sshcerts::yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId, PinPolicy, TouchPolicy};
@@ -58,7 +58,7 @@ fn slot_validator(slot: &str) -> Result<(), String> {
 
 fn main() {
     env_logger::init();
-    let matches = App::new("yk-provision")
+    let matches = Command::new("yk-provision")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Mitchell Grenier <mitchell@confurious.io>")
         .about("A tool to provision a new key on a yubikey")
@@ -77,7 +77,6 @@ fn main() {
                 .default_value("123456")
                 .long("pin")
                 .short('p')
-                .required(true)
                 .takes_value(true),
         )
         .arg(
@@ -94,7 +93,6 @@ fn main() {
                 .default_value("010203040506070801020304050607080102030405060708")
                 .long("mgmkey")
                 .short('m')
-                .required(true)
                 .takes_value(true),
         )
         .arg(

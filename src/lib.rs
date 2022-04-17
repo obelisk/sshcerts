@@ -60,11 +60,15 @@ pub mod utils;
 /// Functions for dealing with Yubikey signing.
 /// Also contains an SSH submodule containing helper functions to generate
 /// SSH encoded versions of it's normal functions.
-#[cfg(feature = "yubikey-support")]
+#[cfg(any(feature = "yubikey-lite", feature = "yubikey-support"))]
 pub mod yubikey;
 
 /// Contains some helper functions for pulling SSH public keys from x509
 /// certificates and CSRs. Is enabled whenever yubikey_support is enabled
 /// because some functionality is currently shared.
-#[cfg(any(feature = "yubikey-support", feature = "x509-support"))]
+#[cfg(any(feature = "x509-support", feature = "yubikey-support"))]
 pub mod x509;
+
+/// For dealing with FIDO/U2F tokens such as generating new SSH keys
+#[cfg(any(feature = "fido-lite", feature = "fido-support"))]
+pub mod fido;

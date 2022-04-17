@@ -1,5 +1,9 @@
-use crate::{error::Error, Result};
 use std::fmt;
+
+use crate::{error::Error, Result};
+
+use zeroize::Zeroize;
+
 /// A type which represents the various kinds of keys.
 #[derive(Debug, PartialEq, Clone)]
 pub enum KeyTypeKind {
@@ -34,6 +38,9 @@ pub struct KeyType {
     /// Indicates whether the key type represents a certificate or not.
     pub is_cert: bool,
 
+    /// Indicates whether the key type represents a hardware key handle or not.
+    pub is_sk: bool,
+
     /// Kind of the key type.
     pub kind: KeyTypeKind,
 
@@ -42,7 +49,7 @@ pub struct KeyType {
 }
 
 /// Represents the different kinds of supported curves.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Zeroize)]
 pub enum CurveKind {
     /// Represents a NIST P-256 curve.
     Nistp256,
@@ -55,11 +62,12 @@ pub enum CurveKind {
 }
 
 /// A type which represents a cryptographic curve.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Zeroize)]
 pub struct Curve {
     /// The curve kind.
     pub kind: CurveKind,
 
+    #[zeroize(skip)]
     /// Curve identifier.
     pub identifier: &'static str,
 }
@@ -111,6 +119,7 @@ impl KeyType {
                 plain: "ssh-rsa",
                 short_name: "RSA",
                 is_cert: false,
+                is_sk: false,
                 kind: KeyTypeKind::Rsa,
             },
             "rsa-sha2-512" => KeyType {
@@ -118,6 +127,7 @@ impl KeyType {
                 plain: "rsa-sha2-512",
                 short_name: "RSA",
                 is_cert: false,
+                is_sk: false,
                 kind: KeyTypeKind::Rsa,
             },
             "ssh-rsa-cert-v01@openssh.com" => KeyType {
@@ -125,6 +135,7 @@ impl KeyType {
                 plain: "ssh-rsa",
                 short_name: "RSA-CERT",
                 is_cert: true,
+                is_sk: false,
                 kind: KeyTypeKind::RsaCert,
             },
             "ecdsa-sha2-nistp256" => KeyType {
@@ -132,6 +143,7 @@ impl KeyType {
                 plain: "ecdsa-sha2-nistp256",
                 short_name: "ECDSA",
                 is_cert: false,
+                is_sk: false,
                 kind: KeyTypeKind::Ecdsa,
             },
             "ecdsa-sha2-nistp384" => KeyType {
@@ -139,6 +151,7 @@ impl KeyType {
                 plain: "ecdsa-sha2-nistp384",
                 short_name: "ECDSA",
                 is_cert: false,
+                is_sk: false,
                 kind: KeyTypeKind::Ecdsa,
             },
             "ecdsa-sha2-nistp521" => KeyType {
@@ -146,6 +159,7 @@ impl KeyType {
                 plain: "ecdsa-sha2-nistp521",
                 short_name: "ECDSA",
                 is_cert: false,
+                is_sk: false,
                 kind: KeyTypeKind::Ecdsa,
             },
             "ecdsa-sha2-nistp256-cert-v01@openssh.com" => KeyType {
@@ -153,6 +167,7 @@ impl KeyType {
                 plain: "ecdsa-sha2-nistp256",
                 short_name: "ECDSA-CERT",
                 is_cert: true,
+                is_sk: false,
                 kind: KeyTypeKind::EcdsaCert,
             },
             "ecdsa-sha2-nistp384-cert-v01@openssh.com" => KeyType {
@@ -160,6 +175,7 @@ impl KeyType {
                 plain: "ecdsa-sha2-nistp384",
                 short_name: "ECDSA-CERT",
                 is_cert: true,
+                is_sk: false,
                 kind: KeyTypeKind::EcdsaCert,
             },
             "ecdsa-sha2-nistp521-cert-v01@openssh.com" => KeyType {
@@ -167,6 +183,7 @@ impl KeyType {
                 plain: "ecdsa-sha2-nistp521",
                 short_name: "ECDSA-CERT",
                 is_cert: true,
+                is_sk: false,
                 kind: KeyTypeKind::EcdsaCert,
             },
             "ssh-ed25519" => KeyType {
@@ -174,6 +191,7 @@ impl KeyType {
                 plain: "ssh-ed25519",
                 short_name: "ED25519",
                 is_cert: false,
+                is_sk: false,
                 kind: KeyTypeKind::Ed25519,
             },
             "ssh-ed25519-cert-v01@openssh.com" => KeyType {
@@ -181,7 +199,41 @@ impl KeyType {
                 plain: "ssh-ed25519",
                 short_name: "ED25519-CERT",
                 is_cert: true,
+                is_sk: false,
                 kind: KeyTypeKind::Ed25519Cert,
+            },
+            // SK Types
+            "sk-ssh-ed25519@openssh.com" => KeyType {
+                name: "sk-ssh-ed25519@openssh.com",
+                plain: "sk-ssh-ed25519@openssh.com",
+                short_name: "ED25519-SK",
+                is_cert: false,
+                is_sk: true,
+                kind: KeyTypeKind::Ed25519,
+            },
+            "sk-ssh-ed25519-cert-v01@openssh.com" => KeyType {
+                name: "sk-ssh-ed25519-cert-v01@openssh.com",
+                plain: "sk-ssh-ed25519@openssh.com",
+                short_name: "ED25519-SK-CERT",
+                is_cert: true,
+                is_sk: true,
+                kind: KeyTypeKind::Ed25519,
+            },
+            "sk-ecdsa-sha2-nistp256@openssh.com" => KeyType {
+                name: "sk-ecdsa-sha2-nistp256@openssh.com",
+                plain: "sk-ecdsa-sha2-nistp256@openssh.com",
+                short_name: "ECDSA-SK",
+                is_cert: false,
+                is_sk: true,
+                kind: KeyTypeKind::Ecdsa,
+            },
+            "sk-ecdsa-sha2-nistp256-cert-v01@openssh.com" => KeyType {
+                name: "sk-ecdsa-sha2-nistp256-cert-v01@openssh.com",
+                plain: "sk-ecdsa-sha2-nistp256@openssh.com",
+                short_name: "ECDSA-SK",
+                is_cert: true,
+                is_sk: true,
+                kind: KeyTypeKind::Ecdsa,
             },
             _ => {
                 return Err(Error::UnknownKeyType(
@@ -189,8 +241,24 @@ impl KeyType {
                 ))
             }
         };
-
         Ok(kt)
+    }
+
+    /// The SK types change the convention of plain vs name. So this provides
+    /// an easy way to convert a name into the certificate version of it.
+    pub fn as_cert_name(&self) -> String {
+        if !self.is_sk {
+            format!("{}-cert-v01@openssh.com", &self.plain)
+        } else {
+            format!("{}-cert-v01@openssh.com", &self.plain[..self.plain.len() - 12])
+        }
+        
+    }
+
+    /// A function that just wraps access to the member to match the cert one 
+    /// above.
+    pub fn as_pubkey_name(&self) -> String {
+        format!("{}", &self.plain)
     }
 }
 

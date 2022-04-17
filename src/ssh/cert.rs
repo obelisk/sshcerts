@@ -1,20 +1,26 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use ring::signature::{
-    ECDSA_P256_SHA256_FIXED,
-    ECDSA_P384_SHA384_FIXED,
-    RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
-    RSA_PKCS1_2048_8192_SHA256,
-    RSA_PKCS1_2048_8192_SHA512,
-    ED25519,
-    UnparsedPublicKey,
-    RsaPublicKeyComponents};
-
-use ring::rand::{SystemRandom, SecureRandom};
+use ring::{
+    digest,
+    rand::{
+        SystemRandom,
+        SecureRandom,
+    },
+    signature::{
+        ECDSA_P256_SHA256_FIXED,
+        ECDSA_P384_SHA384_FIXED,
+        RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
+        RSA_PKCS1_2048_8192_SHA256,
+        RSA_PKCS1_2048_8192_SHA512,
+        ED25519,
+        UnparsedPublicKey,
+        RsaPublicKeyComponents,
+    },
+};
 
 use crate::{error::Error, Result};
 use super::SSHCertificateSigner;
@@ -186,7 +192,7 @@ impl Certificate {
         }
 
         let nonce = reader.read_bytes()?;
-        let key = PublicKey::from_reader(kt_name, &mut reader)?;
+        let key = PublicKey::from_reader(&key_type.as_pubkey_name(), &mut reader)?;
         let serial = reader.read_u64()?;
 
         let cert_type = match reader.read_u32()? {
@@ -282,7 +288,7 @@ impl Certificate {
     /// # }
     /// ```
     pub fn builder(pubkey: &PublicKey, cert_type: CertType, signing_key: &PublicKey) -> Result<Certificate> {
-        let kt_name = format!("{}-cert-v01@openssh.com", pubkey.key_type.name);
+        let kt_name = pubkey.key_type.as_cert_name();
         let key_type = KeyType::from_name(kt_name.as_str()).unwrap();
         let rng = SystemRandom::new();
 
@@ -388,7 +394,7 @@ impl Certificate {
     /// Get the certificate data without the signature field at the end.
     pub fn tbs_certificate(&self) -> Vec<u8> {
         let mut writer = Writer::new();
-        let kt_name = format!("{}-cert-v01@openssh.com", self.key.key_type.name);
+        let kt_name = self.key_type.as_cert_name();
         // Write the cert type
         writer.write_string(kt_name.as_str());
 
@@ -396,7 +402,7 @@ impl Certificate {
         writer.write_bytes(&self.nonce);
 
         // Write the user public key
-        writer.write_pub_key(&self.key);
+        writer.write_pub_key_data(&self.key);
 
         // Write the serial number
         writer.write_u64(self.serial);
@@ -436,11 +442,6 @@ impl Certificate {
     /// returns an error if the signature provided is not valid for the
     /// certificate under the set CA key.
     pub fn add_signature(mut self, signature: &[u8]) -> Result<Self> {
-        let signature = match crate::utils::format_signature_for_ssh(&self.signature_key, signature) {
-            Some(s) => s,
-            None => return Err(Error::InvalidFormat)
-        };
-
         let mut tbs = self.tbs_certificate();
         verify_signature(&signature, &tbs, &self.signature_key)?;
 
@@ -530,23 +531,7 @@ fn read_principals(buf: &[u8]) -> Result<Vec<String>> {
     Ok(items)
 }
 
-// Verifies the certificate's signature is valid.
-// Appended to the end of every SSH Cert is a signature for the preceding data,
-// depending on the key, the signature could be any of the following:
-//
-// ECDSA
-//  ecdsa-sha2-nistp256
-//  ecdsa-sha2-nistp384
-//  ecdsa-sha2-nistp521 (but this is unsupported in Ring so not supported here)
-//
-// RSA
-//  rsa-sha2-256
-//  rsa-sha2-512
-//
-// Ed25519
-//
-// We then take the public key of the CA (immiediately preceeding the signature and part of the signed data)
-// and verify the signature accordingly. If the signature is not valid, this function errors.
+/// Verifies the certificate's signature is valid.
 fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &PublicKey) -> Result<Vec<u8>> {
     let mut reader = Reader::new(&signature_buf);
     let sig_type = reader.read_string().and_then(|v| KeyType::from_name(&v))?;
@@ -554,18 +539,18 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
     match &public_key.kind {
          PublicKeyKind::Ecdsa(key) => {
             let sig_reader = reader.read_bytes()?;
-            let mut reader = Reader::new(&sig_reader);
+            let mut sig_reader = Reader::new(&sig_reader);
 
             let (alg, len) = match sig_type.name {
-                "ecdsa-sha2-nistp256" => (&ECDSA_P256_SHA256_FIXED, 32),
+                "ecdsa-sha2-nistp256" | "sk-ecdsa-sha2-nistp256@openssh.com" => (&ECDSA_P256_SHA256_FIXED, 32),
                 "ecdsa-sha2-nistp384" => (&ECDSA_P384_SHA384_FIXED, 48),
                 _ => return Err(Error::KeyTypeMismatch),
             };
 
             // Read the R value
-            let r_bytes = reader.read_mpint()?;
+            let r_bytes = sig_reader.read_mpint()?;
             // Read the S value
-            let s_bytes = reader.read_mpint()?;
+            let s_bytes = sig_reader.read_mpint()?;
 
             // (r/s)_bytes are user controlled so ensure maliciously signatures
             // can't cause integer underflow.
@@ -585,7 +570,22 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             let mut sig = r;
             sig.extend(s);
 
-            UnparsedPublicKey::new(alg, &key.key).verify(signed_bytes, &sig)?;
+            if let Some(sk_application) = &key.sk_application {
+                let flags = reader.read_raw_bytes(1).unwrap()[0];
+                let signature_counter = reader.read_u32()?;
+
+                let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes()).as_ref().to_vec();
+                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes.as_ref()).as_ref().to_vec();
+                
+                app_hash.push(flags);
+                app_hash.extend_from_slice(&signature_counter.to_be_bytes());
+                app_hash.append(&mut data_hash);
+
+                UnparsedPublicKey::new(alg, &key.key).verify(&app_hash, &sig)?;
+            } else {
+                UnparsedPublicKey::new(alg, &key.key).verify(signed_bytes, &sig)?;
+            }
+
             Ok(signature_buf.to_vec())
         },
         PublicKeyKind::Rsa(key) => {
@@ -604,7 +604,24 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             let alg = &ED25519;
             let signature = reader.read_bytes()?;
             let peer_public_key = UnparsedPublicKey::new(alg, &key.key);
-            peer_public_key.verify(signed_bytes, &signature)?;
+           
+            if let Some(sk_application) = &key.sk_application {
+                let flags = reader.read_raw_bytes(1).unwrap()[0];
+                let signature_counter = reader.read_u32()?;
+
+                let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes()).as_ref().to_vec();
+                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes.as_ref()).as_ref().to_vec();
+                
+                app_hash.push(flags);
+                app_hash.extend_from_slice(&signature_counter.to_be_bytes());
+                app_hash.append(&mut data_hash);
+
+                peer_public_key.verify(&app_hash, &signature)?;
+            } else {
+                peer_public_key.verify(signed_bytes, &signature)?;
+            }
+            
+            
             Ok(signature_buf.to_vec())
         },
     }

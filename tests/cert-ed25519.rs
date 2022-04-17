@@ -28,7 +28,7 @@ fn parse_ed25519_key_signed_by_ed25519_ca_bitflip_should_fail() {
     assert!(cert.is_err());
     let e = cert.unwrap_err();
     let e = format!("{}", e);
-    assert_eq!(e, String::from("Certificate is improperly signed"));
+    assert_eq!(e, String::from("Data is improperly signed"));
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn parse_ed25519_key_signed_by_ecdsa384_ca_bitflip_should_fail() {
         assert!(cert.is_err());
         let e = cert.unwrap_err();
         let e = format!("{}", e);
-        assert_eq!(e, String::from("Certificate is improperly signed"));
+        assert_eq!(e, String::from("Data is improperly signed"));
 }
 
 #[test]
@@ -229,5 +229,5 @@ fn parse_ed25519_key_signed_by_rsa2048_ca_bitflip_should_fail() {
     assert!(cert.is_err());
     let e = cert.unwrap_err();
     let e = format!("{}", e);
-    assert_eq!(e, String::from("Certificate is improperly signed"));
+    assert_eq!(e, String::from("Data is improperly signed"));
 }

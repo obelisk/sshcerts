@@ -11,7 +11,7 @@ pub enum Error {
     Utf8Error(string::FromUtf8Error),
     /// A certificate type that doesn't exist was requested. Should be either 1 or 2
     InvalidCertType(u32),
-    /// The format of a certificate was incorrect
+    /// The format of a certificate or data was incorrect/invalid
     InvalidFormat,
     /// The stream ended unexpectedly
     UnexpectedEof,
@@ -21,7 +21,7 @@ pub enum Error {
     /// or an x509 certificate contains a public key that is not compatible with SSH.
     KeyTypeMismatch,
     /// The certificate is not signed correctly and invalid
-    CertificateInvalidSignature,
+    InvalidSignature,
     /// A cryptographic operation failed.
     SigningError,
     /// An encrypted private key was provided with no decryption key
@@ -32,12 +32,15 @@ pub enum Error {
     UnknownKeyType(String),
     /// The curve in an ECC public/private key/signature is unknown
     UnknownCurve(String),
-    /// An error occured in the yubikey module
-    #[cfg(feature = "yubikey_support")]
-    YubikeyError(crate::yubikey::Error),
     /// A generic parsing error which occurs whenever data sent does not match the
     /// expected format
     ParsingError,
+    /// An error occured in the yubikey module
+    #[cfg(feature = "yubikey-support")]
+    YubikeyPIVError(crate::yubikey::piv::Error),
+    /// An error occured in the FIDO module
+    #[cfg(any(feature = "fido-support", feature = "fido-lite"))]
+    FidoError(String),
     /// This occurs when you try to use a feature that could technically work
     /// but is currently unimplemented.
     Unsupported,
@@ -54,15 +57,17 @@ impl fmt::Display for Error {
             Error::UnexpectedEof => write!(f, "Unexpected EOF reached while reading data"),
             Error::NotCertificate => write!(f, "Not a certificate"),
             Error::KeyTypeMismatch => write!(f, "Key type mismatch"),
-            Error::CertificateInvalidSignature => write!(f, "Certificate is improperly signed"),
+            Error::InvalidSignature => write!(f, "Data is improperly signed"),
             Error::SigningError => write!(f, "Could not sign data"),
             Error::EncryptedPrivateKey => write!(f, "Encountered encrypted private key with no decryption key"),
             Error::EncryptedPrivateKeyNotSupported => write!(f, "This method of private key encryption is not supported or sshcerts was not compiled with encrypted private key support"),
             Error::UnknownKeyType(ref v) => write!(f, "Unknown key type {}", v),
             Error::UnknownCurve(ref v) => write!(f, "Unknown curve {}", v),
-            #[cfg(feature = "yubikey_support")]
-            Error::YubikeyError(ref e) => write!(f, "{}", e),
             Error::ParsingError => write!(f, "Could not parse the data provided"),
+            #[cfg(feature = "yubikey-support")]
+            Error::YubikeyPIVError(ref e) => write!(f, "{}", e),
+            #[cfg(any(feature = "fido-support", feature = "fido-lite"))]
+            Error::FidoError(ref e) => write!(f, "{}", e),
             Error::Unsupported => write!(f, "Functionality either not implemented or cannot be technically supported"),
         }
     }
@@ -99,7 +104,7 @@ impl From<string::FromUtf8Error> for Error {
 
 impl From<ring::error::Unspecified> for Error {
     fn from(_: ring::error::Unspecified) -> Error{
-        Error::CertificateInvalidSignature
+        Error::InvalidSignature
     }
 }
 

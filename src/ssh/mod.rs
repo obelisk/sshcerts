@@ -24,7 +24,7 @@ pub trait SSHCertificateSigner {
 
 pub use self::cert::{CertType, Certificate};
 pub use self::keytype::{KeyType, KeyTypeKind, Curve, CurveKind};
-pub use self::privkey::{PrivateKey, PrivateKeyKind, RsaPrivateKey, EcdsaPrivateKey, Ed25519PrivateKey};
+pub use self::privkey::{PrivateKey, PrivateKeyKind, RsaPrivateKey, EcdsaPrivateKey, EcdsaSkPrivateKey, Ed25519PrivateKey, Ed25519SkPrivateKey};
 pub use self::pubkey::{
     EcdsaPublicKey, Ed25519PublicKey, Fingerprint, FingerprintKind,
     PublicKey, PublicKeyKind, RsaPublicKey,

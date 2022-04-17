@@ -35,8 +35,8 @@ impl From<BerError> for Error {
 /// public key that can be used with the rest of the SSHCerts library. This
 /// function only supports NISTP256 and NISTP384 Ecdsa keys
 pub fn der_encoding_to_ssh_public_key(key: &[u8]) -> Result<PublicKey, Error> {
-    let (_rem, parsed) = parse_der_sequence(key)?;
-    let parsed = parsed.as_sequence()?;
+    let (_rem, parsed) = parse_der_sequence(key).map_err(|_| Error::ParsingError)?;
+    let parsed = parsed.as_sequence().map_err(|_| Error::ParsingError)?;
 
     if parsed.len() != 2 {
         return Err(Error::ParsingError)
@@ -71,6 +71,7 @@ pub fn der_encoding_to_ssh_public_key(key: &[u8]) -> Result<PublicKey, Error> {
     let kind = EcdsaPublicKey {
         curve,
         key: data.to_vec(),
+        sk_application: None,
     };
     
     Ok(PublicKey {
@@ -124,6 +125,7 @@ fn convert_x509_pki_to_pubkey(pki: &x509_parser::x509::SubjectPublicKeyInfo<'_>)
                     let kind = EcdsaPublicKey {
                         curve,
                         key: key_bytes.to_vec(),
+                        sk_application: None,
                     };
         
                     Ok(PublicKey {
@@ -138,6 +140,7 @@ fn convert_x509_pki_to_pubkey(pki: &x509_parser::x509::SubjectPublicKeyInfo<'_>)
                     let kind = EcdsaPublicKey {
                         curve,
                         key: key_bytes.to_vec(),
+                        sk_application: None,
                     };
         
                     Ok(PublicKey {

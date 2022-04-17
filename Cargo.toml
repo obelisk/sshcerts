@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.10.1"
+version = "0.11.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -13,16 +13,23 @@ categories = ["authentication"]
 [features]
 default = ["rsa-signing"]
 
-all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support"]
+all = ["encrypted-keys", "rsa-signing", "x509-support", "yubikey-support", "fido-support"]
 
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
+
+# Full FIDO support pulls in ctap-hid-fido2 with USB dependencies. Use fido-lite
+# if you need to work with fido data, without needing to generate it.
+fido-support = ["ctap-hid-fido2", "fido-lite"]
+fido-lite = ["minicbor", "x509-parser"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
-yubikey-support = ["der-parser", "rcgen", "x509", "x509-parser", "yubikey"]
+yubikey-support = ["rcgen", "yubikey", "yubikey-lite"]
+yubikey-lite = ["x509-support"]
 
 [dependencies]
 base64 = "0.13"
 ring = "0.16"
+zeroize = {version = "1", features = ["zeroize_derive"]}
 
 # Dependencies for rsa-signing
 simple_asn1 = {version = "0.5", optional = true}
@@ -33,13 +40,20 @@ yubikey = {version = "0.5", features = ["untested"], optional = true}
 lexical-core = {version = ">0.7.4", optional = true}
 rcgen = {version = "0.8", optional = true}
 x509 = {version = "0.2", optional = true}
-x509-parser = {version = "0.11", features = ["verify"], optional = true}
+x509-parser = {version = "0.13", features = ["verify"], optional = true}
 der-parser = {version = "5", optional = true}
 
 # Dependencies for encrypted-keys
 aes = {version = "0.7", features = ["ctr"], optional = true}
 bcrypt-pbkdf = {version = "0.6", optional = true}
 ctr = {version = "0.8", optional = true}
+
+# Dependencies for fido-support
+#ctap-hid-fido2 = {version = "2.2.2", optional = true}
+minicbor = {version = "0.13", optional = true}
+ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch="master", optional = true}
+#ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="device_by_path", optional = true}
+#ctap-hid-fido2 = {path = "../ctap-hid-fido2", optional = true}
 
 [dev-dependencies]
 env_logger = "0.8.2"
@@ -72,6 +86,10 @@ required-features = ["encrypted-keys"]
 name = "into-ssh-pubkey"
 required-features = ["x509-support"]
 
+[[example]]
+name = "new-fido-sshkey"
+required-features = ["fido-support"]
+
 [[test]]
 name = "privkey-encrypted"
 path = "tests/privkey_encrypted.rs"
@@ -81,3 +99,13 @@ required-features = ["encrypted-keys"]
 name = "cert-creation-parse-rsa"
 path = "tests/cert-creation-parse-rsa.rs"
 required-features = ["encrypted-keys"]
+
+[[test]]
+name = "fido-lite"
+path = "tests/fido-lite.rs"
+required-features = ["fido-support"]
+
+[[test]]
+name = "yubikey-lite"
+path = "tests/yubikey-lite.rs"
+required-features = ["yubikey-lite"]
