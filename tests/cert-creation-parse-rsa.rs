@@ -1,4 +1,4 @@
-use sshcerts::ssh::{Certificate, CertType, PrivateKey, PublicKey};
+use sshcerts::ssh::{CertType, Certificate, PrivateKey, PublicKey};
 
 // Constants available for multiple tests
 const RSA2048_CA_PRIVATE_KEY: &str = concat!(
@@ -43,7 +43,8 @@ fn create_and_reparse_sign_parse_verify_minimal_ecdsa384_rsa2048ca() {
     let private_key = PrivateKey::from_string(RSA2048_CA_PRIVATE_KEY).unwrap();
     let ca_pubkey = private_key.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey)
+        .unwrap()
         .key_id("key_id")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
@@ -53,7 +54,10 @@ fn create_and_reparse_sign_parse_verify_minimal_ecdsa384_rsa2048ca() {
     let user_cert = user_cert.unwrap();
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "n3kYx3FlLBGcCJWtzkm1YF6vIvtJcp3m+H7u3SnaGxc");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "n3kYx3FlLBGcCJWtzkm1YF6vIvtJcp3m+H7u3SnaGxc"
+    );
 
     // Check that we can correctly reparse the serialized certificate
     let cert = format!("{}", user_cert);
@@ -64,7 +68,9 @@ fn create_and_reparse_sign_parse_verify_minimal_ecdsa384_rsa2048ca() {
 
 #[test]
 fn create_and_reparse_sign_parse_verify_minimal_ed25519_rsa2048ca() {
-    let ssh_pubkey = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILHHgBVMG7TU30Z8lFfHPwBx98w3wkhoaybFc6/tjasI");
+    let ssh_pubkey = PublicKey::from_string(
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILHHgBVMG7TU30Z8lFfHPwBx98w3wkhoaybFc6/tjasI",
+    );
     assert!(ssh_pubkey.is_ok());
 
     let ssh_pubkey = ssh_pubkey.unwrap();
@@ -72,7 +78,8 @@ fn create_and_reparse_sign_parse_verify_minimal_ed25519_rsa2048ca() {
     let private_key = PrivateKey::from_string(RSA2048_CA_PRIVATE_KEY).unwrap();
     let ca_pubkey = private_key.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey)
+        .unwrap()
         .key_id("key_id")
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
@@ -82,7 +89,10 @@ fn create_and_reparse_sign_parse_verify_minimal_ed25519_rsa2048ca() {
     let user_cert = user_cert.unwrap();
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "n3kYx3FlLBGcCJWtzkm1YF6vIvtJcp3m+H7u3SnaGxc");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "n3kYx3FlLBGcCJWtzkm1YF6vIvtJcp3m+H7u3SnaGxc"
+    );
 
     // Check that we can correctly reparse the serialized certificate
     let cert = format!("{}", user_cert);

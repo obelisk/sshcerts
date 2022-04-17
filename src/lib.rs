@@ -1,4 +1,4 @@
-//! 
+//!
 //! The 'sshcerts` crate provides types and methods for parsing
 //! OpenSSH keys, and parsing, verifying, and creating SSH certificates.
 //!
@@ -25,20 +25,19 @@
 //! optional `yubikey` submodule
 //!
 
-#![ deny
-(
-   anonymous_parameters          ,
-   missing_debug_implementations ,
-   missing_docs                  ,
-   nonstandard_style             ,
-   rust_2018_idioms              ,
-   single_use_lifetimes          ,
-   trivial_casts                 ,
-   trivial_numeric_casts         ,
-   unreachable_pub               ,
-   unused_extern_crates          ,
-   unused_qualifications         ,
-   warnings                      ,
+#![deny(
+    anonymous_parameters,
+    missing_debug_implementations,
+    missing_docs,
+    nonstandard_style,
+    rust_2018_idioms,
+    single_use_lifetimes,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unused_extern_crates,
+    unused_qualifications,
+    warnings
 )]
 
 /// The `sshcerts` error enum
@@ -46,8 +45,7 @@ pub mod error;
 
 type Result<T> = std::result::Result<T, error::Error>;
 
-
-pub use ssh::{CertType, Certificate, PublicKey, PrivateKey};
+pub use ssh::{CertType, Certificate, PrivateKey, PublicKey};
 
 /// Functions or structs for dealing with SSH Certificates.
 /// Parsing, and creating certs happens here.

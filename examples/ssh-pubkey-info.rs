@@ -9,7 +9,7 @@ fn help() {
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() < 2 {
         help();
         return Ok(());
@@ -19,11 +19,13 @@ fn main() -> Result<(), String> {
 
     match PublicKey::from_path(path) {
         Ok(c) => {
-            println!("256 SHA256:{} {}", c.fingerprint().hash, c.comment.unwrap_or("no comment".to_string()));
+            println!(
+                "256 SHA256:{} {}",
+                c.fingerprint().hash,
+                c.comment.unwrap_or("no comment".to_string())
+            );
             Ok(())
-        },
-        Err(e) => {
-            Err(format!("{}: Private key at {} not valid", e, &args[1]))
         }
+        Err(e) => Err(format!("{}: Private key at {} not valid", e, &args[1])),
     }
 }

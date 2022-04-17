@@ -1,9 +1,5 @@
+use crate::ssh::{CurveKind, PublicKey, PublicKeyKind};
 use yubikey::piv::{AlgorithmId, SlotId};
-use crate::ssh::{
-    CurveKind,
-    PublicKey,
-    PublicKeyKind,
-};
 
 use crate::x509::extract_ssh_pubkey_from_x509_certificate;
 
@@ -28,12 +24,10 @@ impl super::Yubikey {
         let pubkey = self.ssh_cert_fetch_pubkey(slot)?;
 
         match pubkey.kind {
-            PublicKeyKind::Ecdsa(x) => {
-                match x.curve.kind {
-                    CurveKind::Nistp256 => Ok(AlgorithmId::EccP256),
-                    CurveKind::Nistp384 => Ok(AlgorithmId::EccP384),
-                    CurveKind::Nistp521 => Err(Error::Unsupported),
-                }
+            PublicKeyKind::Ecdsa(x) => match x.curve.kind {
+                CurveKind::Nistp256 => Ok(AlgorithmId::EccP256),
+                CurveKind::Nistp384 => Ok(AlgorithmId::EccP384),
+                CurveKind::Nistp521 => Err(Error::Unsupported),
             },
             PublicKeyKind::Rsa(_) => Err(Error::Unsupported),
             PublicKeyKind::Ed25519(_) => Err(Error::Unsupported),

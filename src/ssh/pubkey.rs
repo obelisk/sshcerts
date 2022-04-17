@@ -12,7 +12,6 @@ use super::keytype::{KeyType, KeyTypeKind};
 use super::reader::Reader;
 use super::writer::Writer;
 
-
 /// A type which represents the different kinds a public key can be.
 #[derive(Debug, PartialEq, Clone)]
 pub enum PublicKeyKind {
@@ -62,7 +61,6 @@ pub struct Ed25519PublicKey {
     pub sk_application: Option<String>,
 }
 
-
 /// A type which represents an OpenSSH public key.
 #[derive(Debug, PartialEq, Clone)]
 pub struct PublicKey {
@@ -87,12 +85,7 @@ impl fmt::Display for PublicKey {
                 comment
             )
         } else {
-            write!(
-                f,
-                "{} {}",
-                self.key_type,
-                base64::encode(&self.encode()),
-            )
+            write!(f, "{} {}", self.key_type, base64::encode(&self.encode()),)
         }
     }
 }
@@ -153,9 +146,15 @@ impl Fingerprint {
     /// ```
     pub fn compute<T: ?Sized + AsRef<[u8]>>(kind: FingerprintKind, data: &T) -> Fingerprint {
         let digest = match kind {
-            FingerprintKind::Sha256 => digest::digest(&digest::SHA256, data.as_ref()).as_ref().to_vec(),
-            FingerprintKind::Sha384 => digest::digest(&digest::SHA384, data.as_ref()).as_ref().to_vec(),
-            FingerprintKind::Sha512 => digest::digest(&digest::SHA512, data.as_ref()).as_ref().to_vec(),
+            FingerprintKind::Sha256 => digest::digest(&digest::SHA256, data.as_ref())
+                .as_ref()
+                .to_vec(),
+            FingerprintKind::Sha384 => digest::digest(&digest::SHA384, data.as_ref())
+                .as_ref()
+                .to_vec(),
+            FingerprintKind::Sha512 => digest::digest(&digest::SHA512, data.as_ref())
+                .as_ref()
+                .to_vec(),
         };
 
         let mut encoded = base64::encode(&digest);
@@ -166,10 +165,7 @@ impl Fingerprint {
             None => encoded,
         };
 
-        Fingerprint {
-            kind,
-            hash,
-        }
+        Fingerprint { kind, hash }
     }
 }
 

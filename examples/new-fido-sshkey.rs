@@ -1,6 +1,6 @@
 use std::env;
 
-use clap::{Command, Arg};
+use clap::{Arg, Command};
 
 use sshcerts::fido::generate::generate_new_ssh_key;
 
@@ -38,7 +38,6 @@ fn main() {
         )
         .get_matches();
 
-
     let pin = if let Some(pin) = matches.value_of("pin") {
         Some(pin.to_owned())
     } else {
@@ -55,7 +54,7 @@ fn main() {
         Ok(key) => {
             println!("{:#}", key.private_key.pubkey);
 
-            if let Some(out) = matches.value_of("out")  {
+            if let Some(out) = matches.value_of("out") {
                 let mut out = File::create(out).unwrap();
                 key.private_key.write(&mut out).unwrap();
             } else {
@@ -64,8 +63,7 @@ fn main() {
                 let serialized = String::from_utf8(buf.into_inner().unwrap()).unwrap();
                 println!("Your new private key handle:\n{}", serialized);
             }
-
-        },
+        }
         Err(e) => {
             println!("Failed to generate new SSH Key: {}", e.to_string());
         }

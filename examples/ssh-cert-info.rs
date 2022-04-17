@@ -10,7 +10,7 @@ fn help() {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() != 2 {
         return help();
     }
@@ -25,9 +25,9 @@ fn main() {
 
     for (i, line) in contents.split('\n').into_iter().enumerate() {
         if line.is_empty() {
-            break
+            break;
         }
-        
+
         match Certificate::from_string(line) {
             Ok(c) => println!("{:#}", c),
             Err(e) => {

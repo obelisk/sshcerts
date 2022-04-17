@@ -17,15 +17,19 @@ fn main() {
     let mut yk = Yubikey::new().unwrap();
 
     println!("Normal Slots:");
-    for slot in [0x9a, 0x9c, 0x9e, 0x9d, 0x9e, 0xf9].iter().map(|x| *x as u8) {
+    for slot in [0x9a, 0x9c, 0x9e, 0x9d, 0x9e, 0xf9]
+        .iter()
+        .map(|x| *x as u8)
+    {
         let slot = SlotId::try_from(slot).unwrap();
-        match (yk.fetch_subject(&slot), yk.ssh_cert_fetch_pubkey(&slot))  {
+        match (yk.fetch_subject(&slot), yk.ssh_cert_fetch_pubkey(&slot)) {
             (Ok(subj), Ok(cert)) => {
                 let attest = yk.fetch_attestation(&slot);
-                println!("\t{:?}:\t[Fingerprint: {}] [Attest: {}] Subject: [{}]",
+                println!(
+                    "\t{:?}:\t[Fingerprint: {}] [Attest: {}] Subject: [{}]",
                     &slot,
                     cert.fingerprint().hash,
-                    if attest.is_ok() {"Yes" } else { "No "},
+                    if attest.is_ok() { "Yes" } else { "No " },
                     subj
                 )
             }
@@ -39,13 +43,14 @@ fn main() {
         match (yk.fetch_subject(&slot), yk.ssh_cert_fetch_pubkey(&slot)) {
             (Ok(subj), Ok(cert)) => {
                 let attest = yk.fetch_attestation(&slot);
-                println!("\t{:?}:\t[Fingerprint: {}] [Attest: {}] Subject: [{}]",
+                println!(
+                    "\t{:?}:\t[Fingerprint: {}] [Attest: {}] Subject: [{}]",
                     slot,
                     cert.fingerprint().hash,
-                    if attest.is_ok() {"Yes" } else { "No "},
+                    if attest.is_ok() { "Yes" } else { "No " },
                     subj,
                 )
-            },
+            }
             _ => println!("\t{:?}:\tNo cert found", slot),
         }
     }

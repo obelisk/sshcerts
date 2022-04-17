@@ -1,19 +1,29 @@
 use std::env;
 
-use clap::{Command, Arg};
+use clap::{Arg, Command};
 
 use sshcerts::yubikey::piv::Yubikey;
-use sshcerts::yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId, PinPolicy, TouchPolicy};
+use sshcerts::yubikey::piv::{AlgorithmId, PinPolicy, RetiredSlotId, SlotId, TouchPolicy};
 
 use std::convert::TryFrom;
 
-fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg: &str, secure: bool) {
+fn provision_new_key(
+    slot: SlotId,
+    subject: &str,
+    pin: &str,
+    mgm_key: &[u8],
+    alg: &str,
+    secure: bool,
+) {
     let alg = match alg {
         "p256" => AlgorithmId::EccP256,
         _ => AlgorithmId::EccP384,
     };
 
-    println!("Provisioning new {:?} key called [{}] in slot: {:?}", alg, subject, slot);
+    println!(
+        "Provisioning new {:?} key called [{}] in slot: {:?}",
+        alg, subject, slot
+    );
 
     let policy = if secure {
         println!("You're creating a secure key that will require touch to use. Touch Yubikey to continue...");
@@ -27,7 +37,7 @@ fn provision_new_key(slot: SlotId, subject: &str, pin: &str, mgm_key: &[u8], alg
     match yk.provision(&slot, subject, alg, policy, PinPolicy::Never) {
         Ok(pk) => {
             println!("New hardware backed SSH Public Key: {}", pk);
-        },
+        }
         Err(e) => panic!("Could not provision device with new key: {:?}", e),
     }
 }
@@ -40,8 +50,8 @@ fn slot_parser(slot: &str) -> Option<SlotId> {
         match slot_value {
             Ok(v) if v <= 20 => Some(SlotId::try_from(0x81_u8 + v).unwrap()),
             _ => None,
-        } 
-    } else if slot.len() == 4 && slot.starts_with("0x"){
+        }
+    } else if slot.len() == 4 && slot.starts_with("0x") {
         let slot_value = hex::decode(&slot[2..]).unwrap()[0];
         Some(SlotId::try_from(slot_value).unwrap())
     } else {
@@ -52,7 +62,9 @@ fn slot_parser(slot: &str) -> Option<SlotId> {
 fn slot_validator(slot: &str) -> Result<(), String> {
     match slot_parser(slot) {
         Some(_) => Ok(()),
-        None => Err(String::from("Provided slot was not valid. Should be R1 - R20 or a raw hex identifier")),
+        None => Err(String::from(
+            "Provided slot was not valid. Should be R1 - R20 or a raw hex identifier",
+        )),
     }
 }
 
@@ -112,20 +124,20 @@ fn main() {
         )
         .get_matches();
 
-        let slot = match matches.value_of("slot") {
-            // We unwrap here because we have already run the validator above
-            Some(x) => slot_parser(x).unwrap(),
-            None => SlotId::Retired(RetiredSlotId::R17),
-        };
-    
-        let secure = matches.is_present("require-touch");
+    let slot = match matches.value_of("slot") {
+        // We unwrap here because we have already run the validator above
+        Some(x) => slot_parser(x).unwrap(),
+        None => SlotId::Retired(RetiredSlotId::R17),
+    };
 
-        provision_new_key(
-            slot,
-            matches.value_of("subject").unwrap(),
-            matches.value_of("pin").unwrap(),
-            &hex::decode(matches.value_of("management-key").unwrap()).unwrap(),
-            matches.value_of("type").unwrap_or("p384"),
-            secure
-        );
+    let secure = matches.is_present("require-touch");
+
+    provision_new_key(
+        slot,
+        matches.value_of("subject").unwrap(),
+        matches.value_of("pin").unwrap(),
+        &hex::decode(matches.value_of("management-key").unwrap()).unwrap(),
+        matches.value_of("type").unwrap_or("p384"),
+        secure,
+    );
 }

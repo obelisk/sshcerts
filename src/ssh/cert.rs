@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
@@ -6,30 +6,22 @@ use std::path::Path;
 
 use ring::{
     digest,
-    rand::{
-        SystemRandom,
-        SecureRandom,
-    },
+    rand::{SecureRandom, SystemRandom},
     signature::{
-        ECDSA_P256_SHA256_FIXED,
-        ECDSA_P384_SHA384_FIXED,
-        RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
-        RSA_PKCS1_2048_8192_SHA256,
-        RSA_PKCS1_2048_8192_SHA512,
-        ED25519,
-        UnparsedPublicKey,
-        RsaPublicKeyComponents,
+        RsaPublicKeyComponents, UnparsedPublicKey, ECDSA_P256_SHA256_FIXED,
+        ECDSA_P384_SHA384_FIXED, ED25519, RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
+        RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA512,
     },
 };
 
-use crate::{error::Error, Result};
 use super::SSHCertificateSigner;
 use super::{
     keytype::KeyType,
     pubkey::{PublicKey, PublicKeyKind},
     reader::Reader,
-    writer::Writer
+    writer::Writer,
 };
+use crate::{error::Error, Result};
 
 use std::convert::TryFrom;
 
@@ -170,16 +162,14 @@ impl Certificate {
     pub fn from_string(s: &str) -> Result<Certificate> {
         let mut iter = s.split_whitespace();
 
-        let kt_name = iter
-            .next().ok_or(Error::InvalidFormat)?;
+        let kt_name = iter.next().ok_or(Error::InvalidFormat)?;
 
         let key_type = KeyType::from_name(kt_name)?;
         if !key_type.is_cert {
             return Err(Error::NotCertificate);
         }
 
-        let data = iter
-            .next().ok_or(Error::InvalidFormat)?;
+        let data = iter.next().ok_or(Error::InvalidFormat)?;
 
         let comment = iter.next().map(String::from);
         let decoded = base64::decode(&data)?;
@@ -280,14 +270,18 @@ impl Certificate {
     ///        .valid_before(0xFFFFFFFFFFFFFFFF)
     ///        .set_extensions(Certificate::standard_extensions())
     ///        .sign(&private_key);
-    /// 
+    ///
     ///     match cert {
     ///       Ok(cert) => println!("{}", cert),
     ///       Err(e) => println!("Encountered an error while creating certificate: {}", e),
     ///     }
     /// # }
     /// ```
-    pub fn builder(pubkey: &PublicKey, cert_type: CertType, signing_key: &PublicKey) -> Result<Certificate> {
+    pub fn builder(
+        pubkey: &PublicKey,
+        cert_type: CertType,
+        signing_key: &PublicKey,
+    ) -> Result<Certificate> {
         let kt_name = pubkey.key_type.as_cert_name();
         let key_type = KeyType::from_name(kt_name.as_str()).unwrap();
         let rng = SystemRandom::new();
@@ -317,7 +311,7 @@ impl Certificate {
             valid_before: 0,
             critical_options: HashMap::new(),
             extensions: HashMap::new(),
-            reserved: vec![0,0,0,0,0,0,0,0],
+            reserved: vec![0, 0, 0, 0, 0, 0, 0, 0],
             signature_key: signing_key.clone(),
             signature: vec![],
             comment: None,
@@ -336,7 +330,7 @@ impl Certificate {
         self.key_id = key_id.as_ref().to_owned();
         self
     }
-    
+
     /// Add a principal to the certificate
     pub fn principal<S: AsRef<str>>(mut self, principal: S) -> Self {
         self.principals.push(principal.as_ref().to_owned());
@@ -363,7 +357,8 @@ impl Certificate {
 
     /// Add a critical option to the certificate
     pub fn critical_option<S: AsRef<str>>(mut self, option: S, value: S) -> Self {
-        self.critical_options.insert(option.as_ref().to_owned(), value.as_ref().to_owned());
+        self.critical_options
+            .insert(option.as_ref().to_owned(), value.as_ref().to_owned());
         self
     }
 
@@ -375,7 +370,8 @@ impl Certificate {
 
     /// Add an extension to the certificate
     pub fn extension<S: AsRef<str>>(mut self, option: S, value: S) -> Self {
-        self.extensions.insert(option.as_ref().to_owned(), value.as_ref().to_owned());
+        self.extensions
+            .insert(option.as_ref().to_owned(), value.as_ref().to_owned());
         self
     }
 
@@ -467,7 +463,6 @@ impl Certificate {
     }
 }
 
-
 // Reads `option` values from a byte sequence.
 // The `option` values are used to represent the `critical options` and
 // `extensions` in an OpenSSH certificate key, which are represented as tuples
@@ -532,17 +527,23 @@ fn read_principals(buf: &[u8]) -> Result<Vec<String>> {
 }
 
 /// Verifies the certificate's signature is valid.
-fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &PublicKey) -> Result<Vec<u8>> {
+fn verify_signature(
+    signature_buf: &[u8],
+    signed_bytes: &[u8],
+    public_key: &PublicKey,
+) -> Result<Vec<u8>> {
     let mut reader = Reader::new(&signature_buf);
     let sig_type = reader.read_string().and_then(|v| KeyType::from_name(&v))?;
 
     match &public_key.kind {
-         PublicKeyKind::Ecdsa(key) => {
+        PublicKeyKind::Ecdsa(key) => {
             let sig_reader = reader.read_bytes()?;
             let mut sig_reader = Reader::new(&sig_reader);
 
             let (alg, len) = match sig_type.name {
-                "ecdsa-sha2-nistp256" | "sk-ecdsa-sha2-nistp256@openssh.com" => (&ECDSA_P256_SHA256_FIXED, 32),
+                "ecdsa-sha2-nistp256" | "sk-ecdsa-sha2-nistp256@openssh.com" => {
+                    (&ECDSA_P256_SHA256_FIXED, 32)
+                }
                 "ecdsa-sha2-nistp384" => (&ECDSA_P384_SHA384_FIXED, 48),
                 _ => return Err(Error::KeyTypeMismatch),
             };
@@ -574,9 +575,13 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
                 let flags = reader.read_raw_bytes(1).unwrap()[0];
                 let signature_counter = reader.read_u32()?;
 
-                let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes()).as_ref().to_vec();
-                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes).as_ref().to_vec();
-                
+                let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes())
+                    .as_ref()
+                    .to_vec();
+                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes)
+                    .as_ref()
+                    .to_vec();
+
                 app_hash.push(flags);
                 app_hash.extend_from_slice(&signature_counter.to_be_bytes());
                 app_hash.append(&mut data_hash);
@@ -587,7 +592,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             }
 
             Ok(signature_buf.to_vec())
-        },
+        }
         PublicKeyKind::Rsa(key) => {
             let alg = match sig_type.name {
                 "rsa-sha2-256" => &RSA_PKCS1_2048_8192_SHA256,
@@ -596,22 +601,29 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
                 _ => return Err(Error::KeyTypeMismatch),
             };
             let signature = reader.read_bytes()?;
-            let public_key = RsaPublicKeyComponents { n: &key.n, e: &key.e };
+            let public_key = RsaPublicKeyComponents {
+                n: &key.n,
+                e: &key.e,
+            };
             public_key.verify(alg, signed_bytes, &signature)?;
             Ok(signature_buf.to_vec())
-        },
+        }
         PublicKeyKind::Ed25519(key) => {
             let alg = &ED25519;
             let signature = reader.read_bytes()?;
             let peer_public_key = UnparsedPublicKey::new(alg, &key.key);
-           
+
             if let Some(sk_application) = &key.sk_application {
                 let flags = reader.read_raw_bytes(1).unwrap()[0];
                 let signature_counter = reader.read_u32()?;
 
-                let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes()).as_ref().to_vec();
-                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes).as_ref().to_vec();
-                
+                let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes())
+                    .as_ref()
+                    .to_vec();
+                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes)
+                    .as_ref()
+                    .to_vec();
+
                 app_hash.push(flags);
                 app_hash.extend_from_slice(&signature_counter.to_be_bytes());
                 app_hash.append(&mut data_hash);
@@ -620,27 +632,46 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
             } else {
                 peer_public_key.verify(signed_bytes, &signature)?;
             }
-            
-            
+
             Ok(signature_buf.to_vec())
-        },
+        }
     }
 }
 
 impl fmt::Display for Certificate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !f.alternate() {
-            write!(f, "{} {} {}", &self.key_type.name, base64::encode(&self.serialized), &self.key_id)
+            write!(
+                f,
+                "{} {} {}",
+                &self.key_type.name,
+                base64::encode(&self.serialized),
+                &self.key_id
+            )
         } else {
             let mut pretty: String = format!("Type: {} {}\n", self.key_type, self.cert_type);
-            pretty.push_str(&format!("Public Key: {} {}:{}\n", self.key_type.short_name, self.key.fingerprint().kind, self.key.fingerprint().hash));
-            pretty.push_str(&format!("Signing CA: {} {}:{} (using {})\n", self.signature_key.key_type.short_name, self.signature_key.fingerprint().kind, self.signature_key.fingerprint().hash, self.signature_key.key_type));
+            pretty.push_str(&format!(
+                "Public Key: {} {}:{}\n",
+                self.key_type.short_name,
+                self.key.fingerprint().kind,
+                self.key.fingerprint().hash
+            ));
+            pretty.push_str(&format!(
+                "Signing CA: {} {}:{} (using {})\n",
+                self.signature_key.key_type.short_name,
+                self.signature_key.fingerprint().kind,
+                self.signature_key.fingerprint().hash,
+                self.signature_key.key_type
+            ));
             pretty.push_str(&format!("Key ID: \"{}\"\n", self.key_id));
             pretty.push_str(&format!("Serial: {}\n", self.serial));
             if self.valid_before == 0xFFFFFFFFFFFFFFFF && self.valid_after == 0x0 {
                 pretty.push_str("Valid: forever\n");
             } else {
-                pretty.push_str(&format!("Valid between: {} and {}\n", self.valid_after, self.valid_before));
+                pretty.push_str(&format!(
+                    "Valid between: {} and {}\n",
+                    self.valid_after, self.valid_before
+                ));
             }
 
             if self.principals.is_empty() {

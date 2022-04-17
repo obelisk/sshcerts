@@ -1,20 +1,17 @@
-use x509_parser::prelude::*;
+use x509_parser::der_parser::ber::{parse_ber_bitstring, BerObjectContent};
 use x509_parser::der_parser::der::parse_der_octetstring;
-use x509_parser::der_parser::ber::{BerObjectContent, parse_ber_bitstring};
+use x509_parser::prelude::*;
 
 use crate::error::Error;
 
 use std::convert::TryFrom;
 
-use super::{
-    AuthData,
-};
+use super::AuthData;
 
 use ring::{
     digest,
     signature::{UnparsedPublicKey, ECDSA_P256_SHA256_ASN1},
 };
-
 
 const YUBICO_U2F_ROOT_CA: &str = "-----BEGIN CERTIFICATE-----
 MIIDHjCCAgagAwIBAgIEG0BT9zANBgkqhkiG9w0BAQsFADAuMSwwKgYDVQQDEyNZ
@@ -57,16 +54,14 @@ impl TryFrom<usize> for Transport {
     fn try_from(v: usize) -> Result<Self, Self::Error> {
         match v {
             x if x == Self::Bluetooth as usize => Ok(Self::Bluetooth),
-            x if x == Self::BluetoothLE as usize  => Ok(Self::BluetoothLE),
-            x if x == Self::USB as usize  => Ok(Self::USB),
-            x if x == Self::NFC as usize  => Ok(Self::NFC),
-            x if x == Self::USBInternal as usize  => Ok(Self::USBInternal),
+            x if x == Self::BluetoothLE as usize => Ok(Self::BluetoothLE),
+            x if x == Self::USB as usize => Ok(Self::USB),
+            x if x == Self::NFC as usize => Ok(Self::NFC),
+            x if x == Self::USBInternal as usize => Ok(Self::USBInternal),
             _ => Err(()),
         }
     }
 }
-
-
 
 #[derive(Clone, Debug)]
 /// Represents a validated attestation and all the extracted data.
@@ -81,7 +76,10 @@ pub struct ValidAttestation {
     pub transports: Option<Vec<Transport>>,
 }
 
-fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Certificate<'_>) -> Result<ValidAttestation, Error> {
+fn extract_certificate_extension_data(
+    auth_data: AuthData,
+    certificate: &X509Certificate<'_>,
+) -> Result<ValidAttestation, Error> {
     let mut valid_attestation = ValidAttestation {
         auth_data,
         firmware: None,
@@ -91,7 +89,6 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
 
     let extensions = certificate.extensions();
     for ext in extensions.iter() {
-
         match ext.oid.to_id_string().as_str() {
             // Yubico Serial Number
             "1.3.6.1.4.1.41482.13.1" => {
@@ -102,7 +99,7 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
                     }
                     valid_attestation.firmware = Some(format!("{}.{}.{}", s[0], s[1], s[2]));
                 }
-            },
+            }
 
             // FIDO AAGUID
             "1.3.6.1.4.1.45724.1.1.4" => {
@@ -113,7 +110,7 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
                     }
                     valid_attestation.aaguid = Some(s.to_vec());
                 }
-            },
+            }
 
             // fidoU2FTransports
             "1.3.6.1.4.1.45724.2.1.1" => {
@@ -130,7 +127,7 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
                     }
                     valid_attestation.transports = Some(transports);
                 }
-            },
+            }
             _ => (),
         }
     }
@@ -140,44 +137,55 @@ fn extract_certificate_extension_data(auth_data: AuthData, certificate: &X509Cer
 
 /// Verify a provided U2F attestation, signature, and certificate are valid
 /// against the root. If no root is given, the Yubico U2F Root is used.
-pub fn verify_auth_data(auth_data: &[u8], auth_data_signature: &[u8], challenge: &[u8], alg: i32, intermediate: &[u8], root_pem: Option<&str>) -> Result<ValidAttestation, Error> {
+pub fn verify_auth_data(
+    auth_data: &[u8],
+    auth_data_signature: &[u8],
+    challenge: &[u8],
+    alg: i32,
+    intermediate: &[u8],
+    root_pem: Option<&str>,
+) -> Result<ValidAttestation, Error> {
     match alg {
         // Verify using ECDSA256
         -7 => {
             let root_ca_pem = root_pem.unwrap_or(YUBICO_U2F_ROOT_CA);
 
             // Parse the U2F root CA
-            let (_, root_ca) = parse_x509_pem(root_ca_pem.as_bytes()).map_err(|_| Error::ParsingError)?;
+            let (_, root_ca) =
+                parse_x509_pem(root_ca_pem.as_bytes()).map_err(|_| Error::ParsingError)?;
             let root_ca = Pem::parse_x509(&root_ca).map_err(|_| Error::ParsingError)?;
-            
-            let (_, parsed_intermediate) = X509Certificate::from_der(intermediate).map_err(|_| Error::ParsingError)?;
+
+            let (_, parsed_intermediate) =
+                X509Certificate::from_der(intermediate).map_err(|_| Error::ParsingError)?;
 
             // Check the root CA has signed the intermediate, return error if not
-            parsed_intermediate.verify_signature(Some(&root_ca.tbs_certificate.public_key())).map_err(|_| Error::InvalidSignature)?;
+            parsed_intermediate
+                .verify_signature(Some(&root_ca.tbs_certificate.public_key()))
+                .map_err(|_| Error::InvalidSignature)?;
 
             // Extract public key from verified intermediate certificate
-            let key_bytes = parsed_intermediate.tbs_certificate.subject_pki.subject_public_key.data.to_vec();
+            let key_bytes = parsed_intermediate
+                .tbs_certificate
+                .subject_pki
+                .subject_public_key
+                .data
+                .to_vec();
 
             // Generate the data that was signed by the intermediate
             let mut signed_data = auth_data.clone().to_vec();
             signed_data.append(&mut digest::digest(&digest::SHA256, challenge).as_ref().to_vec());
 
             // Validate signature was generated by the now validated intermediate
-            UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, &key_bytes).verify(
-                &signed_data,
-                auth_data_signature,
-            ).map_err(|_| Error::InvalidSignature)?;
-            
+            UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, &key_bytes)
+                .verify(&signed_data, auth_data_signature)
+                .map_err(|_| Error::InvalidSignature)?;
+
             let auth_data = AuthData::parse(auth_data)?;
 
             extract_certificate_extension_data(auth_data, &parsed_intermediate)
-        },
-        // Verify using Ed25519
-        -8 => {
-            return Err(Error::Unsupported)
-        },
-        _ => {
-            return Err(Error::InvalidFormat)
         }
+        // Verify using Ed25519
+        -8 => return Err(Error::Unsupported),
+        _ => return Err(Error::InvalidFormat),
     }
 }

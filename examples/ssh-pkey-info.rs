@@ -9,7 +9,7 @@ fn help() {
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() < 2 {
         help();
         return Ok(());
@@ -27,9 +27,7 @@ fn main() -> Result<(), String> {
         Ok(c) => {
             println!("{:#}", c);
             Ok(())
-        },
-        Err(e) => {
-            Err(format!("{}: Private key at {} not valid", e, &args[1]))
         }
+        Err(e) => Err(format!("{}: Private key at {} not valid", e, &args[1])),
     }
 }

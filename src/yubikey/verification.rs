@@ -1,12 +1,8 @@
-use crate::{
-    PublicKey,
-    error::Error,
-    x509::extract_ssh_pubkey_from_x509_certificate
-};
+use crate::{error::Error, x509::extract_ssh_pubkey_from_x509_certificate, PublicKey};
 
-use x509_parser::prelude::*;
+use x509_parser::der_parser::ber::BerObjectContent;
 use x509_parser::der_parser::der::parse_der_integer;
-use x509_parser::der_parser::ber::{BerObjectContent};
+use x509_parser::prelude::*;
 
 use std::convert::TryInto;
 
@@ -47,7 +43,10 @@ pub struct ValidPIVKey {
     pub pin_policy: u8,
 }
 
-fn extract_certificate_extension_data(public_key: PublicKey, certificate: &X509Certificate<'_>) -> Result<ValidPIVKey, Error> {
+fn extract_certificate_extension_data(
+    public_key: PublicKey,
+    certificate: &X509Certificate<'_>,
+) -> Result<ValidPIVKey, Error> {
     let mut firmware: Option<String> = None;
     let mut serial: Option<u64> = None;
     let mut policies: Option<[u8; 2]> = None;
@@ -58,10 +57,13 @@ fn extract_certificate_extension_data(public_key: PublicKey, certificate: &X509C
             // Firmware
             "1.3.6.1.4.1.41482.3.3" => {
                 if ext.value.len() != 3 {
-                    continue
+                    continue;
                 }
-                firmware = Some(format!("{}.{}.{}", ext.value[0], ext.value[1], ext.value[2]));
-            },
+                firmware = Some(format!(
+                    "{}.{}.{}",
+                    ext.value[0], ext.value[1], ext.value[2]
+                ));
+            }
             // Serial
             "1.3.6.1.4.1.41482.3.7" => {
                 let (_, obj) = parse_der_integer(ext.value).map_err(|_| Error::ParsingError)?;
@@ -72,13 +74,15 @@ fn extract_certificate_extension_data(public_key: PublicKey, certificate: &X509C
 
                     let mut padded_serial = vec![0; 8 - s.len()];
                     padded_serial.extend_from_slice(s);
-                    serial = Some(u64::from_be_bytes(padded_serial.try_into().map_err(|_| Error::ParsingError)?));
+                    serial = Some(u64::from_be_bytes(
+                        padded_serial.try_into().map_err(|_| Error::ParsingError)?,
+                    ));
                 }
-            },
+            }
             // Policy
             "1.3.6.1.4.1.41482.3.8" => {
                 policies = Some([ext.value[0], ext.value[1]]);
-            },
+            }
             _ => (),
         }
     }
@@ -100,10 +104,13 @@ fn extract_certificate_extension_data(public_key: PublicKey, certificate: &X509C
     })
 }
 
-
 /// Verify a provided yubikey attestation certification and intermediate
 /// certificate are valid against the Yubico attestation Root CA.
-pub fn verify_certificate_chain(client: &[u8], intermediate: &[u8], root_pem: Option<&str>) -> Result<ValidPIVKey, Error> {
+pub fn verify_certificate_chain(
+    client: &[u8],
+    intermediate: &[u8],
+    root_pem: Option<&str>,
+) -> Result<ValidPIVKey, Error> {
     let root_ca_pem = root_pem.unwrap_or(YUBICO_PIV_ROOT_CA);
 
     // Parse the root ca
@@ -111,14 +118,19 @@ pub fn verify_certificate_chain(client: &[u8], intermediate: &[u8], root_pem: Op
     let root_ca = Pem::parse_x509(&root_ca).unwrap();
 
     // Parse the certificates
-    let (_, parsed_intermediate) = parse_x509_certificate(intermediate).map_err(|_| Error::ParsingError)?;
+    let (_, parsed_intermediate) =
+        parse_x509_certificate(intermediate).map_err(|_| Error::ParsingError)?;
     let (_, parsed_client) = parse_x509_certificate(client).map_err(|_| Error::ParsingError)?;
 
     // Validate that the provided intermediate certificate is signed by the Yubico Attestation Root CA
-    parsed_intermediate.verify_signature(Some(&root_ca.tbs_certificate.subject_pki)).map_err(|_| Error::InvalidSignature)?;
+    parsed_intermediate
+        .verify_signature(Some(&root_ca.tbs_certificate.subject_pki))
+        .map_err(|_| Error::InvalidSignature)?;
 
     // Validate that the provided certificate is signed by the intermediate CA
-    parsed_client.verify_signature(Some(&parsed_intermediate.tbs_certificate.subject_pki)).map_err(|_| Error::InvalidSignature)?;
+    parsed_client
+        .verify_signature(Some(&parsed_intermediate.tbs_certificate.subject_pki))
+        .map_err(|_| Error::InvalidSignature)?;
 
     // Extract the certificate public key and convert to an sshcerts PublicKey
     let public_key = match extract_ssh_pubkey_from_x509_certificate(client) {

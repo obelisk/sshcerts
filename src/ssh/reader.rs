@@ -165,7 +165,7 @@ impl Reader<'_> {
     /// This is different than read_string in that the length
     /// is unknown and will continue until it reads a null byte
     /// or reaches the end of the data.
-    /// 
+    ///
     /// In the event the buffer runs out before a null byte, the offset will be
     /// reset and an error returned.
     pub fn read_cstring(&mut self) -> Result<String> {

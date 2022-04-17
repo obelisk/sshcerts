@@ -16,7 +16,6 @@ fn parse_ecdsa384_key_signed_by_ecdsa384_ca() {
     assert!(cert.is_ok());
 }
 
-
 #[test]
 fn parse_ecdsa384_key_signed_by_ecdsa256_ca() {
     let cert = concat!(
@@ -63,8 +62,14 @@ fn parse_ecdsa256_key_signed_by_ecdsa256_ca() {
     let cert = Certificate::from_string(cert);
     assert!(cert.is_ok());
     let cert = cert.unwrap();
-    assert_eq!(cert.key.fingerprint().hash, "calfKUhj4a4YcDOB3F0dPZrvzVAQHfw438eQcbk7Aw0");
-    assert_eq!(cert.signature_key.fingerprint().hash, "Ch3IQ5MgZReoB1OFWwI3BhJi+1QILiHQaH7eVUbhg3M");
+    assert_eq!(
+        cert.key.fingerprint().hash,
+        "calfKUhj4a4YcDOB3F0dPZrvzVAQHfw438eQcbk7Aw0"
+    );
+    assert_eq!(
+        cert.signature_key.fingerprint().hash,
+        "Ch3IQ5MgZReoB1OFWwI3BhJi+1QILiHQaH7eVUbhg3M"
+    );
 }
 
 #[test]
@@ -88,8 +93,14 @@ fn parse_ecdsa384_key_signed_by_rsa_ca() {
     let cert = Certificate::from_string(cert);
     assert!(cert.is_ok());
     let cert = cert.unwrap();
-    assert_eq!(cert.key.fingerprint().hash, "CSauIEwrgbmcS/8fUAKE4TfW7WJSwsxISZq+Loe0E3I");
-    assert_eq!(cert.signature_key.fingerprint().hash, "7HA+VnHzijJNBK2f0+Z0uMus7NIDhvwc1bX0PqjM24g");
+    assert_eq!(
+        cert.key.fingerprint().hash,
+        "CSauIEwrgbmcS/8fUAKE4TfW7WJSwsxISZq+Loe0E3I"
+    );
+    assert_eq!(
+        cert.signature_key.fingerprint().hash,
+        "7HA+VnHzijJNBK2f0+Z0uMus7NIDhvwc1bX0PqjM24g"
+    );
 }
 
 #[test]
@@ -113,8 +124,14 @@ fn parse_ecdsa256_key_signed_by_rsa_ca() {
     let cert = Certificate::from_string(cert);
     assert!(cert.is_ok());
     let cert = cert.unwrap();
-    assert_eq!(cert.key.fingerprint().hash, "calfKUhj4a4YcDOB3F0dPZrvzVAQHfw438eQcbk7Aw0");
-    assert_eq!(cert.signature_key.fingerprint().hash, "AOyFjjStJTWt5/f0w/aVcuxtYmVbDAepkBcMKhpfhUc");
+    assert_eq!(
+        cert.key.fingerprint().hash,
+        "calfKUhj4a4YcDOB3F0dPZrvzVAQHfw438eQcbk7Aw0"
+    );
+    assert_eq!(
+        cert.signature_key.fingerprint().hash,
+        "AOyFjjStJTWt5/f0w/aVcuxtYmVbDAepkBcMKhpfhUc"
+    );
 }
 
 #[test]
@@ -131,8 +148,14 @@ fn parse_ecdsa384_key_signed_by_ed25519_ca() {
     let cert = Certificate::from_string(cert);
     assert!(cert.is_ok());
     let cert = cert.unwrap();
-    assert_eq!(cert.key.fingerprint().hash, "duxdGJwDIxSjXUsNNrqCL/bdx3G810LTsRfb01cg8+k");
-    assert_eq!(cert.signature_key.fingerprint().hash, "bVln6ao5wfn6iOcZIPP7p0r9gsbd4wtNdK24CMf9WhU");
+    assert_eq!(
+        cert.key.fingerprint().hash,
+        "duxdGJwDIxSjXUsNNrqCL/bdx3G810LTsRfb01cg8+k"
+    );
+    assert_eq!(
+        cert.signature_key.fingerprint().hash,
+        "bVln6ao5wfn6iOcZIPP7p0r9gsbd4wtNdK24CMf9WhU"
+    );
 }
 
 #[test]
@@ -149,6 +172,12 @@ fn parse_ecdsa256_key_signed_by_ed25519_ca() {
     let cert = Certificate::from_string(cert);
     assert!(cert.is_ok());
     let cert = cert.unwrap();
-    assert_eq!(cert.key.fingerprint().hash, "2U1m3NsBctj6Uoa/d2USPtoZCxAwWYDffDcNXQjzRUM");
-    assert_eq!(cert.signature_key.fingerprint().hash, "bVln6ao5wfn6iOcZIPP7p0r9gsbd4wtNdK24CMf9WhU");
+    assert_eq!(
+        cert.key.fingerprint().hash,
+        "2U1m3NsBctj6Uoa/d2USPtoZCxAwWYDffDcNXQjzRUM"
+    );
+    assert_eq!(
+        cert.signature_key.fingerprint().hash,
+        "bVln6ao5wfn6iOcZIPP7p0r9gsbd4wtNdK24CMf9WhU"
+    );
 }

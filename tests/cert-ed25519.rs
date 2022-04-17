@@ -74,11 +74,11 @@ fn parse_ed25519_key_signed_by_ecdsa384_ca_bitflip_should_fail() {
         "7ueqG621uT98WW0txBBoVYE2dMkaZ2aAwytE1bCUjZgsNAAAAMCgA3Q6OXDE4F5H1OX9ZthBP+V30l1HyN8oFzJ/rdr38UtxYNI581FcANSp+tT0VYw== obelis",
         "k@exclave.lan");
 
-        let cert = Certificate::from_string(cert);
-        assert!(cert.is_err());
-        let e = cert.unwrap_err();
-        let e = format!("{}", e);
-        assert_eq!(e, String::from("Data is improperly signed"));
+    let cert = Certificate::from_string(cert);
+    assert!(cert.is_err());
+    let e = cert.unwrap_err();
+    let e = format!("{}", e);
+    assert_eq!(e, String::from("Data is improperly signed"));
 }
 
 #[test]
@@ -144,7 +144,6 @@ fn parse_ed25519_key_signed_by_rsa5000_ca() {
     let cert = Certificate::from_string(cert);
     assert!(cert.is_ok());
 }
-
 
 #[test]
 fn parse_ed25519_key_signed_by_rsa4096_ca() {

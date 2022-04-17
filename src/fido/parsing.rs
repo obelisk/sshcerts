@@ -1,14 +1,8 @@
 use crate::error::Error;
 
 use crate::{
+    ssh::{Curve, EcdsaPublicKey, Ed25519PublicKey, KeyType, PublicKeyKind},
     PublicKey,
-    ssh::{
-        Curve,
-        KeyType,
-        PublicKeyKind,
-        EcdsaPublicKey,
-        Ed25519PublicKey,
-    },
 };
 
 use std::collections::HashMap;
@@ -16,7 +10,6 @@ use std::io::Cursor;
 use std::io::Read;
 
 use minicbor::Decoder;
-
 
 /// A struct used to hold data about the key we are extracting from the authentication
 /// data
@@ -61,7 +54,7 @@ fn read_integer(decoder: &mut Decoder<'_>) -> Result<i128, Error> {
         minicbor::data::Type::I16 => decoder.i16().unwrap() as i128,
         minicbor::data::Type::I32 => decoder.i32().unwrap() as i128,
         minicbor::data::Type::I64 => decoder.i64().unwrap() as i128,
-        _ => return Err(Error::ParsingError)
+        _ => return Err(Error::ParsingError),
     };
 
     Ok(v)
@@ -75,39 +68,39 @@ impl AuthData {
         // RPID Hash
         let mut rpid_hash = [0; 32];
         if auth_data.read_exact(&mut rpid_hash).is_err() {
-            return Err(Error::ParsingError)
+            return Err(Error::ParsingError);
         }
 
         // Flags
         let mut flags = [0; 1];
         if auth_data.read_exact(&mut flags).is_err() {
-            return Err(Error::ParsingError)
+            return Err(Error::ParsingError);
         }
         let credential_data_included = matches!(flags[0] & 0x40, 0x40);
 
         // Sign Count
         let mut sign_count = [0; 4];
         if auth_data.read_exact(&mut sign_count).is_err() {
-            return Err(Error::ParsingError)
+            return Err(Error::ParsingError);
         }
 
         // AAGUID
         let mut aaguid = [0; 16];
         if auth_data.read_exact(&mut aaguid).is_err() {
-            return Err(Error::ParsingError)
+            return Err(Error::ParsingError);
         }
 
         // Credential ID Length
         let mut cred_id_len = [0; 2];
         if auth_data.read_exact(&mut cred_id_len).is_err() {
-            return Err(Error::ParsingError)
+            return Err(Error::ParsingError);
         }
         let cred_id_len = u16::from_be_bytes(cred_id_len) as usize;
 
         // Credential ID
         let mut credential_id = vec![0; cred_id_len];
         if auth_data.read_exact(&mut credential_id).is_err() {
-            return Err(Error::ParsingError)
+            return Err(Error::ParsingError);
         }
 
         // Start decoding CBOR objects from after where we got with the cursor
@@ -121,7 +114,6 @@ impl AuthData {
                 _ => return Err(Error::ParsingError),
             };
 
-
             let mut parsed_key = CoseKey::default();
             let mut idx = 0;
 
@@ -132,10 +124,18 @@ impl AuthData {
                     -1 => {
                         let value = read_integer(&mut decoder).map_err(|_| Error::ParsingError)?;
                         parsed_key.parameters.insert(key, value.to_string());
-                    },
-                    1 => parsed_key.key_type = read_integer(&mut decoder).map_err(|_| Error::ParsingError)?,
-                    3 => parsed_key.algorithm = read_integer(&mut decoder).map_err(|_| Error::ParsingError)?,
-                    -2 | -3 => parsed_key.key = decoder.bytes().map_err(|_| Error::ParsingError)?.to_vec(),
+                    }
+                    1 => {
+                        parsed_key.key_type =
+                            read_integer(&mut decoder).map_err(|_| Error::ParsingError)?
+                    }
+                    3 => {
+                        parsed_key.algorithm =
+                            read_integer(&mut decoder).map_err(|_| Error::ParsingError)?
+                    }
+                    -2 | -3 => {
+                        parsed_key.key = decoder.bytes().map_err(|_| Error::ParsingError)?.to_vec()
+                    }
                     _ => decoder.undefined().map_err(|_| Error::ParsingError)?,
                 };
                 idx += 2;
@@ -168,8 +168,11 @@ impl AuthData {
                     key: self.cose_key.key.clone(),
                     sk_application: Some(app.to_owned()),
                 };
-                (PublicKeyKind::Ecdsa(k), KeyType::from_name("sk-ecdsa-sha2-nistp256@openssh.com").unwrap())
-            },
+                (
+                    PublicKeyKind::Ecdsa(k),
+                    KeyType::from_name("sk-ecdsa-sha2-nistp256@openssh.com").unwrap(),
+                )
+            }
 
             // Ed25519
             -8 => {
@@ -178,8 +181,11 @@ impl AuthData {
                     sk_application: Some(app.to_owned()),
                 };
 
-                (PublicKeyKind::Ed25519(k), KeyType::from_name("sk-ssh-ed25519@openssh.com").unwrap())
-            },
+                (
+                    PublicKeyKind::Ed25519(k),
+                    KeyType::from_name("sk-ssh-ed25519@openssh.com").unwrap(),
+                )
+            }
 
             // Unknown
             _n => return Err(Error::ParsingError),
@@ -187,7 +193,7 @@ impl AuthData {
 
         Ok(PublicKey {
             key_type,
-            kind, 
+            kind,
             comment: None,
         })
     }

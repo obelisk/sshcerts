@@ -1,24 +1,14 @@
 use ctap_hid_fido2::{
-    Cfg,
-    HidParam,
-    verifier,
-    fidokey::make_credential::{
-        CredentialSupportedKeyType,
-        MakeCredentialArgsBuilder,
-    },
-    FidoKeyHid,
+    fidokey::make_credential::{CredentialSupportedKeyType, MakeCredentialArgsBuilder},
+    verifier, Cfg, FidoKeyHid, HidParam,
 };
 
 use super::AuthData;
 
 use crate::{
     error::Error,
+    ssh::{Ed25519SkPrivateKey, KeyType, PrivateKeyKind},
     PrivateKey,
-    ssh::{
-        KeyType,
-        PrivateKeyKind,
-        Ed25519SkPrivateKey,
-    },
 };
 
 /// The attestation data, signature, and chain for a generated SSH key
@@ -47,11 +37,19 @@ pub struct FIDOSSHKey {
 }
 
 /// Generate a new SSH key on a FIDO/U2F device
-pub fn generate_new_ssh_key(application: &str, comment: &str, pin: Option<String>, device_path: Option<String>) -> Result<FIDOSSHKey, Error> {
+pub fn generate_new_ssh_key(
+    application: &str,
+    comment: &str,
+    pin: Option<String>,
+    device_path: Option<String>,
+) -> Result<FIDOSSHKey, Error> {
     let device = if let Some(path) = &device_path {
         FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init())
     } else {
-        let fido_devices: Vec<HidParam> = ctap_hid_fido2::get_fidokey_devices().into_iter().map(|x| x.param).collect();
+        let fido_devices: Vec<HidParam> = ctap_hid_fido2::get_fidokey_devices()
+            .into_iter()
+            .map(|x| x.param)
+            .collect();
         FidoKeyHid::new(&fido_devices, &Cfg::init())
     };
 
@@ -66,7 +64,9 @@ pub fn generate_new_ssh_key(application: &str, comment: &str, pin: Option<String
     };
 
     let device = device.map_err(|e| Error::FidoError(e.to_string()))?;
-    let att = device.make_credential_with_args(&args.build()).map_err(|e| Error::FidoError(e.to_string()))?;
+    let att = device
+        .make_credential_with_args(&args.build())
+        .map_err(|e| Error::FidoError(e.to_string()))?;
 
     let mut ret = 0x0;
     if att.flags_user_present_result {
@@ -115,6 +115,6 @@ pub fn generate_new_ssh_key(application: &str, comment: &str, pin: Option<String
             intermediate,
             challenge: challenge.to_vec(),
             alg: att.attstmt_alg,
-        }
+        },
     })
 }

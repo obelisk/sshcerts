@@ -102,7 +102,6 @@ impl Curve {
     }
 }
 
-
 impl KeyType {
     /// Creates a new `KeyType` from a given name.
     ///
@@ -235,11 +234,7 @@ impl KeyType {
                 is_sk: true,
                 kind: KeyTypeKind::Ecdsa,
             },
-            _ => {
-                return Err(Error::UnknownKeyType(
-                    name.to_string(),
-                ))
-            }
+            _ => return Err(Error::UnknownKeyType(name.to_string())),
         };
         Ok(kt)
     }
@@ -250,12 +245,14 @@ impl KeyType {
         if !self.is_sk {
             format!("{}-cert-v01@openssh.com", &self.plain)
         } else {
-            format!("{}-cert-v01@openssh.com", &self.plain[..self.plain.len() - 12])
+            format!(
+                "{}-cert-v01@openssh.com",
+                &self.plain[..self.plain.len() - 12]
+            )
         }
-        
     }
 
-    /// A function that just wraps access to the member to match the cert one 
+    /// A function that just wraps access to the member to match the cert one
     /// above.
     pub fn as_pubkey_name(&self) -> String {
         (&self.plain).to_string()

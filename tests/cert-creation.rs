@@ -1,6 +1,6 @@
 use ring::{rand, signature};
 
-use sshcerts::ssh::{Certificate, CertType, PrivateKey, PublicKey};
+use sshcerts::ssh::{CertType, Certificate, PrivateKey, PublicKey};
 use sshcerts::utils::format_signature_for_ssh;
 
 // Constants available for multiple tests
@@ -9,12 +9,14 @@ const ECDSA256_CA_PRIVATE_KEY: &str = concat!(
     "0101042063b3b4925287d2d20fd53c297ef80cdcd438764d40999ba60f6f1b08",
     "14e3b49ea14403420004dc3f4472cea77335a6ef9ac7bc73a37aac9f234a58d6",
     "0566a1946b135879db89a0a346fbc6f4db9ee5c30380f479280d62c9a65b6f50",
-    "81fbc6b6f70048c6290f");
+    "81fbc6b6f70048c6290f"
+);
 
 const ECDSA256_SSH_PUBLIC_KEY: &str = concat!(
     "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAy",
     "NTYAAABBBNw/RHLOp3M1pu+ax7xzo3qsnyNKWNYFZqGUaxNYeduJoKNG+8b0257l",
-    "wwOA9HkoDWLJpltvUIH7xrb3AEjGKQ8= obelisk@exclave.lan");
+    "wwOA9HkoDWLJpltvUIH7xrb3AEjGKQ8= obelisk@exclave.lan"
+);
 
 const ECDSA384_CA_PRIVATE_KEY: &str = concat!(
     "3081b6020100301006072a8648ce3d020106052b8104002204819e30819b020",
@@ -22,7 +24,8 @@ const ECDSA384_CA_PRIVATE_KEY: &str = concat!(
     "e3b0ce39b49927f80f38398f72365014b74933c5a16403620004c895d0676a6",
     "a550c09e41bd0b68eea4e6697a060ac43933cb1c544d99155cd93cf2ef9f041",
     "429a99ee3443f6c1a574d00ba03c32cfc23386759ea60f1d43413deb4c86c2f",
-    "326fd575b1a2f43e706df2fb6b228275aad698f79aefa622f663e4a");
+    "326fd575b1a2f43e706df2fb6b228275aad698f79aefa622f663e4a"
+);
 
 const ECDSA384_SSH_PUBLIC_KEY: &str = concat!(
     "ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAz",
@@ -35,7 +38,11 @@ const ECDSA384_SSH_PUBLIC_KEY: &str = concat!(
 // Test signing and parsing work together
 fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let pkcs8_bytes = hex::decode(ECDSA256_CA_PRIVATE_KEY).unwrap();
-    let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
+    let key_pair = signature::EcdsaKeyPair::from_pkcs8(
+        &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+        pkcs8_bytes.as_ref(),
+    )
+    .unwrap();
     let rng = rand::SystemRandom::new();
 
     let pubkey = PublicKey::from_string(ECDSA256_SSH_PUBLIC_KEY).unwrap();
@@ -45,13 +52,16 @@ fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
 // Test signing and parsing work together
 fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let pkcs8_bytes = hex::decode(ECDSA384_CA_PRIVATE_KEY).unwrap();
-    let key_pair = signature::EcdsaKeyPair::from_pkcs8(&signature::ECDSA_P384_SHA384_ASN1_SIGNING, pkcs8_bytes.as_ref()).unwrap();
+    let key_pair = signature::EcdsaKeyPair::from_pkcs8(
+        &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+        pkcs8_bytes.as_ref(),
+    )
+    .unwrap();
     let rng = rand::SystemRandom::new();
-    
+
     let pubkey = PublicKey::from_string(ECDSA384_SSH_PUBLIC_KEY).unwrap();
     format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
 }
-
 
 #[test]
 fn create_sign_parse_verify_ecdsa256_static_function() {
@@ -64,7 +74,8 @@ fn create_sign_parse_verify_ecdsa256_static_function() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let ca_pubkey = ca_pubkey.unwrap();
 
-    let user_cert_partial = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
+    let user_cert_partial = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -98,7 +109,8 @@ fn create_sign_parse_verify_ecdsa384_static_function() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let ca_pubkey = ca_pubkey.unwrap();
 
-    let user_cert_partial = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey).unwrap()
+    let user_cert_partial = Certificate::builder(&ssh_pubkey, CertType::User, &ca_pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -130,7 +142,8 @@ fn create_sign_parse_verify_ed25519ca_into_impl() {
         "5AAAAAtzc2gtZWQyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FA\n",
         "AAAED6HgUU3Ps5TVdFCVO8uTpbfVdg3JBxnOz3DIWO1u1Xbc0JfpeVmfRBExbXgAFlrkZl\n",
         "zrpT5ywSIqyCRnAYrT4UAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAg==\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -146,7 +159,8 @@ fn create_sign_parse_verify_ed25519ca_into_impl() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let pubkey = privkey.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -167,7 +181,10 @@ fn create_sign_parse_verify_ed25519ca_into_impl() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI"
+    );
 }
 
 #[test]
@@ -179,7 +196,8 @@ fn create_sign_parse_verify_ed25519ca_create_signer() {
         "5AAAAAtzc2gtZWQyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FA\n",
         "AAAED6HgUU3Ps5TVdFCVO8uTpbfVdg3JBxnOz3DIWO1u1Xbc0JfpeVmfRBExbXgAFlrkZl\n",
         "zrpT5ywSIqyCRnAYrT4UAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAg==\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -195,7 +213,8 @@ fn create_sign_parse_verify_ed25519ca_create_signer() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let pubkey = privkey.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -216,7 +235,10 @@ fn create_sign_parse_verify_ed25519ca_create_signer() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI"
+    );
 }
 
 #[test]
@@ -230,7 +252,8 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
         "vFwb43fiqZTBtaJH+CAQu82b8acghW10FfAYAd/EdSm3KCXMYZeYV7o69hyNUg0PbVwjyy\n",
         "MAAAAgZh56NkYn+PWxxMI3Xg5CpKTjuSh07cxm4ZOUgj95xz4AAAATb2JlbGlza0BleGNs\n",
         "YXZlLmxhbgECAwQF\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -246,7 +269,8 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let pubkey = privkey.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -254,7 +278,6 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
         .sign(&privkey);
-
 
     assert!(user_cert.is_ok());
 
@@ -268,7 +291,10 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "4iFrRMN31rjtQtvJyC/Y3Wg9mKAjQnZtZ2wFNWYzrb8");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "4iFrRMN31rjtQtvJyC/Y3Wg9mKAjQnZtZ2wFNWYzrb8"
+    );
 }
 
 #[test]
@@ -282,7 +308,8 @@ fn create_sign_parse_verify_ecdsa256_create_signer() {
         "vFwb43fiqZTBtaJH+CAQu82b8acghW10FfAYAd/EdSm3KCXMYZeYV7o69hyNUg0PbVwjyy\n",
         "MAAAAgZh56NkYn+PWxxMI3Xg5CpKTjuSh07cxm4ZOUgj95xz4AAAATb2JlbGlza0BleGNs\n",
         "YXZlLmxhbgECAwQF\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -297,7 +324,8 @@ fn create_sign_parse_verify_ecdsa256_create_signer() {
 
     let ssh_pubkey = ssh_pubkey.unwrap();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &privkey.pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &privkey.pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -318,7 +346,10 @@ fn create_sign_parse_verify_ecdsa256_create_signer() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "4iFrRMN31rjtQtvJyC/Y3Wg9mKAjQnZtZ2wFNWYzrb8");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "4iFrRMN31rjtQtvJyC/Y3Wg9mKAjQnZtZ2wFNWYzrb8"
+    );
 }
 
 #[test]
@@ -333,7 +364,8 @@ fn create_sign_parse_verify_ecdsa384_into_impl() {
         "g9EDT58zs9Ny69IWYnXgHaQiIR+x/b8v2HPRWacEy44XEU/2C4nWU6OfEPKHIhG9SUXJPH\n",
         "AqoHJXroCJ4dK5mkAAAAMQCzbv+cwLvqN5gEqlicsecYiDm6TsSqu6/vK+uZMXVMnWIvdH\n",
         "pkgBFrUy28lE5LJBoAAAATb2JlbGlza0BleGNsYXZlLmxhbgECAwQ=\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -349,7 +381,8 @@ fn create_sign_parse_verify_ecdsa384_into_impl() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let pubkey = privkey.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -370,7 +403,10 @@ fn create_sign_parse_verify_ecdsa384_into_impl() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "xHlYNJvliHr0AMuGYs+4SK3N0PqiaI6jbQMZlKWC1Is");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "xHlYNJvliHr0AMuGYs+4SK3N0PqiaI6jbQMZlKWC1Is"
+    );
 }
 
 #[test]
@@ -385,7 +421,8 @@ fn create_sign_parse_verify_ecdsa384_create_signer() {
         "g9EDT58zs9Ny69IWYnXgHaQiIR+x/b8v2HPRWacEy44XEU/2C4nWU6OfEPKHIhG9SUXJPH\n",
         "AqoHJXroCJ4dK5mkAAAAMQCzbv+cwLvqN5gEqlicsecYiDm6TsSqu6/vK+uZMXVMnWIvdH\n",
         "pkgBFrUy28lE5LJBoAAAATb2JlbGlza0BleGNsYXZlLmxhbgECAwQ=\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -400,7 +437,8 @@ fn create_sign_parse_verify_ecdsa384_create_signer() {
 
     let ssh_pubkey = ssh_pubkey.unwrap();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &privkey.pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &privkey.pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -421,7 +459,10 @@ fn create_sign_parse_verify_ecdsa384_create_signer() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "xHlYNJvliHr0AMuGYs+4SK3N0PqiaI6jbQMZlKWC1Is");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "xHlYNJvliHr0AMuGYs+4SK3N0PqiaI6jbQMZlKWC1Is"
+    );
 }
 
 #[cfg(feature = "rsa-signing")]
@@ -476,7 +517,8 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
         "yxHBxNm0qlXZaKUEQSJgOkCymfvUH37iqFFH+YS1K2qWY2Xd3oMQYpbaQ3ZAAfMeGvSRrh\n",
         "0PbMEIMUlrT8Z0jPQIGFwXohMlUeHAaBcXEesRFzLpTFSMK3ntfPyTGCunK2zwRuM7U8Km\n",
         "p35sg1NxH3lNAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAgMEBQYH\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -492,7 +534,8 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let priv_pubkey = privkey.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -519,7 +562,10 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "+9NkmQZUWidGVFdel/s8bjQtVgthWEILEX2DtAZST5c");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "+9NkmQZUWidGVFdel/s8bjQtVgthWEILEX2DtAZST5c"
+    );
 }
 
 #[cfg(feature = "rsa-signing")]
@@ -563,7 +609,8 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
         "JOb8DFbXNGWRvkZWj8mau8SEoNK4APlQtA9Y6IdyaXntoLM/xPyr+RhJPHaDGVju+W/xiX\n",
         "ehPVvXJb1I+gCy7CyNz5q49te6oQr60ZHtdX1LtAQEqENBwMByHuIRIZ2SMw7YbcW+bPOe\n",
         "FcoEha89lN4D9xAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAgMEBQYH\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -579,7 +626,8 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let priv_pubkey = privkey.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -606,7 +654,10 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "YlmcNWmmzkuy/5oIlCoqyd5JkIaa/RgzjlF7nFzsZ3o");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "YlmcNWmmzkuy/5oIlCoqyd5JkIaa/RgzjlF7nFzsZ3o"
+    );
 }
 
 #[cfg(feature = "rsa-signing")]
@@ -639,7 +690,8 @@ fn create_sign_parse_verify_rsa2048_impl_into() {
         "+ILgVPcjQPOa1h8i2xeXX+9HJdkU4mDIlR8SXIOVXSO+Ewzs2GyyU+lWcbRW+pZKbEVnV5\n",
         "Qx4SMZJPClPqI3dzi40Z5pRqHgW4XPQkOGvvGB3iTfBmZJ2vpkN+E3xt7FbrZ5RGpLSGrJ\n",
         "uWv2SXiQNYRrHY8AAAATb2JlbGlza0BleGNsYXZlLmxhbg==\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -655,7 +707,8 @@ fn create_sign_parse_verify_rsa2048_impl_into() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let priv_pubkey = privkey.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &priv_pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .principal("obelisk")
@@ -682,7 +735,10 @@ fn create_sign_parse_verify_rsa2048_impl_into() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "A7S6yWfLWgKphtN5UzBbKbhSE71bK/NB6x6NE0DJOpU");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "A7S6yWfLWgKphtN5UzBbKbhSE71bK/NB6x6NE0DJOpU"
+    );
 }
 
 #[test]
@@ -694,7 +750,8 @@ fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
         "5AAAAAtzc2gtZWQyNTUxOQAAACDNCX6XlZn0QRMW14ABZa5GZc66U+csEiKsgkZwGK0+FA\n",
         "AAAED6HgUU3Ps5TVdFCVO8uTpbfVdg3JBxnOz3DIWO1u1Xbc0JfpeVmfRBExbXgAFlrkZl\n",
         "zrpT5ywSIqyCRnAYrT4UAAAAE29iZWxpc2tAZXhjbGF2ZS5sYW4BAg==\n",
-        "-----END OPENSSH PRIVATE KEY-----");
+        "-----END OPENSSH PRIVATE KEY-----"
+    );
 
     let privkey = PrivateKey::from_string(privkey);
     match &privkey {
@@ -710,7 +767,8 @@ fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
     let ssh_pubkey = ssh_pubkey.unwrap();
     let pubkey = privkey.pubkey.clone();
 
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &pubkey)
+        .unwrap()
         .serial(0xFEFEFEFEFEFEFEFE)
         .key_id("key_id")
         .key_id("overwrite_key_id")
@@ -727,19 +785,31 @@ fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
 
     // Check user fields
     let user_cert = user_cert.unwrap();
-    assert_eq!(user_cert.key.fingerprint().hash, "uzOtIxALSM+OuY+LmdU1xFLzY4zBvom/1Etb385O0ek");
+    assert_eq!(
+        user_cert.key.fingerprint().hash,
+        "uzOtIxALSM+OuY+LmdU1xFLzY4zBvom/1Etb385O0ek"
+    );
     assert_eq!(user_cert.key_id, String::from("overwrite_key_id"));
     assert_eq!(user_cert.principals, vec!["obelisk", "mitchell"]);
     assert_eq!(user_cert.critical_options.len(), 1);
     assert!(user_cert.critical_options.get("test").is_some());
-    assert_eq!(user_cert.critical_options.get("test").unwrap(), &String::from("test_value"));
+    assert_eq!(
+        user_cert.critical_options.get("test").unwrap(),
+        &String::from("test_value")
+    );
     assert_eq!(user_cert.extensions.len(), 6);
     assert!(user_cert.extensions.get("extension_test").is_some());
-    assert_eq!(user_cert.extensions.get("extension_test").unwrap(), &String::from("extension_test_value"));
+    assert_eq!(
+        user_cert.extensions.get("extension_test").unwrap(),
+        &String::from("extension_test_value")
+    );
     assert_eq!(user_cert.serial, 0xFEFEFEFEFEFEFEFE);
     assert_eq!(user_cert.valid_after, 0);
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 
     // Check CA fields
-    assert_eq!(user_cert.signature_key.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
+    assert_eq!(
+        user_cert.signature_key.fingerprint().hash,
+        "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI"
+    );
 }
