@@ -258,7 +258,7 @@ impl KeyType {
     /// A function that just wraps access to the member to match the cert one 
     /// above.
     pub fn as_pubkey_name(&self) -> String {
-        format!("{}", &self.plain)
+        (&self.plain).to_string()
     }
 }
 

@@ -39,7 +39,7 @@ fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
 
     let pubkey = PublicKey::from_string(ECDSA256_SSH_PUBLIC_KEY).unwrap();
-    format_signature_for_ssh(&pubkey, &key_pair.sign(&rng, buf).ok()?.as_ref().to_vec())
+    format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
 }
 
 // Test signing and parsing work together
@@ -49,7 +49,7 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
     
     let pubkey = PublicKey::from_string(ECDSA384_SSH_PUBLIC_KEY).unwrap();
-    format_signature_for_ssh(&pubkey, &key_pair.sign(&rng, buf).ok()?.as_ref().to_vec())
+    format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
 }
 
 
@@ -92,7 +92,7 @@ fn create_sign_parse_verify_ecdsa384_static_function() {
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
 
-    let ca_pubkey = PublicKey::from_string(&ECDSA384_SSH_PUBLIC_KEY);
+    let ca_pubkey = PublicKey::from_string(ECDSA384_SSH_PUBLIC_KEY);
     assert!(ca_pubkey.is_ok());
 
     let ssh_pubkey = ssh_pubkey.unwrap();

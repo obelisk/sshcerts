@@ -19,7 +19,7 @@ fn main() -> Result<(), String> {
 
     match PublicKey::from_path(path) {
         Ok(c) => {
-            println!("256 SHA256:{} {}", c.fingerprint().hash, c.comment.unwrap_or(format!("no comment")));
+            println!("256 SHA256:{} {}", c.fingerprint().hash, c.comment.unwrap_or("no comment".to_string()));
             Ok(())
         },
         Err(e) => {

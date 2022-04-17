@@ -41,7 +41,7 @@ fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
 
     let pubkey = PublicKey::from_string(ECDSA256_SSH_PUBLIC_KEY).unwrap();
-    format_signature_for_ssh(&pubkey, &key_pair.sign(&rng, buf).ok()?.as_ref().to_vec())
+    format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
 }
 
 // Test signing and parsing work together
@@ -51,7 +51,7 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let rng = rand::SystemRandom::new();
     
     let pubkey = PublicKey::from_string(ECDSA384_SSH_PUBLIC_KEY).unwrap();
-    format_signature_for_ssh(&pubkey, &key_pair.sign(&rng, buf).ok()?.as_ref().to_vec())
+    format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
 }
 
 

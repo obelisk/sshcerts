@@ -220,13 +220,13 @@ impl Writer {
                 self.write_string(k.curve.identifier);
                 self.write_bytes(&k.key);
                 if key.key_type.is_sk {
-                    self.write_string(&k.sk_application.as_ref().unwrap());
+                    self.write_string(k.sk_application.as_ref().unwrap());
                 }
             }
             PublicKeyKind::Ed25519(ref k) => {
                 self.write_bytes(&k.key);
                 if key.key_type.is_sk {
-                    self.write_string(&k.sk_application.as_ref().unwrap());
+                    self.write_string(k.sk_application.as_ref().unwrap());
                 }
             }
         }

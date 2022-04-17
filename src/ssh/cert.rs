@@ -443,10 +443,10 @@ impl Certificate {
     /// certificate under the set CA key.
     pub fn add_signature(mut self, signature: &[u8]) -> Result<Self> {
         let mut tbs = self.tbs_certificate();
-        verify_signature(&signature, &tbs, &self.signature_key)?;
+        verify_signature(signature, &tbs, &self.signature_key)?;
 
         let mut wrapped_writer = Writer::new();
-        wrapped_writer.write_bytes(&signature);
+        wrapped_writer.write_bytes(signature);
 
         // After this it's no longer "tbs"
         tbs.extend_from_slice(&wrapped_writer.into_bytes());
@@ -575,7 +575,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
                 let signature_counter = reader.read_u32()?;
 
                 let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes()).as_ref().to_vec();
-                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes.as_ref()).as_ref().to_vec();
+                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes).as_ref().to_vec();
                 
                 app_hash.push(flags);
                 app_hash.extend_from_slice(&signature_counter.to_be_bytes());
@@ -610,7 +610,7 @@ fn verify_signature(signature_buf: &[u8], signed_bytes: &[u8], public_key: &Publ
                 let signature_counter = reader.read_u32()?;
 
                 let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes()).as_ref().to_vec();
-                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes.as_ref()).as_ref().to_vec();
+                let mut data_hash = digest::digest(&digest::SHA256, signed_bytes).as_ref().to_vec();
                 
                 app_hash.push(flags);
                 app_hash.extend_from_slice(&signature_counter.to_be_bytes());

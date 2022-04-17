@@ -355,13 +355,13 @@ impl PublicKey {
                 w.write_string(k.curve.identifier);
                 w.write_bytes(&k.key);
                 if self.key_type.is_sk {
-                    w.write_string(&k.sk_application.as_ref().unwrap());
+                    w.write_string(k.sk_application.as_ref().unwrap());
                 }
             }
             PublicKeyKind::Ed25519(ref k) => {
                 w.write_bytes(&k.key);
                 if self.key_type.is_sk {
-                    w.write_string(&k.sk_application.as_ref().unwrap());
+                    w.write_string(k.sk_application.as_ref().unwrap());
                 }
             }
         }
