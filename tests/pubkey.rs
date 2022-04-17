@@ -1,4 +1,4 @@
-use sshcerts::ssh::{PublicKey};
+use sshcerts::ssh::PublicKey;
 
 #[test]
 fn parse_ed25519_publickey() {
@@ -7,7 +7,10 @@ fn parse_ed25519_publickey() {
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
-    assert_eq!(ssh_pubkey.fingerprint().hash, "c4X5mQt9f37ZkdQUbNckivACZmY52rZw0jJUCA1DfkI");
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "c4X5mQt9f37ZkdQUbNckivACZmY52rZw0jJUCA1DfkI"
+    );
 
     let out_data = format!("{}", ssh_pubkey);
     assert_eq!(in_data, out_data);
@@ -20,7 +23,10 @@ fn parse_ecdsa384_publickey() {
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
-    assert_eq!(ssh_pubkey.fingerprint().hash, "huOgP+FbGDQ830OcBfh2j3WwGn+E66sxfZp3NwXA4jg");
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "huOgP+FbGDQ830OcBfh2j3WwGn+E66sxfZp3NwXA4jg"
+    );
 
     let out_data = format!("{}", ssh_pubkey);
     assert_eq!(in_data, out_data);
@@ -33,7 +39,10 @@ fn parse_ecdsa256_publickey() {
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
-    assert_eq!(ssh_pubkey.fingerprint().hash, "BAJ7Md5+hfu6I6ojHoJpSNVXNRnxM8XfNnA8Pf1X/2I");
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "BAJ7Md5+hfu6I6ojHoJpSNVXNRnxM8XfNnA8Pf1X/2I"
+    );
 
     let out_data = format!("{}", ssh_pubkey);
     assert_eq!(in_data, out_data);
@@ -45,7 +54,10 @@ fn parse_rsa4096_publickey() {
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
-    assert_eq!(ssh_pubkey.fingerprint().hash, "+9NkmQZUWidGVFdel/s8bjQtVgthWEILEX2DtAZST5c");
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "+9NkmQZUWidGVFdel/s8bjQtVgthWEILEX2DtAZST5c"
+    );
 }
 
 #[test]
@@ -54,7 +66,10 @@ fn parse_rsa3072_publickey() {
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
-    assert_eq!(ssh_pubkey.fingerprint().hash, "YlmcNWmmzkuy/5oIlCoqyd5JkIaa/RgzjlF7nFzsZ3o");
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "YlmcNWmmzkuy/5oIlCoqyd5JkIaa/RgzjlF7nFzsZ3o"
+    );
 }
 
 #[test]
@@ -64,7 +79,10 @@ fn parse_rsa2048_publickey() {
     assert!(ssh_pubkey.is_ok());
     let ssh_pubkey = ssh_pubkey.unwrap();
 
-    assert_eq!(ssh_pubkey.fingerprint().hash, "A7S6yWfLWgKphtN5UzBbKbhSE71bK/NB6x6NE0DJOpU");
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "A7S6yWfLWgKphtN5UzBbKbhSE71bK/NB6x6NE0DJOpU"
+    );
 
     let out_data = format!("{}", ssh_pubkey);
     assert_eq!(in_data, out_data);

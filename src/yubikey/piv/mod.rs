@@ -1,10 +1,10 @@
+/// Contains all the functions used for creating new keys, unlocking, and
+/// managing the yubikey
+pub mod management;
 /// The SSH submodule contains functions relevant to SSH uses that are backed
 /// by the Yubikey. This includes things like signing and SSH public key
 /// export.
 pub mod ssh;
-/// Contains all the functions used for creating new keys, unlocking, and
-/// managing the yubikey
-pub mod management;
 
 /// Errors when interacting with the Yubikey.
 #[derive(Debug)]
@@ -62,9 +62,16 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             Error::Unprovisioned => write!(f, "Slot is unprovisioned for signing"),
-            Error::WrongKeyType => write!(f, "Wrong key type was provided for requested signing operation"),
-            Error::Unsupported => write!(f, "This key is not supported the way you tried to use it"),
-            Error::InvalidManagementKey => write!(f, "Could not use the management key as provided"),
+            Error::WrongKeyType => write!(
+                f,
+                "Wrong key type was provided for requested signing operation"
+            ),
+            Error::Unsupported => {
+                write!(f, "This key is not supported the way you tried to use it")
+            }
+            Error::InvalidManagementKey => {
+                write!(f, "Could not use the management key as provided")
+            }
             Error::ParsingError => write!(f, "Could not parse data"),
             Error::NoSuchYubikey => write!(f, "Could not find the requested Yubikey"),
             Error::InternalYubiKeyError(ref err) => write!(f, "Yubikey error: {}", err),

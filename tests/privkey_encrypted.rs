@@ -1,6 +1,5 @@
 use sshcerts::ssh::{PrivateKey, PrivateKeyKind};
 
-
 #[test]
 fn parse_encrypted_ed25519_private_key() {
     let privkey = r#"-----BEGIN OPENSSH PRIVATE KEY-----
@@ -19,7 +18,10 @@ gj+HqUxSiAOuRA5cDU+SykIfb7TLvteZOpl2I=
     };
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "bTkq+BEqfkYOgyPk2ziLwtkxDFcj531SfwEpl3IyutU");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "bTkq+BEqfkYOgyPk2ziLwtkxDFcj531SfwEpl3IyutU"
+    );
 
     let key = match &privkey.kind {
         PrivateKeyKind::Ed25519(key) => key,
@@ -49,7 +51,10 @@ JcR8y21R5hqNGhTlx0F8kqAGg2nW3PmsiGCwKl7Iz7IMf4iaUuufHG2RtTaFpN0n9gxbpQ
     };
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "nTCuabo74eqb8zYiqsg8x7sfgzsu1Egv0XGzaiip9XU");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "nTCuabo74eqb8zYiqsg8x7sfgzsu1Egv0XGzaiip9XU"
+    );
 
     let key = match &privkey.kind {
         PrivateKeyKind::Ed25519(key) => key,
@@ -80,7 +85,10 @@ Gd5VYX4HxsQZWQixs9DSZyCexueq7Fw+57AW9z1XFySUhHdiRlgeXSxsF8Q=
     };
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "aeK6cuLIzfIddiLtlP+kaZqA5lo4ExdXM8ksWeJPPp8");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "aeK6cuLIzfIddiLtlP+kaZqA5lo4ExdXM8ksWeJPPp8"
+    );
 
     match &privkey.kind {
         PrivateKeyKind::Ecdsa(key) => key,
@@ -109,7 +117,10 @@ N9Rg7yGs2leAkts+8G8w+tgJJQ==
     };
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "SvNs3N/ZVtfktcRjlcgpvOs4qFnQTIVGTt2L2S2nVI8");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "SvNs3N/ZVtfktcRjlcgpvOs4qFnQTIVGTt2L2S2nVI8"
+    );
 
     match &privkey.kind {
         PrivateKeyKind::Ecdsa(key) => key,
@@ -166,7 +177,10 @@ cRts9Ge+2sCv9AYgd/SipxopCqw=
     };
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "+fZGegm7Lmc5SJJQRXZjvWhT25Ybqb8H4Vvq91Z1JEY");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "+fZGegm7Lmc5SJJQRXZjvWhT25Ybqb8H4Vvq91Z1JEY"
+    );
 
     match &privkey.kind {
         PrivateKeyKind::Rsa(key) => key,

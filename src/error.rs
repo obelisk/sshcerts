@@ -103,7 +103,7 @@ impl From<string::FromUtf8Error> for Error {
 }
 
 impl From<ring::error::Unspecified> for Error {
-    fn from(_: ring::error::Unspecified) -> Error{
+    fn from(_: ring::error::Unspecified) -> Error {
         Error::InvalidSignature
     }
 }

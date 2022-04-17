@@ -2,10 +2,10 @@ use crate::PublicKey;
 
 use ring::digest;
 
+use yubikey::certificate::{Certificate, PublicKeyInfo};
+use yubikey::piv::{attest, sign_data as yk_sign_data, AlgorithmId, SlotId};
 use yubikey::{MgmKey, YubiKey};
 use yubikey::{PinPolicy, TouchPolicy};
-use yubikey::piv::{attest, AlgorithmId, sign_data as yk_sign_data, SlotId};
-use yubikey::certificate::{Certificate, PublicKeyInfo};
 
 use x509::RelativeDistinguishedName;
 
@@ -35,7 +35,7 @@ impl CSRSigner {
             slot,
             serial,
             public_key,
-            algorithm
+            algorithm,
         }
     }
 }
@@ -54,7 +54,7 @@ impl rcgen::RemoteKeyPair for CSRSigner {
         match self.algorithm {
             AlgorithmId::EccP256 => &rcgen::PKCS_ECDSA_P256_SHA256,
             AlgorithmId::EccP384 => &rcgen::PKCS_ECDSA_P384_SHA384,
-            _ => panic!("Unimplemented")
+            _ => panic!("Unimplemented"),
         }
     }
 }
@@ -69,25 +69,23 @@ impl super::Yubikey {
 
     /// Open a Yubikey from a serial
     pub fn open(serial: u32) -> Result<Self> {
-        match YubiKey::open_by_serial(serial.into()){
-            Ok(yk) => Ok(Self {
-                yk,
-            }),
+        match YubiKey::open_by_serial(serial.into()) {
+            Ok(yk) => Ok(Self { yk }),
             Err(_) => Err(Error::NoSuchYubikey),
         }
     }
 
     /// Reconnet to the Yubikey (if possible, if it's disconnected)
-    pub fn reconnect(&mut self) -> Result <()> {
+    pub fn reconnect(&mut self) -> Result<()> {
         match self.yk.reconnect() {
             Ok(()) => Ok(()),
-            Err(_) => match YubiKey::open_by_serial(self.yk.serial()){
+            Err(_) => match YubiKey::open_by_serial(self.yk.serial()) {
                 Ok(yk) => {
                     self.yk = yk;
                     Ok(())
-                },
+                }
                 Err(_) => Err(Error::NoSuchYubikey),
-            }
+            },
         }
     }
 
@@ -122,7 +120,11 @@ impl super::Yubikey {
 
     /// Write the certificate from a given Yubikey slot.
     pub fn write_certificate(&mut self, slot: &SlotId, data: &[u8]) -> Result<()> {
-        Ok(Certificate::from_bytes(data.to_vec())?.write(&mut self.yk, *slot, yubikey::certificate::CertInfo::Uncompressed)?)
+        Ok(Certificate::from_bytes(data.to_vec())?.write(
+            &mut self.yk,
+            *slot,
+            yubikey::certificate::CertInfo::Uncompressed,
+        )?)
     }
 
     /// Generate attestation for a slot
@@ -131,27 +133,36 @@ impl super::Yubikey {
     }
 
     /// Generate CSR for slot
-    pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str,) -> Result<Vec<u8>> {
+    pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str) -> Result<Vec<u8>> {
         let mut params = rcgen::CertificateParams::new(vec![]);
         params.alg = match self.configured(slot)? {
             PublicKeyInfo::EcP256(_) => &rcgen::PKCS_ECDSA_P256_SHA256,
             PublicKeyInfo::EcP384(_) => &rcgen::PKCS_ECDSA_P384_SHA384,
             _ => return Err(Error::Unsupported),
         };
-        params.distinguished_name.push(rcgen::DnType::CommonName, common_name.to_string());
+        params
+            .distinguished_name
+            .push(rcgen::DnType::CommonName, common_name.to_string());
 
         let csr_signer = CSRSigner::new(self.yk.serial().into(), *slot);
         params.key_pair = Some(rcgen::KeyPair::from_remote(Box::new(csr_signer)).unwrap());
 
         let csr = rcgen::Certificate::from_params(params).unwrap();
         let csr = csr.serialize_request_der().unwrap();
-    
+
         Ok(csr)
     }
 
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
-    pub fn provision(&mut self, slot: &SlotId, common_name: &str, alg: AlgorithmId, touch_policy: TouchPolicy, pin_policy: PinPolicy) -> Result<PublicKey> {
+    pub fn provision(
+        &mut self,
+        slot: &SlotId,
+        common_name: &str,
+        alg: AlgorithmId,
+        touch_policy: TouchPolicy,
+        pin_policy: PinPolicy,
+    ) -> Result<PublicKey> {
         let key_info = yubikey::piv::generate(&mut self.yk, *slot, alg, pin_policy, touch_policy)?;
         let extensions: &[x509::Extension<'_, &[u64]>] = &[];
         // Generate a self-signed certificate for the new key.
@@ -169,7 +180,7 @@ impl super::Yubikey {
     }
 
     /// Take data, an algorithm, and a slot and attempt to sign the data field
-    /// 
+    ///
     /// If the requested algorithm doesn't match the key in the slot (or the slot
     /// is empty) this will error.
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>> {
@@ -183,7 +194,12 @@ impl super::Yubikey {
         if slot_alg != alg {
             return Err(Error::WrongKeyType);
         }
-        let signature = yk_sign_data(&mut self.yk, digest::digest(hash_alg, data).as_ref(), alg, *slot)?;
+        let signature = yk_sign_data(
+            &mut self.yk,
+            digest::digest(hash_alg, data).as_ref(),
+            alg,
+            *slot,
+        )?;
         Ok(signature.to_vec())
     }
 }

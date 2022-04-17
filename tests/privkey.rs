@@ -2,7 +2,6 @@ use sshcerts::ssh::{PrivateKey, PrivateKeyKind};
 
 use std::io::BufWriter;
 
-
 #[test]
 fn parse_ecdsa_256_private_key() {
     let privkey = include_str!("keys/unencrypted/ecdsa_256_1");
@@ -10,13 +9,19 @@ fn parse_ecdsa_256_private_key() {
     let privkey = PrivateKey::from_string(privkey);
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "26PWf/RCJx3H/oKI7peJVhnDH/cHTSccHFbFltW7/jk");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "26PWf/RCJx3H/oKI7peJVhnDH/cHTSccHFbFltW7/jk"
+    );
 
     let key = match &privkey.kind {
         PrivateKeyKind::Ecdsa(key) => key,
         _ => panic!("Wrong key type detected"),
     };
-    assert_eq!(hex::encode(&key.key), "008641adbf4f7b49be0646c7bf4a1551f69d9b791ebf836de34ef372e36212a1dc");
+    assert_eq!(
+        hex::encode(&key.key),
+        "008641adbf4f7b49be0646c7bf4a1551f69d9b791ebf836de34ef372e36212a1dc"
+    );
 
     let mut buf = BufWriter::new(Vec::new());
     privkey.write(&mut buf).unwrap();
@@ -31,7 +36,10 @@ fn parse_ecdsa_384_private_key() {
     let privkey = PrivateKey::from_string(privkey);
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "qFsuxU5ubR/H/GEmI0lWsYuF6llMop6VDYMxov0wNAM");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "qFsuxU5ubR/H/GEmI0lWsYuF6llMop6VDYMxov0wNAM"
+    );
 
     let key = match &privkey.kind {
         PrivateKeyKind::Ecdsa(key) => key,
@@ -56,7 +64,10 @@ fn parse_ed25519_private_key() {
     };
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "QAtqtvvCePelMMUNPP7madH2zNa1ATxX1nt9L/0C5+M");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "QAtqtvvCePelMMUNPP7madH2zNa1ATxX1nt9L/0C5+M"
+    );
 
     let key = match &privkey.kind {
         PrivateKeyKind::Ed25519(key) => key,
@@ -81,7 +92,10 @@ fn parse_ed25519_private_key_2() {
     };
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "XfK1zRAFSKTh7bYdKwli8mJ0P4q/bV2pXdmjyw5p0DI"
+    );
 
     let key = match &privkey.kind {
         PrivateKeyKind::Ed25519(key) => key,
@@ -106,7 +120,10 @@ fn parse_rsa_2048_private_key() {
     };
     assert!(privkey.is_ok());
     let privkey = privkey.unwrap();
-    assert_eq!(privkey.pubkey.fingerprint().hash, "A7S6yWfLWgKphtN5UzBbKbhSE71bK/NB6x6NE0DJOpU");
+    assert_eq!(
+        privkey.pubkey.fingerprint().hash,
+        "A7S6yWfLWgKphtN5UzBbKbhSE71bK/NB6x6NE0DJOpU"
+    );
 
     let key = match &privkey.kind {
         PrivateKeyKind::Rsa(key) => key,

@@ -144,13 +144,16 @@ impl Writer {
     /// ```rust
     /// # use sshcerts::ssh::Writer;
     /// let mut writer = Writer::new();
-    /// 
+    ///
     /// writer.write_string_vec(&vec![String::from("Test"), String::from("Test")]);
     /// let bytes = writer.into_bytes();
     /// assert_eq!(bytes, [0, 0, 0, 16, 0, 0, 0, 4, 84, 101, 115, 116, 0, 0, 0, 4, 84, 101, 115, 116]);
     /// ```
     pub fn write_string_vec(&mut self, vec: &[String]) {
-        let total_length = vec.iter().map(|x| x.len()).fold(vec.len()*4, |x, y| x + y) as u32;
+        let total_length = vec
+            .iter()
+            .map(|x| x.len())
+            .fold(vec.len() * 4, |x, y| x + y) as u32;
         self.write_u32(total_length);
 
         for item in vec {
@@ -164,7 +167,7 @@ impl Writer {
     /// ```rust
     /// # use sshcerts::ssh::Writer;
     /// # use std::collections::HashMap;
-    /// 
+    ///
     /// let mut writer = Writer::new();
     /// let mut example_map = HashMap::new();
     /// example_map.insert(String::from("Test"), String::from(""));
@@ -173,13 +176,14 @@ impl Writer {
     /// assert_eq!(bytes, [0, 0, 0, 12, 0, 0, 0, 4, 84, 101, 115, 116, 0, 0, 0, 0]);
     /// ```
     pub fn write_string_map(&mut self, map: &HashMap<String, String>) {
-        let total_length = map.iter()
+        let total_length = map
+            .iter()
             .map(|x| x.0.len() + x.1.len() + if !x.1.is_empty() { 4 } else { 0 })
             .fold(map.len() * 8, |x, y| x + y) as u32;
 
         self.write_u32(total_length);
 
-        for (k,v) in map {
+        for (k, v) in map {
             self.write_string(k);
             if v.is_empty() {
                 self.write_u32(0x0);
@@ -202,7 +206,7 @@ impl Writer {
 
         let pubkey_bytes = inner_writer.as_bytes();
         self.write_bytes(pubkey_bytes);
-   }
+    }
 
     /// Writes `PublicKey` data to the underlying byte sequence.
     ///
@@ -210,8 +214,8 @@ impl Writer {
     /// ```
     /// ```
     pub fn write_pub_key_data(&mut self, key: &PublicKey) {
-         // Write the public key
-         match &key.kind {
+        // Write the public key
+        match &key.kind {
             PublicKeyKind::Rsa(ref k) => {
                 self.write_mpint(&k.e);
                 self.write_mpint(&k.n);
@@ -238,7 +242,7 @@ impl Writer {
     /// # Example
     /// ```rust
     /// # use sshcerts::ssh::Writer;
-    /// 
+    ///
     /// let mut writer = Writer::new();
     /// writer.write_string("some data");
     /// let bytes = writer.into_bytes();
@@ -254,7 +258,7 @@ impl Writer {
     /// # Example
     /// ```rust
     /// # use sshcerts::ssh::Writer;
-    /// 
+    ///
     /// let mut writer = Writer::new();
     /// writer.write_string("some data");
     /// let bytes = writer.into_bytes();

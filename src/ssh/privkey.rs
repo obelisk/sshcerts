@@ -4,29 +4,20 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
-use ring::{
-    rand,
-    signature,
-    signature::KeyPair,
-};
+use ring::{rand, signature, signature::KeyPair};
 
 use zeroize::Zeroize;
 
 use crate::{
+    error::Error,
     ssh::{
-        CurveKind,
-        EcdsaPublicKey,
-        Ed25519PublicKey,
-        PublicKey,
-        PublicKeyKind,
-        RsaPublicKey,
         keytype::{Curve, KeyType, KeyTypeKind},
         reader::Reader,
         writer::Writer,
+        CurveKind, EcdsaPublicKey, Ed25519PublicKey, PublicKey, PublicKeyKind, RsaPublicKey,
     },
-    error::Error,
-    Result,
     utils::format_signature_for_ssh,
+    Result,
 };
 
 #[cfg(feature = "rsa-signing")]
@@ -37,8 +28,8 @@ use simple_asn1::{ASN1Block, ASN1Class, ToASN1};
 
 #[cfg(feature = "encrypted-keys")]
 use aes::{
+    cipher::{generic_array::GenericArray, NewCipher, StreamCipher},
     Aes256Ctr,
-    cipher::{NewCipher, generic_array::GenericArray, StreamCipher},
 };
 
 #[cfg(feature = "encrypted-keys")]
@@ -46,7 +37,6 @@ use bcrypt_pbkdf::bcrypt_pbkdf;
 
 #[cfg(feature = "fido-support")]
 use crate::fido::signing;
-
 
 /// RSA private key.
 #[derive(Debug, PartialEq, Clone, Zeroize)]
@@ -107,7 +97,6 @@ pub struct EcdsaSkPrivateKey {
     /// or by user selection)
     pub device_path: Option<String>,
 }
-
 
 /// ED25519 private key.
 #[derive(Debug, PartialEq, Clone, Zeroize)]
@@ -188,14 +177,38 @@ impl ToASN1 for RsaPrivateKey {
             0,
             [
                 vec![ASN1Block::Integer(0, BigInt::new(Sign::Plus, vec![0]))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.n))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.e))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.d))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.p))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.q))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, self.exp.as_ref().unwrap()))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, self.exq.as_ref().unwrap()))],
-                vec![ASN1Block::Integer(0, BigInt::from_bytes_be(Sign::Plus, &self.coefficient))],
+                vec![ASN1Block::Integer(
+                    0,
+                    BigInt::from_bytes_be(Sign::Plus, &self.n),
+                )],
+                vec![ASN1Block::Integer(
+                    0,
+                    BigInt::from_bytes_be(Sign::Plus, &self.e),
+                )],
+                vec![ASN1Block::Integer(
+                    0,
+                    BigInt::from_bytes_be(Sign::Plus, &self.d),
+                )],
+                vec![ASN1Block::Integer(
+                    0,
+                    BigInt::from_bytes_be(Sign::Plus, &self.p),
+                )],
+                vec![ASN1Block::Integer(
+                    0,
+                    BigInt::from_bytes_be(Sign::Plus, &self.q),
+                )],
+                vec![ASN1Block::Integer(
+                    0,
+                    BigInt::from_bytes_be(Sign::Plus, self.exp.as_ref().unwrap()),
+                )],
+                vec![ASN1Block::Integer(
+                    0,
+                    BigInt::from_bytes_be(Sign::Plus, self.exq.as_ref().unwrap()),
+                )],
+                vec![ASN1Block::Integer(
+                    0,
+                    BigInt::from_bytes_be(Sign::Plus, &self.coefficient),
+                )],
                 Vec::new(),
             ]
             .concat(),
@@ -214,56 +227,69 @@ impl super::SSHCertificateSigner for PrivateKey {
                     Ok(apk) => apk,
                     Err(_) => return None,
                 };
-    
+
                 let keypair = match signature::RsaKeyPair::from_der(&asn_privkey) {
                     Ok(kp) => kp,
                     Err(_) => return None,
                 };
-    
+
                 let rng = rand::SystemRandom::new();
                 let mut signature = vec![0; keypair.public_modulus_len()];
-    
-                keypair.sign(&signature::RSA_PKCS1_SHA512, &rng, buffer, &mut signature).ok()?;
-    
+
+                keypair
+                    .sign(&signature::RSA_PKCS1_SHA512, &rng, buffer, &mut signature)
+                    .ok()?;
+
                 format_signature_for_ssh(&self.pubkey, &signature)
-            },
+            }
             #[cfg(not(feature = "rsa-signing"))]
             PrivateKeyKind::Rsa(_) => return None,
             PrivateKeyKind::Ecdsa(key) => {
                 let alg = match key.curve.kind {
                     CurveKind::Nistp256 => &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
                     CurveKind::Nistp384 => &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
-                    CurveKind::Nistp521 => return None
+                    CurveKind::Nistp521 => return None,
                 };
-    
+
                 let pubkey = match &self.pubkey.kind {
                     PublicKeyKind::Ecdsa(key) => &key.key,
                     _ => return None,
                 };
-    
-                let key = if key.key[0] == 0x0_u8 {&key.key[1..]} else {&key.key};
-                let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(alg, key, pubkey) {
+
+                let key = if key.key[0] == 0x0_u8 {
+                    &key.key[1..]
+                } else {
+                    &key.key
+                };
+                let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(
+                    alg, key, pubkey,
+                ) {
                     Ok(kp) => kp,
                     Err(_) => return None,
                 };
 
                 format_signature_for_ssh(&self.pubkey, key_pair.sign(&rng, buffer).ok()?.as_ref())
-            },
+            }
             PrivateKeyKind::Ed25519(key) => {
                 let public_key = match &self.pubkey.kind {
                     PublicKeyKind::Ed25519(key) => &key.key,
                     _ => return None,
                 };
-    
-                let key_pair = match signature::Ed25519KeyPair::from_seed_and_public_key(&key.key[..32], public_key) {
+
+                let key_pair = match signature::Ed25519KeyPair::from_seed_and_public_key(
+                    &key.key[..32],
+                    public_key,
+                ) {
                     Ok(kp) => kp,
                     Err(_) => return None,
                 };
 
                 format_signature_for_ssh(&self.pubkey, key_pair.sign(buffer).as_ref())
-            },
+            }
             #[cfg(feature = "fido-support")]
-            PrivateKeyKind::Ed25519Sk(_) | PrivateKeyKind::EcdsaSk(_) => signing::sign_with_private_key(&self, buffer),
+            PrivateKeyKind::Ed25519Sk(_) | PrivateKeyKind::EcdsaSk(_) => {
+                signing::sign_with_private_key(&self, buffer)
+            }
             #[cfg(not(feature = "fido-support"))]
             PrivateKeyKind::Ed25519Sk(_) | PrivateKeyKind::EcdsaSk(_) => None,
         }
@@ -284,20 +310,26 @@ impl PrivateKey {
                 let q = reader.read_mpint()?;
 
                 #[cfg(feature = "rsa-signing")]
-                let exp = Some(BigUint::from_bytes_be(&d)
-                    .modpow(
-                        &BigUint::from_slice(&[0x1]),
-                        &(BigUint::from_bytes_be(&p) - 1_u8)
-                    ).to_bytes_be());
+                let exp = Some(
+                    BigUint::from_bytes_be(&d)
+                        .modpow(
+                            &BigUint::from_slice(&[0x1]),
+                            &(BigUint::from_bytes_be(&p) - 1_u8),
+                        )
+                        .to_bytes_be(),
+                );
                 #[cfg(not(feature = "rsa-signing"))]
                 let exp = None;
 
                 #[cfg(feature = "rsa-signing")]
-                let exq = Some(BigUint::from_bytes_be(&d)
-                    .modpow(
-                        &BigUint::from_slice(&[0x1]),
-                        &(BigUint::from_bytes_be(&q) - 1_u8)
-                    ).to_bytes_be());
+                let exq = Some(
+                    BigUint::from_bytes_be(&d)
+                        .modpow(
+                            &BigUint::from_slice(&[0x1]),
+                            &(BigUint::from_bytes_be(&q) - 1_u8),
+                        )
+                        .to_bytes_be(),
+                );
                 #[cfg(not(feature = "rsa-signing"))]
                 let exq = None;
 
@@ -311,18 +343,14 @@ impl PrivateKey {
                         q,
                         exp,
                         exq,
-                    }
-                ),
+                    }),
                     PublicKey {
                         key_type: kt.clone(),
-                        kind: PublicKeyKind::Rsa(RsaPublicKey{
-                            e,
-                            n
-                        }),
+                        kind: PublicKeyKind::Rsa(RsaPublicKey { e, n }),
                         comment: None,
-                    }
+                    },
                 )
-            },
+            }
             KeyTypeKind::Ecdsa => {
                 let identifier = reader.read_string()?;
                 let curve = Curve::from_identifier(&identifier)?;
@@ -338,9 +366,9 @@ impl PrivateKey {
                             pin: None,
                             device_path: None,
                         };
-                        
+
                         (PrivateKeyKind::EcdsaSk(k), sk_application)
-                    },
+                    }
                     false => {
                         let key = reader.read_bytes()?;
                         let k = EcdsaPrivateKey {
@@ -360,7 +388,7 @@ impl PrivateKey {
                             sk_application,
                         }),
                         comment: None,
-                    }
+                    },
                 )
             }
             KeyTypeKind::Ed25519 => {
@@ -378,7 +406,7 @@ impl PrivateKey {
                         };
 
                         (PrivateKeyKind::Ed25519Sk(k), sk_application)
-                    },
+                    }
                     false => {
                         let k = Ed25519PrivateKey {
                             key: reader.read_bytes()?,
@@ -396,7 +424,7 @@ impl PrivateKey {
                             sk_application,
                         }),
                         comment: None,
-                    }
+                    },
                 )
             }
             _ => return Err(Error::UnknownKeyType(kt.name.to_string())),
@@ -424,10 +452,12 @@ impl PrivateKey {
                 // in code to parse it.
                 let seed: [u8; 32] = rand::generate(&rng).unwrap().expose();
                 let magic: [u8; 4] = rand::generate(&rng).unwrap().expose();
-                let public_key_bytes = ring::signature::Ed25519KeyPair::from_seed_unchecked(&seed).unwrap().public_key().as_ref().to_vec();
-                let key = Ed25519PrivateKey {
-                    key: seed.to_vec(),
-                };
+                let public_key_bytes = ring::signature::Ed25519KeyPair::from_seed_unchecked(&seed)
+                    .unwrap()
+                    .public_key()
+                    .as_ref()
+                    .to_vec();
+                let key = Ed25519PrivateKey { key: seed.to_vec() };
 
                 let pubkey = PublicKey {
                     key_type: key_type.clone(),
@@ -445,7 +475,7 @@ impl PrivateKey {
                     magic: u32::from_be_bytes(magic),
                     comment: comment.to_owned(),
                 })
-            },
+            }
             KeyTypeKind::Ecdsa => Err(Error::Unsupported),
             KeyTypeKind::Rsa => Err(Error::Unsupported),
             _ => Err(Error::KeyTypeMismatch),
@@ -453,7 +483,10 @@ impl PrivateKey {
     }
 
     /// Reads an OpenSSH private key from a given path and passphrase
-    pub fn from_path_with_passphrase<P: AsRef<Path>>(path: P, passphrase: Option<String>) -> Result<Self> {
+    pub fn from_path_with_passphrase<P: AsRef<Path>>(
+        path: P,
+        passphrase: Option<String>,
+    ) -> Result<Self> {
         let mut contents = String::new();
         File::open(path)?.read_to_string(&mut contents)?;
 
@@ -506,7 +539,10 @@ impl PrivateKey {
     }
 
     /// This function is used for extracting a private key from an existing reader.
-    pub(crate) fn from_reader(reader: &mut Reader<'_>, passphrase: Option<String>) -> Result<PrivateKey> {
+    pub(crate) fn from_reader(
+        reader: &mut Reader<'_>,
+        passphrase: Option<String>,
+    ) -> Result<PrivateKey> {
         let preamble = reader.read_cstring()?;
 
         if preamble != "openssh-key-v1" {
@@ -560,7 +596,7 @@ impl PrivateKey {
                     Ok(_) => (),
                     Err(_) => return Err(Error::InvalidFormat),
                 }
-            },
+            }
             ("aes256-ctr", "bcrypt", None) => return Err(Error::EncryptedPrivateKey),
             _ => return Err(Error::EncryptedPrivateKeyNotSupported),
         };
@@ -571,11 +607,11 @@ impl PrivateKey {
         // been decrypted successfully
         let m1 = reader.read_u32()?;
         let m2 = reader.read_u32()?;
-        
+
         if m1 != m2 {
             return Err(Error::InvalidFormat);
         }
-        
+
         let mut private_key = PrivateKey::read_private_key(&mut reader)?;
         private_key.magic = m1;
 
@@ -592,11 +628,11 @@ impl PrivateKey {
         match &mut self.kind {
             PrivateKeyKind::EcdsaSk(key) => {
                 key.pin = Some(pin.to_string());
-            },
+            }
             PrivateKeyKind::Ed25519Sk(key) => {
                 key.pin = Some(pin.to_string());
-            },
-            _ => ()
+            }
+            _ => (),
         };
     }
 
@@ -606,11 +642,11 @@ impl PrivateKey {
         match &mut self.kind {
             PrivateKeyKind::EcdsaSk(key) => {
                 key.device_path = Some(path.to_string());
-            },
+            }
             PrivateKeyKind::Ed25519Sk(key) => {
                 key.device_path = Some(path.to_string());
-            },
-            _ => ()
+            }
+            _ => (),
         };
     }
 
@@ -618,46 +654,46 @@ impl PrivateKey {
     pub fn encode(&self) -> Vec<u8> {
         let mut serializer = Writer::new();
         serializer.write_cstring("openssh-key-v1"); // Preamble
-        serializer.write_string("none");        // cipher_namer
-        serializer.write_string("none");        // kdf
-        serializer.write_bytes(&[]);        // encryption_data
-        serializer.write_u32(1);                // number_of_keys
-        serializer.write_pub_key(&self.pubkey);     // public key
+        serializer.write_string("none"); // cipher_namer
+        serializer.write_string("none"); // kdf
+        serializer.write_bytes(&[]); // encryption_data
+        serializer.write_u32(1); // number_of_keys
+        serializer.write_pub_key(&self.pubkey); // public key
 
         let mut w = Writer::new();
-        w.write_u32(self.magic);                // magic
-        w.write_u32(self.magic);                // repeated magic
+        w.write_u32(self.magic); // magic
+        w.write_u32(self.magic); // repeated magic
 
         w.write_string(self.pubkey.key_type.name);
         match &self.kind {
             PrivateKeyKind::Rsa(rsa) => {
-                w.write_mpint(&rsa.n);          // These are in fact in a diff-
-                w.write_mpint(&rsa.e);          // erent order than a public key
+                w.write_mpint(&rsa.n); // These are in fact in a diff-
+                w.write_mpint(&rsa.e); // erent order than a public key
                 w.write_mpint(&rsa.d);
                 w.write_mpint(&rsa.coefficient);
                 w.write_mpint(&rsa.p);
                 w.write_mpint(&rsa.q);
-            },
+            }
             PrivateKeyKind::Ecdsa(ecdsa) => {
                 w.write_pub_key_data(&self.pubkey);
                 w.write_bytes(&ecdsa.key);
-            },
+            }
             PrivateKeyKind::EcdsaSk(ecdsask) => {
                 w.write_pub_key_data(&self.pubkey);
                 w.write_raw_bytes(&[ecdsask.flags]);
                 w.write_bytes(&ecdsask.handle);
                 w.write_bytes(&[]);
-            },
+            }
             PrivateKeyKind::Ed25519(ed25519) => {
                 w.write_pub_key_data(&self.pubkey);
                 w.write_bytes(&ed25519.key);
-            },
+            }
             PrivateKeyKind::Ed25519Sk(ed25519sk) => {
                 w.write_pub_key_data(&self.pubkey);
                 w.write_raw_bytes(&[ed25519sk.flags]);
                 w.write_bytes(&ed25519sk.handle);
                 w.write_bytes(&[]);
-            },
+            }
         };
 
         w.write_string(&self.comment);
@@ -676,7 +712,8 @@ impl PrivateKey {
     pub fn write<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         let encoded = self.encode();
         let data = base64::encode(&encoded);
-        let split = data.chars()
+        let split = data
+            .chars()
             .enumerate()
             .flat_map(|(i, c)| {
                 if i != 0 && i % 70 == 0 {
@@ -688,7 +725,11 @@ impl PrivateKey {
                 .chain(std::iter::once(c))
             })
             .collect::<String>();
-        write!(w, "-----BEGIN OPENSSH PRIVATE KEY-----\n{}\n-----END OPENSSH PRIVATE KEY-----\n", split)
+        write!(
+            w,
+            "-----BEGIN OPENSSH PRIVATE KEY-----\n{}\n-----END OPENSSH PRIVATE KEY-----\n",
+            split
+        )
     }
 }
 
@@ -699,7 +740,7 @@ impl fmt::Display for PrivateKey {
 }
 
 impl Drop for PrivateKey {
-    fn drop(&mut self) { 
+    fn drop(&mut self) {
         self.kind.zeroize();
-     }
+    }
 }

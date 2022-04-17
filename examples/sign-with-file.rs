@@ -1,6 +1,6 @@
 use std::env;
 
-use clap::{Command, Arg};
+use clap::{Arg, Command};
 
 use sshcerts::*;
 
@@ -16,7 +16,7 @@ fn main() {
                 .long("signing_key")
                 .short('s')
                 .required(true)
-                .takes_value(true)
+                .takes_value(true),
         )
         .arg(
             Arg::new("pin")
@@ -24,7 +24,7 @@ fn main() {
                 .long("pin")
                 .short('p')
                 .required(false)
-                .takes_value(true)
+                .takes_value(true),
         )
         .arg(
             Arg::new("principal")
@@ -32,7 +32,7 @@ fn main() {
                 .long("principal")
                 .short('n')
                 .default_value("ubuntu")
-                .takes_value(true)
+                .takes_value(true),
         )
         .arg(
             Arg::new("file")
@@ -40,10 +40,9 @@ fn main() {
                 .long("file")
                 .short('f')
                 .required(true)
-                .takes_value(true)
+                .takes_value(true),
         )
         .get_matches();
-
 
     let ssh_pubkey = PublicKey::from_path(matches.value_of("file").unwrap()).unwrap();
     let mut ca_private_key = PrivateKey::from_path(matches.value_of("sign").unwrap()).unwrap();
@@ -52,8 +51,8 @@ fn main() {
         ca_private_key.set_pin(pin);
     }
 
-
-    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_private_key.pubkey).unwrap()
+    let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &ca_private_key.pubkey)
+        .unwrap()
         .serial(0x0)
         .key_id("key_id")
         .principal(matches.value_of("principal").unwrap())

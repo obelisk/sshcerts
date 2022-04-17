@@ -6,10 +6,7 @@ pub mod generate;
 /// For parsing FIDO related data
 pub mod parsing;
 #[cfg(any(feature = "fido-support", feature = "fido-lite"))]
-pub use parsing::{
-    CoseKey,
-    AuthData,
-};
+pub use parsing::{AuthData, CoseKey};
 
 #[cfg(feature = "fido-support")]
 /// For signing related code
