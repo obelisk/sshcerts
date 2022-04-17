@@ -49,9 +49,9 @@ bcrypt-pbkdf = {version = "0.6", optional = true}
 ctr = {version = "0.8", optional = true}
 
 # Dependencies for fido-support
-#ctap-hid-fido2 = {version = "2.2.2", optional = true}
+ctap-hid-fido2 = {version = "3", optional = true}
 minicbor = {version = "0.13", optional = true}
-ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch="master", optional = true}
+#ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch="master", optional = true}
 #ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="device_by_path", optional = true}
 #ctap-hid-fido2 = {path = "../ctap-hid-fido2", optional = true}
 
