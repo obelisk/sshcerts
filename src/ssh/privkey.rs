@@ -247,7 +247,7 @@ impl super::SSHCertificateSigner for PrivateKey {
                     Err(_) => return None,
                 };
 
-                format_signature_for_ssh(&self.pubkey, &key_pair.sign(&rng, buffer).ok()?.as_ref().to_vec())
+                format_signature_for_ssh(&self.pubkey, key_pair.sign(&rng, buffer).ok()?.as_ref())
             },
             PrivateKeyKind::Ed25519(key) => {
                 let public_key = match &self.pubkey.kind {
@@ -260,7 +260,7 @@ impl super::SSHCertificateSigner for PrivateKey {
                     Err(_) => return None,
                 };
 
-                format_signature_for_ssh(&self.pubkey, &key_pair.sign(buffer).as_ref().to_vec())
+                format_signature_for_ssh(&self.pubkey, key_pair.sign(buffer).as_ref())
             },
             #[cfg(feature = "fido-support")]
             PrivateKeyKind::Ed25519Sk(_) | PrivateKeyKind::EcdsaSk(_) => signing::sign_with_private_key(&self, buffer),
@@ -446,9 +446,9 @@ impl PrivateKey {
                     comment: comment.to_owned(),
                 })
             },
-            KeyTypeKind::Ecdsa => return Err(Error::Unsupported),
-            KeyTypeKind::Rsa => return Err(Error::Unsupported),
-            _ => return Err(Error::KeyTypeMismatch),
+            KeyTypeKind::Ecdsa => Err(Error::Unsupported),
+            KeyTypeKind::Rsa => Err(Error::Unsupported),
+            _ => Err(Error::KeyTypeMismatch),
         }
     }
 
@@ -620,7 +620,7 @@ impl PrivateKey {
         serializer.write_cstring("openssh-key-v1"); // Preamble
         serializer.write_string("none");        // cipher_namer
         serializer.write_string("none");        // kdf
-        serializer.write_bytes(&vec![]);        // encryption_data
+        serializer.write_bytes(&[]);        // encryption_data
         serializer.write_u32(1);                // number_of_keys
         serializer.write_pub_key(&self.pubkey);     // public key
 
@@ -628,7 +628,7 @@ impl PrivateKey {
         w.write_u32(self.magic);                // magic
         w.write_u32(self.magic);                // repeated magic
 
-        w.write_string(&self.pubkey.key_type.name);
+        w.write_string(self.pubkey.key_type.name);
         match &self.kind {
             PrivateKeyKind::Rsa(rsa) => {
                 w.write_mpint(&rsa.n);          // These are in fact in a diff-
@@ -644,9 +644,9 @@ impl PrivateKey {
             },
             PrivateKeyKind::EcdsaSk(ecdsask) => {
                 w.write_pub_key_data(&self.pubkey);
-                w.write_raw_bytes(&vec![ecdsask.flags]);
+                w.write_raw_bytes(&[ecdsask.flags]);
                 w.write_bytes(&ecdsask.handle);
-                w.write_bytes(&vec![]);
+                w.write_bytes(&[]);
             },
             PrivateKeyKind::Ed25519(ed25519) => {
                 w.write_pub_key_data(&self.pubkey);
@@ -654,9 +654,9 @@ impl PrivateKey {
             },
             PrivateKeyKind::Ed25519Sk(ed25519sk) => {
                 w.write_pub_key_data(&self.pubkey);
-                w.write_raw_bytes(&vec![ed25519sk.flags]);
+                w.write_raw_bytes(&[ed25519sk.flags]);
                 w.write_bytes(&ed25519sk.handle);
-                w.write_bytes(&vec![]);
+                w.write_bytes(&[]);
             },
         };
 
