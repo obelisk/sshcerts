@@ -43,7 +43,9 @@ pub use yubikey::{PinPolicy, TouchPolicy};
 
 /// Structure to wrap a yubikey and abstract actions
 pub struct Yubikey {
-    yk: yubikey::YubiKey,
+    /// We make this public to allow deeper access the Yubikey
+    /// type if needed
+    pub yk: yubikey::YubiKey,
 }
 
 impl std::fmt::Debug for Yubikey {
