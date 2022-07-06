@@ -1,8 +1,8 @@
 [package]
 name = "sshcerts"
-version = "0.11.1"
+version = "0.12.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
-edition = "2018"
+edition = "2021"
 license-file = "LICENSE"
 description = "A library for parsing, verifying, and creating SSH Certificates"
 repository = "https://github.com/obelisk/sshcerts"

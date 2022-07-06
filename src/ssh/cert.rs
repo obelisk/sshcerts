@@ -549,9 +549,9 @@ fn verify_signature(
             };
 
             // Read the R value
-            let r_bytes = sig_reader.read_mpint()?;
+            let r_bytes = sig_reader.read_positive_mpint()?;
             // Read the S value
-            let s_bytes = sig_reader.read_mpint()?;
+            let s_bytes = sig_reader.read_positive_mpint()?;
 
             // (r/s)_bytes are user controlled so ensure maliciously signatures
             // can't cause integer underflow.
