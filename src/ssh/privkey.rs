@@ -230,10 +230,7 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 let keypair = match signature::RsaKeyPair::from_der(&asn_privkey) {
                     Ok(kp) => kp,
-                    Err(e) => {
-                        println!("{:?}", e);
-                        return None
-                    },
+                    Err(e) => return None,
                 };
 
                 let rng = rand::SystemRandom::new();
