@@ -46,14 +46,14 @@ pub struct AuthData {
 fn read_integer(decoder: &mut Decoder<'_>) -> Result<i128, Error> {
     let t = decoder.datatype().map_err(|_| Error::ParsingError)?;
     let v = match t {
-        minicbor::data::Type::U8 => decoder.u8().unwrap() as i128,
-        minicbor::data::Type::U16 => decoder.u16().unwrap() as i128,
-        minicbor::data::Type::U32 => decoder.u32().unwrap() as i128,
-        minicbor::data::Type::U64 => decoder.u64().unwrap() as i128,
-        minicbor::data::Type::I8 => decoder.i8().unwrap() as i128,
-        minicbor::data::Type::I16 => decoder.i16().unwrap() as i128,
-        minicbor::data::Type::I32 => decoder.i32().unwrap() as i128,
-        minicbor::data::Type::I64 => decoder.i64().unwrap() as i128,
+        minicbor::data::Type::U8 => decoder.u8().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::U16 => decoder.u16().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::U32 => decoder.u32().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::U64 => decoder.u64().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::I8 => decoder.i8().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::I16 => decoder.i16().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::I32 => decoder.i32().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::I64 => decoder.i64().map_err(|_| Error::ParsingError)? as i128,
         _ => return Err(Error::ParsingError),
     };
 
@@ -113,6 +113,12 @@ impl AuthData {
                 Ok(Some(len)) => len,
                 _ => return Err(Error::ParsingError),
             };
+
+            // Do not support maps with over 128 entries. This should be more than enough
+            // for this usecase.
+            if len > 256 {
+                return Err(Error::ParsingError);
+            }
 
             let mut parsed_key = CoseKey::default();
             let mut idx = 0;

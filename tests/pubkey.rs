@@ -87,3 +87,45 @@ fn parse_rsa2048_publickey() {
     let out_data = format!("{}", ssh_pubkey);
     assert_eq!(in_data, out_data);
 }
+
+#[test]
+fn parse_rsa_sha2_512_8192_bit_publickey() {
+    let in_data = include_str!("keys/public/rsa-sha2-512-8192.pub");
+    let ssh_pubkey = PublicKey::from_string(in_data);
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "TL9DbJ2yKuM/NV1gbE8Y9XRiu56wzhdcXBJyw8mMOfs"
+    );
+
+    // We cannot run this check because the re-encoding will change the name
+    // back to ssh-rsa, making it not the same. While we could choose not to do
+    // this, this is what ssh-keygen reports so to maintain compatibility with
+    // it, we do it as well.
+
+    //let out_data = format!("{}", ssh_pubkey);
+    //assert_eq!(in_data, out_data);
+}
+
+#[test]
+fn parse_rsa_sha2_256_4096_bit_publickey() {
+    let in_data = include_str!("keys/public/rsa-sha2-256-4096.pub");
+    let ssh_pubkey = PublicKey::from_string(in_data);
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "sqSMm4+0OSx6UlrEUW7Khu40yymOGt9nkF2U2/ixHKQ"
+    );
+
+    // We cannot run this check because the re-encoding will change the name
+    // back to ssh-rsa, making it not the same. While we could choose not to do
+    // this, this is what ssh-keygen reports so to maintain compatibility with
+    // it, we do it as well.
+
+    //let out_data = format!("{}", ssh_pubkey);
+    //assert_eq!(in_data, out_data);
+}

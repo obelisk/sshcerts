@@ -98,7 +98,7 @@ required-features = ["encrypted-keys"]
 [[test]]
 name = "cert-creation-parse-rsa"
 path = "tests/cert-creation-parse-rsa.rs"
-required-features = ["encrypted-keys"]
+required-features = ["encrypted-keys", "rsa-signing"]
 
 [[test]]
 name = "fido-lite"
