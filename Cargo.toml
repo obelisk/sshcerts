@@ -38,7 +38,7 @@ num-bigint = {version = "0.4", optional = true}
 # Dependencies for yubikey-support
 yubikey = {version = "0.5", features = ["untested"], optional = true}
 lexical-core = {version = ">0.7.4", optional = true}
-rcgen = {version = "0.8", optional = true}
+rcgen = {version = "0.10", optional = true}
 x509 = {version = "0.2", optional = true}
 x509-parser = {version = "0.13", features = ["verify"], optional = true}
 der-parser = {version = "5", optional = true}

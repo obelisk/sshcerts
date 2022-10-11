@@ -46,8 +46,13 @@ impl rcgen::RemoteKeyPair for CSRSigner {
     }
 
     fn sign(&self, message: &[u8]) -> std::result::Result<Vec<u8>, rcgen::RcgenError> {
-        let mut yk = super::Yubikey::open(self.serial).unwrap();
-        Ok(yk.sign_data(message, self.algorithm, &self.slot).unwrap())
+        let mut yk = if let Ok(yk) = super::Yubikey::open(self.serial) {
+            yk
+        } else {
+            return Err(rcgen::RcgenError::RemoteKeyError);
+        };
+
+        yk.sign_data(message, self.algorithm, &self.slot).map_err(|_| rcgen::RcgenError::RemoteKeyError)
     }
 
     fn algorithm(&self) -> &'static rcgen::SignatureAlgorithm {
@@ -145,10 +150,10 @@ impl super::Yubikey {
             .push(rcgen::DnType::CommonName, common_name.to_string());
 
         let csr_signer = CSRSigner::new(self.yk.serial().into(), *slot);
-        params.key_pair = Some(rcgen::KeyPair::from_remote(Box::new(csr_signer)).unwrap());
+        params.key_pair = Some(rcgen::KeyPair::from_remote(Box::new(csr_signer)).map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?);
 
-        let csr = rcgen::Certificate::from_params(params).unwrap();
-        let csr = csr.serialize_request_der().unwrap();
+        let csr = rcgen::Certificate::from_params(params).map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?;
+        let csr = csr.serialize_request_der().map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?;
 
         Ok(csr)
     }
