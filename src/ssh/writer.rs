@@ -117,6 +117,8 @@ impl Writer {
     /// If the MSB bit of the first byte is set then the number is
     /// negative, otherwise it is positive.
     /// Positive numbers must be preceeded by a leading zero byte according to RFC 4251, section 5.
+    /// 
+    /// We also make a reasonable effort to fix encoding errors and only write valid, positive, mpints
     ///
     /// # Example
     /// ```rust
@@ -127,6 +129,17 @@ impl Writer {
     /// assert_eq!(bytes, [0, 0, 0, 3, 1, 0, 1]);
     /// ```
     pub fn write_mpint(&mut self, val: &[u8]) {
+        let mut leading_zeros = 0;
+        // Remove leading 0s
+        for item in val {
+            if *item == 0 {
+                leading_zeros += 1
+            } else {
+                break;
+            }
+        }
+
+        let val = &val[leading_zeros..];
         let mut bytes = val.to_vec();
 
         // If most significant bit is set then prepend a zero byte to
