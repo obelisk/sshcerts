@@ -535,6 +535,10 @@ fn verify_signature(
     let mut reader = Reader::new(&signature_buf);
     let sig_type = reader.read_string().and_then(|v| KeyType::from_name(&v))?;
 
+    if public_key.key_type.kind != sig_type.kind {
+        return Err(Error::KeyTypeMismatch); 
+    }
+
     match &public_key.kind {
         PublicKeyKind::Ecdsa(key) => {
             let sig_reader = reader.read_bytes()?;
