@@ -85,10 +85,21 @@ impl Reader<'_> {
         }
 
         let size = u32::from_be_bytes(slice[..4].try_into().unwrap()) as usize;
-        if slice.len() < size + 4 {
+        
+        // Similar to below, this is a rearrangement so we do not have to do
+        // math on possibly untrusted inputs.
+        //
+        // It's easier to look at this as:
+        // slice.len() < size + 4
+        if slice.len() - 4 < size {
             return Err(Error::InvalidFormat);
         }
 
+        // In theory it could still overflow here but this would require we've read
+        // in 4 GiB of data. It's likely that if you're reading in a 4GiB SSH key or
+        // certificate, checking elsewhere in the stack should have occured.
+        //
+        // This is also only relevant to 32bit systems where usize is 32 bits.
         self.offset += size + 4;
         let result = slice[4..size + 4].to_vec();
 
@@ -109,12 +120,20 @@ impl Reader<'_> {
             return Err(Error::UnexpectedEof);
         }
 
-        if len + self.offset > self.inner.len() {
+        // Rearranged in a strange way to prevent us from doing
+        // math on an untrusted value. This will prevent panics
+        // in debug and wraps in release.
+        //
+        // It's easier to look at this as:
+        // len + self.offset > self.inner.len()
+        if len > self.inner.len() - self.offset {
             return Err(Error::UnexpectedEof);
         }
 
         let slice = &self.inner[self.offset..];
 
+        // This should be fine now because we've validated our
+        // lengths above.
         self.offset += len;
         let result = slice[..len].to_vec();
 
