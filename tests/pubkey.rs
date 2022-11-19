@@ -33,6 +33,53 @@ fn parse_ecdsa384_publickey() {
 }
 
 #[test]
+fn parse_ecdsa384_publickey_k1() {
+    let in_data = include_str!("keys/public/k1.pub");
+    let ssh_pubkey = PublicKey::from_string(in_data);
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "AJTGgJhPr6h3WxAY89vTudPXUAo19LegdF5Zrudxn3M"
+    );
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(in_data, out_data);
+}
+
+#[test]
+fn parse_ecdsa384_publickey_k2() {
+    let ssh_pubkey = PublicKey::from_path("tests/keys/public/k2.pub");
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "2XIdt5LLgv/h/2GzC4i69h8h/ivQawyab3O1brw3WL0"
+    );
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(include_str!("keys/public/k2.pub"), out_data);
+}
+
+#[test]
+fn parse_ecdsa384_publickey_test_file() {
+    let in_data = include_str!("keys/public/test.pub");
+    let ssh_pubkey = PublicKey::from_string(in_data);
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "v5LrykdD4fIAjjUYKP9w4//TY9o7AAmw6MChHNbHOHg"
+    );
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(in_data, out_data);
+}
+
+#[test]
 fn parse_ecdsa256_publickey() {
     let in_data = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan";
     let ssh_pubkey = PublicKey::from_string(in_data);

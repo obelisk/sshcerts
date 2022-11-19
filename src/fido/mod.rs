@@ -27,7 +27,7 @@ pub use generate::FIDOSSHKey;
 /// These paths are only valid while a device is connected continuously.
 /// Disconnected and reconnecting will result in a new path and a key
 /// must be updated accordingly.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct FidoDeviceDescriptor {
     /// Product name that the device reports
     pub product_string: String,
