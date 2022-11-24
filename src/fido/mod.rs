@@ -72,3 +72,18 @@ pub fn device_requires_pin(path: &str) -> Result<bool, Error> {
         Err(e) => return Err(Error::FidoError(e.to_string())),
     }
 }
+
+#[cfg(feature = "fido-support")]
+/// Determine if the given device path requires a pin
+pub fn device_pin_retries(path: &str) -> Result<i32, Error> {
+    use ctap_hid_fido2::{Cfg, FidoKeyHid, HidParam};
+
+    let device = match FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init()) {
+        Ok(dev) => dev,
+        Err(e) => return Err(Error::FidoError(e.to_string())),
+    };
+
+    device
+        .get_pin_retries()
+        .map_err(|e| Error::FidoError(e.to_string()))
+}
