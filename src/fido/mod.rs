@@ -1,3 +1,5 @@
+use crate::error::Error;
+
 #[cfg(feature = "fido-support")]
 /// For generating new SSH keys on FIDO devices
 pub mod generate;
@@ -52,4 +54,21 @@ pub fn list_fido_devices() -> Vec<FidoDeviceDescriptor> {
             _ => None,
         })
         .collect()
+}
+
+#[cfg(feature = "fido-support")]
+/// Determine if the given device path requires a pin
+pub fn device_requires_pin(path: &str) -> Result<bool, Error> {
+    use ctap_hid_fido2::{fidokey::get_info::InfoOption, Cfg, FidoKeyHid, HidParam};
+
+    let device = match FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init()) {
+        Ok(dev) => dev,
+        Err(e) => return Err(Error::FidoError(e.to_string())),
+    };
+
+    match device.enable_info_option(&InfoOption::ClientPin) {
+        Ok(Some(result)) => Ok(result),
+        Ok(None) => return Err(Error::FidoError("Could not get pin status".to_owned())),
+        Err(e) => return Err(Error::FidoError(e.to_string())),
+    }
 }
