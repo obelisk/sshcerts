@@ -43,6 +43,7 @@ pub struct AuthData {
     pub cose_key: CoseKey,
 }
 
+
 fn read_integer(decoder: &mut Decoder<'_>) -> Result<i128, Error> {
     let t = decoder.datatype().map_err(|_| Error::ParsingError)?;
     let v = match t {
@@ -61,6 +62,16 @@ fn read_integer(decoder: &mut Decoder<'_>) -> Result<i128, Error> {
 }
 
 impl AuthData {
+    /// See if it user was present (physically tapped the key) was confirmed when the AuthData was generated
+    pub fn user_presence(&self) -> bool {
+        self.flags & 0x1 > 0
+    }
+
+    /// See if the user was verified when the AuthData was generated
+    pub fn user_verification(&self) -> bool {
+        self.flags & 0x4 > 0
+    }
+
     /// Parse an attestation statement to extract the encoded information
     pub fn parse(auth_data_raw: &[u8]) -> Result<Self, Error> {
         let mut auth_data = Cursor::new(auth_data_raw);
