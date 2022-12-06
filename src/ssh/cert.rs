@@ -26,7 +26,7 @@ use crate::{error::Error, Result};
 use std::convert::TryFrom;
 
 /// Represents the different types a certificate can be.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CertType {
     /// Represents a user certificate.
     User = 1,
@@ -70,7 +70,7 @@ const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
 /// A type which represents an OpenSSH certificate key.
 /// Please refer to [PROTOCOL.certkeys] for more details about OpenSSH certificates.
 /// [PROTOCOL.certkeys]: https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.certkeys?annotate=HEAD
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Certificate {
     /// Type of key.
     pub key_type: KeyType,
@@ -162,23 +162,33 @@ impl Certificate {
     pub fn from_string(s: &str) -> Result<Certificate> {
         let mut iter = s.split_whitespace();
 
-        let kt_name = iter.next().ok_or(Error::InvalidFormat)?;
-
-        let key_type = KeyType::from_name(kt_name)?;
-        if !key_type.is_cert {
-            return Err(Error::NotCertificate);
-        }
-
+        let outer_kt = KeyType::from_name(iter.next().ok_or(Error::InvalidFormat)?)?;
         let data = iter.next().ok_or(Error::InvalidFormat)?;
-
         let comment = iter.next().map(String::from);
-        let decoded = base64::decode(&data)?;
-        let mut reader = Reader::new(&decoded);
+        let decoded = base64::decode(data)?;
+
+        let mut cert = Certificate::from_bytes(&decoded)?;
+        cert.comment = comment;
+
+        if cert.key_type.kind != outer_kt.kind {
+            return Err(Error::KeyTypeMismatch);
+        }
+        Ok(cert)
+    }
+
+    /// Reads an SSH certificate from a given byte sequence.
+    ///
+    /// The byte sequence is expected to be the base64 decoded body of the SSH certificate.
+    ///
+    pub fn from_bytes(data: &[u8]) -> Result<Certificate> {
+        let mut reader = Reader::new(&data);
 
         // Validate key types before reading the rest of the data
-        let kt_from_reader = reader.read_string()?;
-        if kt_name != kt_from_reader {
-            return Err(Error::KeyTypeMismatch);
+        let kt_name = reader.read_string()?;
+
+        let key_type = KeyType::from_name(&kt_name)?;
+        if !key_type.is_cert {
+            return Err(Error::NotCertificate);
         }
 
         let nonce = reader.read_bytes()?;
@@ -226,8 +236,8 @@ impl Certificate {
             reserved,
             signature_key,
             signature,
-            comment,
-            serialized: decoded,
+            comment: None,
+            serialized: data.to_vec(),
         })
     }
 

@@ -131,7 +131,7 @@ impl Writer {
 
         // If most significant bit is set then prepend a zero byte to
         // avoid interpretation as a negative number.
-        if val.get(0).unwrap_or(&0) & 0x80 != 0 {
+        if val.first().unwrap_or(&0) & 0x80 != 0 {
             bytes.insert(0, 0);
         }
 

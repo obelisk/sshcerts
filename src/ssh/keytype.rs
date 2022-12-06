@@ -5,7 +5,7 @@ use crate::{error::Error, Result};
 use zeroize::Zeroize;
 
 /// A type which represents the various kinds of keys.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum KeyTypeKind {
     /// Represents an RSA key type.
     Rsa,
@@ -27,7 +27,7 @@ pub enum KeyTypeKind {
 }
 
 /// `KeyType` represents the type of an OpenSSH key.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct KeyType {
     /// Name of the key type.
     pub name: &'static str,
@@ -49,7 +49,7 @@ pub struct KeyType {
 }
 
 /// Represents the different kinds of supported curves.
-#[derive(Debug, PartialEq, Clone, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub enum CurveKind {
     /// Represents a NIST P-256 curve.
     Nistp256,
@@ -62,7 +62,7 @@ pub enum CurveKind {
 }
 
 /// A type which represents a cryptographic curve.
-#[derive(Debug, PartialEq, Clone, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct Curve {
     /// The curve kind.
     pub kind: CurveKind,
