@@ -19,7 +19,7 @@ mod writer;
 /// the Certificate::sign function.
 pub trait SSHCertificateSigner {
     /// This function is called when signing an SSH certificate.
-    fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>>;
+    async fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>>;
 }
 
 pub use self::cert::{CertType, Certificate};

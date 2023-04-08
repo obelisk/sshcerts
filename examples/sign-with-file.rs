@@ -4,7 +4,8 @@ use clap::{Arg, Command};
 
 use sshcerts::*;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init();
     let matches = Command::new("sign-with-file")
         .version(env!("CARGO_PKG_VERSION"))
@@ -59,7 +60,7 @@ fn main() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&ca_private_key);
+        .sign(&ca_private_key).await;
 
     println!("{}", user_cert.unwrap());
 }

@@ -63,8 +63,8 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
     format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
 }
 
-#[test]
-fn create_sign_parse_verify_ecdsa256_static_function() {
+#[tokio::test]
+async fn create_sign_parse_verify_ecdsa256_static_function() {
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
 
@@ -98,8 +98,8 @@ fn create_sign_parse_verify_ecdsa256_static_function() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 }
 
-#[test]
-fn create_sign_parse_verify_ecdsa384_static_function() {
+#[tokio::test]
+async fn create_sign_parse_verify_ecdsa384_static_function() {
     let ssh_pubkey = PublicKey::from_string("ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBCEPn99p8iLo9pyPBW0MzsWdWtvlvGKfnFKc/pOF3sV2mCNYp06mgfXm3ZPKioIjYHjj9Y1E4W8x1uRUfk/MM7ZGe3prAEHs4evenCMNRqHmrTDRSxle8A7s5vUrECtiVA== obelisk@exclave.lan");
     assert!(ssh_pubkey.is_ok());
 
@@ -133,8 +133,8 @@ fn create_sign_parse_verify_ecdsa384_static_function() {
     assert_eq!(user_cert.valid_before, 0xFFFFFFFFFFFFFFFF);
 }
 
-#[test]
-fn create_sign_parse_verify_ed25519ca_into_impl() {
+#[tokio::test]
+async fn create_sign_parse_verify_ed25519ca_into_impl() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
@@ -167,7 +167,7 @@ fn create_sign_parse_verify_ed25519ca_into_impl() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     assert!(user_cert.is_ok());
 
@@ -187,8 +187,8 @@ fn create_sign_parse_verify_ed25519ca_into_impl() {
     );
 }
 
-#[test]
-fn create_sign_parse_verify_ed25519ca_create_signer() {
+#[tokio::test]
+async fn create_sign_parse_verify_ed25519ca_create_signer() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
@@ -221,7 +221,7 @@ fn create_sign_parse_verify_ed25519ca_create_signer() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     assert!(user_cert.is_ok());
 
@@ -241,8 +241,8 @@ fn create_sign_parse_verify_ed25519ca_create_signer() {
     );
 }
 
-#[test]
-fn create_sign_parse_verify_ecdsa256_into_impl() {
+#[tokio::test]
+async fn create_sign_parse_verify_ecdsa256_into_impl() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAaAAAABNlY2RzYS\n",
@@ -277,7 +277,7 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     assert!(user_cert.is_ok());
 
@@ -297,8 +297,8 @@ fn create_sign_parse_verify_ecdsa256_into_impl() {
     );
 }
 
-#[test]
-fn create_sign_parse_verify_ecdsa256_create_signer() {
+#[tokio::test]
+async fn create_sign_parse_verify_ecdsa256_create_signer() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAaAAAABNlY2RzYS\n",
@@ -332,7 +332,7 @@ fn create_sign_parse_verify_ecdsa256_create_signer() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     assert!(user_cert.is_ok());
 
@@ -352,8 +352,8 @@ fn create_sign_parse_verify_ecdsa256_create_signer() {
     );
 }
 
-#[test]
-fn create_sign_parse_verify_ecdsa384_into_impl() {
+#[tokio::test]
+async fn create_sign_parse_verify_ecdsa384_into_impl() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAiAAAABNlY2RzYS\n",
@@ -389,7 +389,7 @@ fn create_sign_parse_verify_ecdsa384_into_impl() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     assert!(user_cert.is_ok());
 
@@ -409,8 +409,8 @@ fn create_sign_parse_verify_ecdsa384_into_impl() {
     );
 }
 
-#[test]
-fn create_sign_parse_verify_ecdsa384_create_signer() {
+#[tokio::test]
+async fn create_sign_parse_verify_ecdsa384_create_signer() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAiAAAABNlY2RzYS\n",
@@ -445,7 +445,7 @@ fn create_sign_parse_verify_ecdsa384_create_signer() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     assert!(user_cert.is_ok());
 
@@ -466,8 +466,8 @@ fn create_sign_parse_verify_ecdsa384_create_signer() {
 }
 
 #[cfg(feature = "rsa-signing")]
-#[test]
-fn create_sign_parse_verify_rsa4096_impl_into() {
+#[tokio::test]
+async fn create_sign_parse_verify_rsa4096_impl_into() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAACFwAAAAdzc2gtcn\n",
@@ -542,7 +542,7 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     match &user_cert {
         Ok(_) => (),
@@ -569,8 +569,8 @@ fn create_sign_parse_verify_rsa4096_impl_into() {
 }
 
 #[cfg(feature = "rsa-signing")]
-#[test]
-fn create_sign_parse_verify_rsa3072_impl_into() {
+#[tokio::test]
+async fn create_sign_parse_verify_rsa3072_impl_into() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABlwAAAAdzc2gtcn\n",
@@ -634,7 +634,7 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     match &user_cert {
         Ok(_) => (),
@@ -661,8 +661,8 @@ fn create_sign_parse_verify_rsa3072_impl_into() {
 }
 
 #[cfg(feature = "rsa-signing")]
-#[test]
-fn create_sign_parse_verify_rsa2048_impl_into() {
+#[tokio::test]
+async fn create_sign_parse_verify_rsa2048_impl_into() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn\n",
@@ -715,7 +715,7 @@ fn create_sign_parse_verify_rsa2048_impl_into() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     match &user_cert {
         Ok(_) => (),
@@ -741,8 +741,8 @@ fn create_sign_parse_verify_rsa2048_impl_into() {
     );
 }
 
-#[test]
-fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
+#[tokio::test]
+async fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
@@ -779,7 +779,7 @@ fn create_sign_parse_verify_ed25519ca_chained_method_invocation() {
         .critical_option("test", "test_value")
         .set_extensions(Certificate::standard_extensions())
         .extension("extension_test", "extension_test_value")
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     assert!(user_cert.is_ok());
 

@@ -1,3 +1,5 @@
+#![feature(async_fn_in_trait)]
+
 use std::env;
 
 use clap::{Arg, Command};
@@ -39,7 +41,7 @@ struct YubikeySigner {
 }
 
 impl SSHCertificateSigner for YubikeySigner {
-    fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
+    async fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
         let mut yk = Yubikey::new().unwrap();
         match yk.ssh_cert_signer(buffer, &self.slot) {
             Ok(sig) => Some(sig),
@@ -48,7 +50,8 @@ impl SSHCertificateSigner for YubikeySigner {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init();
     let matches = Command::new("sign-with-yubikey")
         .version(env!("CARGO_PKG_VERSION"))
@@ -96,7 +99,7 @@ fn main() {
         .valid_after(0)
         .valid_before(0xFFFFFFFFFFFFFFFF)
         .set_extensions(Certificate::standard_extensions())
-        .sign(&yk_signer);
+        .sign(&yk_signer).await;
 
     println!("{}", user_cert.unwrap());
 }

@@ -36,9 +36,10 @@
     trivial_numeric_casts,
     unreachable_pub,
     unused_extern_crates,
-    unused_qualifications,
-    warnings
+    unused_qualifications
 )]
+#![feature(async_fn_in_trait)]
+
 
 /// The `sshcerts` error enum
 pub mod error;

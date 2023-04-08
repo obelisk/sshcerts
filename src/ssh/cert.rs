@@ -250,7 +250,7 @@ impl Certificate {
     /// ```rust
     /// # use sshcerts::{Certificate, PublicKey, PrivateKey};
     /// # use sshcerts::ssh::CertType;
-    /// # fn example() {
+    /// # async fn example() {
     ///     let private_key = PrivateKey::from_string(concat!(
     ///         "-----BEGIN OPENSSH PRIVATE KEY-----",
     ///         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW",
@@ -269,7 +269,7 @@ impl Certificate {
     ///        .valid_after(0)
     ///        .valid_before(0xFFFFFFFFFFFFFFFF)
     ///        .set_extensions(Certificate::standard_extensions())
-    ///        .sign(&private_key);
+    ///        .sign(&private_key).await;
     ///
     ///     match cert {
     ///       Ok(cert) => println!("{}", cert),
@@ -440,7 +440,6 @@ impl Certificate {
     pub fn add_signature(mut self, signature: &[u8]) -> Result<Self> {
         let mut tbs = self.tbs_certificate();
         verify_signature(signature, &tbs, &self.signature_key)?;
-
         let mut wrapped_writer = Writer::new();
         wrapped_writer.write_bytes(signature);
 
@@ -454,11 +453,11 @@ impl Certificate {
     }
 
     /// Take the certificate settings and generate a valid signature using the provided signer function
-    pub fn sign<T: SSHCertificateSigner>(self, signer: &T) -> Result<Self> {
+    pub async fn sign<T: SSHCertificateSigner>(self, signer: &T) -> Result<Self> {
         let tbs_certificate = self.tbs_certificate();
 
         // Sign the data and write it to the cert
-        let signature = signer.sign(&tbs_certificate).ok_or(Error::SigningError)?;
+        let signature = signer.sign(&tbs_certificate).await.ok_or(Error::SigningError)?;
         self.add_signature(&signature)
     }
 }
@@ -534,7 +533,6 @@ fn verify_signature(
 ) -> Result<Vec<u8>> {
     let mut reader = Reader::new(&signature_buf);
     let sig_type = reader.read_string().and_then(|v| KeyType::from_name(&v))?;
-
     match &public_key.kind {
         PublicKeyKind::Ecdsa(key) => {
             let sig_reader = reader.read_bytes()?;
