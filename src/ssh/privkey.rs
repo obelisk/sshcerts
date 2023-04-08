@@ -217,7 +217,7 @@ impl ToASN1 for RsaPrivateKey {
 }
 
 impl super::SSHCertificateSigner for PrivateKey {
-    fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
+    async fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
         let rng = rand::SystemRandom::new();
 
         match &self.kind {

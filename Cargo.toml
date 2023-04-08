@@ -30,6 +30,7 @@ yubikey-lite = ["x509-support"]
 base64 = "0.13"
 ring = "0.16"
 zeroize = {version = "1", features = ["zeroize_derive"]}
+tokio = { version = "1", features = ["full"] }
 
 # Dependencies for rsa-signing
 simple_asn1 = {version = "0.5", optional = true}

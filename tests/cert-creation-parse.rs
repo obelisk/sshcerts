@@ -65,8 +65,8 @@ fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
     format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
 }
 
-#[test]
-fn create_and_reparse_sign_parse_verify_ed25519ca() {
+#[tokio::test]
+async fn create_and_reparse_sign_parse_verify_ed25519ca() {
     let privkey = concat!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n",
         "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
@@ -104,7 +104,7 @@ fn create_and_reparse_sign_parse_verify_ed25519ca() {
         .critical_option("test", "test_value")
         .set_extensions(Certificate::standard_extensions())
         .extension("extension_test", "extension_test_value")
-        .sign(&privkey);
+        .sign(&privkey).await;
 
     assert!(user_cert.is_ok());
 
