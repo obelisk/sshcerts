@@ -36,7 +36,7 @@ simple_asn1 = {version = "0.5", optional = true}
 num-bigint = {version = "0.4", optional = true}
 
 # Dependencies for yubikey-support
-yubikey = {version = "0.5", features = ["untested"], optional = true}
+yubikey = {version = "0.7", features = ["untested"], optional = true}
 lexical-core = {version = ">0.7.4", optional = true}
 rcgen = {version = "0.10", optional = true}
 x509 = {version = "0.2", optional = true}

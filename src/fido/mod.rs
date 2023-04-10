@@ -1,3 +1,4 @@
+#[cfg(feature = "fido-support")]
 use crate::error::Error;
 
 #[cfg(feature = "fido-support")]
