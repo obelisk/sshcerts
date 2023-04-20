@@ -22,7 +22,9 @@ pub struct CSRSigner {
 }
 
 impl CSRSigner {
-    fn new(serial: u32, slot: SlotId) -> Self {
+    /// Create a new certificate signer based on a Yubikey serial
+    /// and slot
+    pub fn new(serial: u32, slot: SlotId) -> Self {
         let mut yk = super::Yubikey::open(serial).unwrap();
         let pki = yk.configured(&slot).unwrap();
         let (public_key, algorithm) = match pki {
