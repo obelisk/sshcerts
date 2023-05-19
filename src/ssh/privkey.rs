@@ -39,7 +39,7 @@ use bcrypt_pbkdf::bcrypt_pbkdf;
 use crate::fido::signing;
 
 /// RSA private key.
-#[derive(Debug, PartialEq, Clone, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct RsaPrivateKey {
     /// Modulus of key.
     pub n: Vec<u8>,
@@ -67,7 +67,7 @@ pub struct RsaPrivateKey {
 }
 
 /// ECDSA private key.
-#[derive(Debug, PartialEq, Clone, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct EcdsaPrivateKey {
     /// The curve being used.
     pub curve: Curve,
@@ -77,7 +77,7 @@ pub struct EcdsaPrivateKey {
 }
 
 /// Hardware backed ECDSA private key.
-#[derive(Debug, PartialEq, Clone, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct EcdsaSkPrivateKey {
     /// Flags set on the private key
     pub flags: u8,
@@ -99,14 +99,14 @@ pub struct EcdsaSkPrivateKey {
 }
 
 /// ED25519 private key.
-#[derive(Debug, PartialEq, Clone, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct Ed25519PrivateKey {
     /// The private key.
     pub key: Vec<u8>,
 }
 
 /// Hardware backed Ed25519 private key.
-#[derive(Debug, PartialEq, Clone, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct Ed25519SkPrivateKey {
     /// Flags set on the private key
     pub flags: u8,
@@ -128,7 +128,7 @@ pub struct Ed25519SkPrivateKey {
 }
 
 /// A type which represents the different kinds a public key can be.
-#[derive(Debug, PartialEq, Clone, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub enum PrivateKeyKind {
     /// Represents an RSA prviate key.
     Rsa(RsaPrivateKey),
@@ -147,7 +147,7 @@ pub enum PrivateKeyKind {
 }
 
 /// A type which represents an OpenSSH private key.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct PrivateKey {
     /// Key type.
     pub key_type: KeyType,

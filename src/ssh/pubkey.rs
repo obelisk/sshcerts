@@ -13,7 +13,7 @@ use super::reader::Reader;
 use super::writer::Writer;
 
 /// A type which represents the different kinds a public key can be.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum PublicKeyKind {
     /// Represents an RSA public key.
     Rsa(RsaPublicKey),
@@ -27,7 +27,7 @@ pub enum PublicKeyKind {
 
 /// RSA public key.
 /// The format of RSA public keys is described in RFC 4253, section 6.6
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct RsaPublicKey {
     /// Exponent of key.
     pub e: Vec<u8>,
@@ -38,7 +38,7 @@ pub struct RsaPublicKey {
 
 /// ECDSA public key.
 /// The format of ECDSA public keys is described in RFC 5656, section 3.1.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct EcdsaPublicKey {
     /// The curve being used.
     pub curve: Curve,
@@ -52,7 +52,7 @@ pub struct EcdsaPublicKey {
 
 /// ED25519 public key.
 /// The format of ED25519 public keys is described in https://tools.ietf.org/html/draft-bjh21-ssh-ed25519-02
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Ed25519PublicKey {
     /// The public key.
     pub key: Vec<u8>,
@@ -62,7 +62,7 @@ pub struct Ed25519PublicKey {
 }
 
 /// A type which represents an OpenSSH public key.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct PublicKey {
     /// Key type.
     pub key_type: KeyType,
@@ -91,7 +91,7 @@ impl fmt::Display for PublicKey {
 }
 
 /// The `FingerprintKind` enum represents the different fingerprint representation.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum FingerprintKind {
     /// A kind used to represent the fingerprint using SHA256.
     Sha256,
@@ -116,7 +116,7 @@ impl fmt::Display for FingerprintKind {
 }
 
 /// A type that represents an OpenSSH public key fingerprint.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Fingerprint {
     /// The kind used to represent the fingerprint.
     pub kind: FingerprintKind,
@@ -204,7 +204,7 @@ impl PublicKey {
         let data = iter.next().ok_or(Error::InvalidFormat)?;
         let comment = iter.next().map(String::from);
         let key_type = KeyType::from_name(kt_name)?;
-        let decoded = base64::decode(&data)?;
+        let decoded = base64::decode(data)?;
         let mut reader = Reader::new(&decoded);
 
         // Validate key type before reading rest of the data

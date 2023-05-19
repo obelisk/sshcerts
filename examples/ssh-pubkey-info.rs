@@ -22,7 +22,7 @@ fn main() -> Result<(), String> {
             println!(
                 "256 SHA256:{} {}",
                 c.fingerprint().hash,
-                c.comment.unwrap_or("no comment".to_string())
+                c.comment.unwrap_or_else(|| "no comment".to_string())
             );
             Ok(())
         }
