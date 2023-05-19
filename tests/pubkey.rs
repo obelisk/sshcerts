@@ -33,6 +33,53 @@ fn parse_ecdsa384_publickey() {
 }
 
 #[test]
+fn parse_ecdsa384_publickey_k1() {
+    let in_data = include_str!("keys/public/k1.pub");
+    let ssh_pubkey = PublicKey::from_string(in_data);
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "AJTGgJhPr6h3WxAY89vTudPXUAo19LegdF5Zrudxn3M"
+    );
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(in_data, out_data);
+}
+
+#[test]
+fn parse_ecdsa384_publickey_k2() {
+    let ssh_pubkey = PublicKey::from_path("tests/keys/public/k2.pub");
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "2XIdt5LLgv/h/2GzC4i69h8h/ivQawyab3O1brw3WL0"
+    );
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(include_str!("keys/public/k2.pub"), out_data);
+}
+
+#[test]
+fn parse_ecdsa384_publickey_test_file() {
+    let in_data = include_str!("keys/public/test.pub");
+    let ssh_pubkey = PublicKey::from_string(in_data);
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "v5LrykdD4fIAjjUYKP9w4//TY9o7AAmw6MChHNbHOHg"
+    );
+
+    let out_data = format!("{}", ssh_pubkey);
+    assert_eq!(in_data, out_data);
+}
+
+#[test]
 fn parse_ecdsa256_publickey() {
     let in_data = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOhHAGJtT9s6zPW4OdQMzGbXEyj0ntkESrE1IZBgaCUSh9fWK1gRz+UJOcCB1JTC/kF2EPlwkX6XEpQToZl51oo= obelisk@exclave.lan";
     let ssh_pubkey = PublicKey::from_string(in_data);
@@ -86,4 +133,46 @@ fn parse_rsa2048_publickey() {
 
     let out_data = format!("{}", ssh_pubkey);
     assert_eq!(in_data, out_data);
+}
+
+#[test]
+fn parse_rsa_sha2_512_8192_bit_publickey() {
+    let in_data = include_str!("keys/public/rsa-sha2-512-8192.pub");
+    let ssh_pubkey = PublicKey::from_string(in_data);
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "TL9DbJ2yKuM/NV1gbE8Y9XRiu56wzhdcXBJyw8mMOfs"
+    );
+
+    // We cannot run this check because the re-encoding will change the name
+    // back to ssh-rsa, making it not the same. While we could choose not to do
+    // this, this is what ssh-keygen reports so to maintain compatibility with
+    // it, we do it as well.
+
+    //let out_data = format!("{}", ssh_pubkey);
+    //assert_eq!(in_data, out_data);
+}
+
+#[test]
+fn parse_rsa_sha2_256_4096_bit_publickey() {
+    let in_data = include_str!("keys/public/rsa-sha2-256-4096.pub");
+    let ssh_pubkey = PublicKey::from_string(in_data);
+    assert!(ssh_pubkey.is_ok());
+    let ssh_pubkey = ssh_pubkey.unwrap();
+
+    assert_eq!(
+        ssh_pubkey.fingerprint().hash,
+        "sqSMm4+0OSx6UlrEUW7Khu40yymOGt9nkF2U2/ixHKQ"
+    );
+
+    // We cannot run this check because the re-encoding will change the name
+    // back to ssh-rsa, making it not the same. While we could choose not to do
+    // this, this is what ssh-keygen reports so to maintain compatibility with
+    // it, we do it as well.
+
+    //let out_data = format!("{}", ssh_pubkey);
+    //assert_eq!(in_data, out_data);
 }

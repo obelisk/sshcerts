@@ -293,7 +293,7 @@ impl Certificate {
         signing_key: &PublicKey,
     ) -> Result<Certificate> {
         let kt_name = pubkey.key_type.as_cert_name();
-        let key_type = KeyType::from_name(kt_name.as_str()).unwrap();
+        let key_type = KeyType::from_name(kt_name.as_str())?;
         let rng = SystemRandom::new();
 
         let mut nonce = [0x0u8; 32];
@@ -545,6 +545,10 @@ fn verify_signature(
     let mut reader = Reader::new(&signature_buf);
     let sig_type = reader.read_string().and_then(|v| KeyType::from_name(&v))?;
 
+    if public_key.key_type.kind != sig_type.kind {
+        return Err(Error::KeyTypeMismatch); 
+    }
+
     match &public_key.kind {
         PublicKeyKind::Ecdsa(key) => {
             let sig_reader = reader.read_bytes()?;
@@ -559,9 +563,9 @@ fn verify_signature(
             };
 
             // Read the R value
-            let r_bytes = sig_reader.read_mpint()?;
+            let r_bytes = sig_reader.read_positive_mpint()?;
             // Read the S value
-            let s_bytes = sig_reader.read_mpint()?;
+            let s_bytes = sig_reader.read_positive_mpint()?;
 
             // (r/s)_bytes are user controlled so ensure maliciously signatures
             // can't cause integer underflow.
@@ -582,7 +586,7 @@ fn verify_signature(
             sig.extend(s);
 
             if let Some(sk_application) = &key.sk_application {
-                let flags = reader.read_raw_bytes(1).unwrap()[0];
+                let flags = reader.read_raw_bytes(1)?[0];
                 let signature_counter = reader.read_u32()?;
 
                 let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes())
@@ -619,12 +623,18 @@ fn verify_signature(
             Ok(signature_buf.to_vec())
         }
         PublicKeyKind::Ed25519(key) => {
+            match sig_type.name {
+                "ssh-ed25519" => (),
+                "sk-ssh-ed25519@openssh.com" => (),
+                _ => return Err(Error::KeyTypeMismatch),
+            };
+
             let alg = &ED25519;
             let signature = reader.read_bytes()?;
             let peer_public_key = UnparsedPublicKey::new(alg, &key.key);
 
             if let Some(sk_application) = &key.sk_application {
-                let flags = reader.read_raw_bytes(1).unwrap()[0];
+                let flags = reader.read_raw_bytes(1)?[0];
                 let signature_counter = reader.read_u32()?;
 
                 let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes())

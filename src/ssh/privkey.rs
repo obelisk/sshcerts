@@ -302,12 +302,12 @@ impl PrivateKey {
 
         let (kind, pubkey) = match kt.kind {
             KeyTypeKind::Rsa => {
-                let n = reader.read_mpint()?;
-                let e = reader.read_mpint()?;
-                let d = reader.read_mpint()?;
-                let coefficient = reader.read_mpint()?;
-                let p = reader.read_mpint()?;
-                let q = reader.read_mpint()?;
+                let n = reader.read_positive_mpint()?;
+                let e = reader.read_positive_mpint()?;
+                let d = reader.read_positive_mpint()?;
+                let coefficient = reader.read_positive_mpint()?;
+                let p = reader.read_positive_mpint()?;
+                let q = reader.read_positive_mpint()?;
 
                 #[cfg(feature = "rsa-signing")]
                 let exp = Some(

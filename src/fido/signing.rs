@@ -24,9 +24,14 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
     // It should be safe to unwrap here because we've already determined
     // the PrivateKey is of SK type
     let sk_application = match &private_key.pubkey.kind {
-        PublicKeyKind::Ed25519(key) => key.sk_application.as_ref().unwrap(),
-        PublicKeyKind::Ecdsa(key) => key.sk_application.as_ref().unwrap(),
+        PublicKeyKind::Ed25519(key) => key.sk_application.as_ref(),
+        PublicKeyKind::Ecdsa(key) => key.sk_application.as_ref(),
         _ => return None,
+    };
+
+    let sk_application = match sk_application {
+        Some(sk) => sk,
+        None => return None
     };
 
     let device = if let Some(path) = &device_path {
@@ -53,7 +58,7 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
     let assert = assert.pop()?;
 
     let signature = &assert.signature;
-    let mut format = format_signature_for_ssh(&private_key.pubkey, &signature).unwrap();
+    let mut format = format_signature_for_ssh(&private_key.pubkey, &signature)?;
     format.push(assert.flags.as_u8());
     format.extend_from_slice(&assert.sign_count.to_be_bytes());
 

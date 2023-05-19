@@ -121,9 +121,17 @@ impl KeyType {
                 is_sk: false,
                 kind: KeyTypeKind::Rsa,
             },
+            "rsa-sha2-256" => KeyType {
+                name: "rsa-sha2-256",
+                plain: "ssh-rsa",
+                short_name: "RSA",
+                is_cert: false,
+                is_sk: false,
+                kind: KeyTypeKind::Rsa,
+            },
             "rsa-sha2-512" => KeyType {
                 name: "rsa-sha2-512",
-                plain: "rsa-sha2-512",
+                plain: "ssh-rsa",
                 short_name: "RSA",
                 is_cert: false,
                 is_sk: false,

@@ -85,10 +85,21 @@ impl Reader<'_> {
         }
 
         let size = u32::from_be_bytes(slice[..4].try_into().unwrap()) as usize;
-        if slice.len() < size + 4 {
+        
+        // Similar to below, this is a rearrangement so we do not have to do
+        // math on possibly untrusted inputs.
+        //
+        // It's easier to look at this as:
+        // slice.len() < size + 4
+        if slice.len() - 4 < size {
             return Err(Error::InvalidFormat);
         }
 
+        // In theory it could still overflow here but this would require we've read
+        // in 4 GiB of data. It's likely that if you're reading in a 4GiB SSH key or
+        // certificate, checking elsewhere in the stack should have occured.
+        //
+        // This is also only relevant to 32bit systems where usize is 32 bits.
         self.offset += size + 4;
         let result = slice[4..size + 4].to_vec();
 
@@ -109,12 +120,20 @@ impl Reader<'_> {
             return Err(Error::UnexpectedEof);
         }
 
-        if len + self.offset > self.inner.len() {
+        // Rearranged in a strange way to prevent us from doing
+        // math on an untrusted value. This will prevent panics
+        // in debug and wraps in release.
+        //
+        // It's easier to look at this as:
+        // len + self.offset > self.inner.len()
+        if len > self.inner.len() - self.offset {
             return Err(Error::UnexpectedEof);
         }
 
         let slice = &self.inner[self.offset..];
 
+        // This should be fine now because we've validated our
+        // lengths above.
         self.offset += len;
         let result = slice[..len].to_vec();
 
@@ -130,17 +149,40 @@ impl Reader<'_> {
     /// # use sshcerts::ssh::Reader;
     /// let data = vec![0, 0, 0, 3, 1, 0, 1];
     /// let mut reader = Reader::new(&data);
-    /// let mpint = reader.read_mpint().unwrap();
+    /// let mpint = reader.read_positive_mpint().unwrap();
     /// assert_eq!(mpint, [1, 0, 1]);
     /// ```
-    pub fn read_mpint(&mut self) -> Result<Vec<u8>> {
+    pub fn read_positive_mpint(&mut self) -> Result<Vec<u8>> {
         let bytes = self.read_bytes()?;
 
-        if bytes[0] == 0 {
-            return Ok(bytes[1..].to_vec());
+        if bytes.is_empty() {
+            return Ok(bytes);
         }
 
-        Ok(bytes)
+        match bytes[0] {
+            // Likely a positive number with the leading 0 set
+            0x00 => {
+                // The specification says that 0 should be represented as the empty string
+                // Thus a 0 byte here is not a valid numerical representation.
+                if bytes.len() == 1 {
+                    return Err(Error::InvalidFormat); 
+                }
+
+                // This first byte is not large enough to warrant the leading 0x00 byte.
+                // Something is likely wrong.
+                if bytes[1] < 0x80 {
+                    return Err(Error::InvalidFormat); 
+                }
+
+                return Ok(bytes[1..].to_vec())
+            },
+
+            // A positive number where the first byte has a low enough value
+            0x01..=0x7F => return Ok(bytes.to_vec()),
+
+            // This is the format of a negative number
+            0x80..=0xFF => return Err(Error::InvalidFormat),
+        }
     }
 
     /// Reads a `string` value from the wrapped byte sequence and

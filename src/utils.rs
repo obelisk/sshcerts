@@ -3,7 +3,7 @@ use crate::ssh::{PublicKey, PublicKeyKind, Writer};
 /// Takes an ASN1 encoded ECDSA signature and attempts to
 /// parse it into it's R and S constituent parts
 pub fn asn_der_to_r_s(buf: &[u8]) -> Option<(&[u8], &[u8])> {
-    if buf.len() < 4 || buf[0] != 0x30 {
+    if buf.len() < 4 || buf[0] != 0x30  || buf[2] != 0x2 {
         return None;
     }
     let buf = &buf[3..];
@@ -14,6 +14,12 @@ pub fn asn_der_to_r_s(buf: &[u8]) -> Option<(&[u8], &[u8])> {
     let buf = &buf[1..];
     let r = &buf[..r_length];
     let buf = &buf[r_length..];
+
+    // Make sure we have the minimum of expected bytes
+    if buf.len() < 3 {
+        return None
+    }
+
     if buf[0] != 0x2 {
         return None;
     }

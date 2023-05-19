@@ -43,17 +43,18 @@ pub struct AuthData {
     pub cose_key: CoseKey,
 }
 
+
 fn read_integer(decoder: &mut Decoder<'_>) -> Result<i128, Error> {
     let t = decoder.datatype().map_err(|_| Error::ParsingError)?;
     let v = match t {
-        minicbor::data::Type::U8 => decoder.u8().unwrap() as i128,
-        minicbor::data::Type::U16 => decoder.u16().unwrap() as i128,
-        minicbor::data::Type::U32 => decoder.u32().unwrap() as i128,
-        minicbor::data::Type::U64 => decoder.u64().unwrap() as i128,
-        minicbor::data::Type::I8 => decoder.i8().unwrap() as i128,
-        minicbor::data::Type::I16 => decoder.i16().unwrap() as i128,
-        minicbor::data::Type::I32 => decoder.i32().unwrap() as i128,
-        minicbor::data::Type::I64 => decoder.i64().unwrap() as i128,
+        minicbor::data::Type::U8 => decoder.u8().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::U16 => decoder.u16().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::U32 => decoder.u32().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::U64 => decoder.u64().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::I8 => decoder.i8().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::I16 => decoder.i16().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::I32 => decoder.i32().map_err(|_| Error::ParsingError)? as i128,
+        minicbor::data::Type::I64 => decoder.i64().map_err(|_| Error::ParsingError)? as i128,
         _ => return Err(Error::ParsingError),
     };
 
@@ -61,6 +62,16 @@ fn read_integer(decoder: &mut Decoder<'_>) -> Result<i128, Error> {
 }
 
 impl AuthData {
+    /// See if it user was present (physically tapped the key) was confirmed when the AuthData was generated
+    pub fn user_presence(&self) -> bool {
+        self.flags & 0x1 > 0
+    }
+
+    /// See if the user was verified when the AuthData was generated
+    pub fn user_verification(&self) -> bool {
+        self.flags & 0x4 > 0
+    }
+
     /// Parse an attestation statement to extract the encoded information
     pub fn parse(auth_data_raw: &[u8]) -> Result<Self, Error> {
         let mut auth_data = Cursor::new(auth_data_raw);
@@ -113,6 +124,12 @@ impl AuthData {
                 Ok(Some(len)) => len,
                 _ => return Err(Error::ParsingError),
             };
+
+            // Do not support maps with over 128 entries. This should be more than enough
+            // for this usecase.
+            if len > 256 {
+                return Err(Error::ParsingError);
+            }
 
             let mut parsed_key = CoseKey::default();
             let mut idx = 0;

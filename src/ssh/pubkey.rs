@@ -259,8 +259,8 @@ impl PublicKey {
         let kind = match kt.kind {
             KeyTypeKind::Rsa | KeyTypeKind::RsaCert => {
                 let k = RsaPublicKey {
-                    e: reader.read_mpint()?,
-                    n: reader.read_mpint()?,
+                    e: reader.read_positive_mpint()?,
+                    n: reader.read_positive_mpint()?,
                 };
 
                 PublicKeyKind::Rsa(k)
