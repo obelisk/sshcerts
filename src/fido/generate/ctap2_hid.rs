@@ -3,38 +3,15 @@ use ctap_hid_fido2::{
     verifier, Cfg, FidoKeyHid, HidParam,
 };
 
-use super::AuthData;
-
 use crate::{
     error::Error,
+    fido::{
+        generate::{FIDOSSHKey, U2FAttestation},
+        AuthData,
+    },
     ssh::{Ed25519SkPrivateKey, KeyType, PrivateKeyKind},
     PrivateKey,
 };
-
-/// The attestation data, signature, and chain for a generated SSH key
-#[derive(Debug)]
-pub struct U2FAttestation {
-    /// A blob that contains all public information that we can also verify with
-    /// the attestation chain
-    pub auth_data: Vec<u8>,
-    /// The signature over the hash of the auth data
-    pub auth_data_sig: Vec<u8>,
-    /// The certificate that generated the signature over the auth data
-    pub intermediate: Vec<u8>,
-    /// The challenge that generated and is included in the signature
-    pub challenge: Vec<u8>,
-    /// The algorithm that was used to generate the signature (COSE value)
-    pub alg: i32,
-}
-
-/// A generated SSH key that was generated with a FIDO/U2F key
-#[derive(Debug)]
-pub struct FIDOSSHKey {
-    /// Private key handle to the new SSH Key on the hardware token
-    pub private_key: PrivateKey,
-    /// The U2F attestation data
-    pub attestation: U2FAttestation,
-}
 
 /// Generate a new SSH key on a FIDO/U2F device
 pub fn generate_new_ssh_key(

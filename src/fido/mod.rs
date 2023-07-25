@@ -1,29 +1,42 @@
-#[cfg(feature = "fido-support")]
+#[cfg(any(feature = "fido-support"))]
 use crate::error::Error;
 
-#[cfg(feature = "fido-support")]
+#[cfg(any(feature = "fido-support", feature = "fido-support-mozilla"))]
 /// For generating new SSH keys on FIDO devices
 pub mod generate;
 
-#[cfg(any(feature = "fido-support", feature = "fido-lite"))]
+#[cfg(any(
+    feature = "fido-support",
+    feature = "fido-support-mozilla",
+    feature = "fido-lite"
+))]
 /// For parsing FIDO related data
 pub mod parsing;
-#[cfg(any(feature = "fido-support", feature = "fido-lite"))]
+
+#[cfg(any(
+    feature = "fido-support",
+    feature = "fido-support-mozilla",
+    feature = "fido-lite"
+))]
 pub use parsing::{AuthData, CoseKey};
 
-#[cfg(feature = "fido-support")]
-/// For signing related code
+/// For handling signing operations with FIDO keys
+#[cfg(any(feature = "fido-support", feature = "fido-support-mozilla"))]
 pub mod signing;
 
-#[cfg(any(feature = "fido-support", feature = "fido-lite"))]
+#[cfg(any(
+    feature = "fido-support",
+    feature = "fido-support-mozilla",
+    feature = "fido-lite"
+))]
 /// For code relating to the verification of FIDO certificate chains and
 /// certificate parsing
 pub mod verification;
 
-#[cfg(feature = "fido-support")]
+#[cfg(any(feature = "fido-support", feature = "fido-support-mozilla"))]
 pub use generate::FIDOSSHKey;
 
-#[cfg(feature = "fido-support")]
+#[cfg(any(feature = "fido-support"))]
 /// Defines a FIDO device with name and path. The path can be
 /// used in PrivateKey to route the request to a particular device.
 ///

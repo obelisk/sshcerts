@@ -43,7 +43,6 @@ pub struct AuthData {
     pub cose_key: CoseKey,
 }
 
-
 fn read_integer(decoder: &mut Decoder<'_>) -> Result<i128, Error> {
     let t = decoder.datatype().map_err(|_| Error::ParsingError)?;
     let v = match t {
@@ -74,62 +73,70 @@ impl AuthData {
 
     /// Parse an attestation statement to extract the encoded information
     pub fn parse(auth_data_raw: &[u8]) -> Result<Self, Error> {
+        println!("{:02x?}", auth_data_raw);
         let mut auth_data = Cursor::new(auth_data_raw);
 
         // RPID Hash
         let mut rpid_hash = [0; 32];
         if auth_data.read_exact(&mut rpid_hash).is_err() {
-            return Err(Error::ParsingError);
+            return Err(Error::FidoError("Could not read RPID".to_owned()));
         }
 
         // Flags
         let mut flags = [0; 1];
         if auth_data.read_exact(&mut flags).is_err() {
-            return Err(Error::ParsingError);
+            return Err(Error::FidoError("Could not read flags".to_owned()));
         }
         let credential_data_included = matches!(flags[0] & 0x40, 0x40);
 
         // Sign Count
         let mut sign_count = [0; 4];
         if auth_data.read_exact(&mut sign_count).is_err() {
-            return Err(Error::ParsingError);
+            return Err(Error::FidoError("Could not read sign count".to_owned()));
         }
 
         // AAGUID
         let mut aaguid = [0; 16];
         if auth_data.read_exact(&mut aaguid).is_err() {
-            return Err(Error::ParsingError);
+            return Err(Error::FidoError("Could not read AAGUID".to_owned()));
         }
 
         // Credential ID Length
         let mut cred_id_len = [0; 2];
         if auth_data.read_exact(&mut cred_id_len).is_err() {
-            return Err(Error::ParsingError);
+            return Err(Error::FidoError(
+                "Could not read credential length".to_owned(),
+            ));
         }
         let cred_id_len = u16::from_be_bytes(cred_id_len) as usize;
 
         // Credential ID
         let mut credential_id = vec![0; cred_id_len];
         if auth_data.read_exact(&mut credential_id).is_err() {
-            return Err(Error::ParsingError);
+            return Err(Error::FidoError("Could not read credential ID".to_owned()));
         }
-
         // Start decoding CBOR objects from after where we got with the cursor
         let cose_key = if credential_data_included {
+            println!("{:02x?}", &auth_data_raw[auth_data.position() as usize..]);
             // Create a new decoder for the COSE data
             let mut decoder = Decoder::new(&auth_data_raw[auth_data.position() as usize..]);
 
             // We only deal with maps of definite length
             let len = match decoder.map() {
                 Ok(Some(len)) => len,
-                _ => return Err(Error::ParsingError),
+                _ => {
+                    return Err(Error::FidoError(
+                        "Refusing to read indefinite map".to_owned(),
+                    ))
+                }
             };
-
             // Do not support maps with over 128 entries. This should be more than enough
             // for this usecase.
             if len > 256 {
-                return Err(Error::ParsingError);
+                return Err(Error::FidoError("Map is too long".to_owned()));
             }
+
+            println!("Credential map has {len} entries");
 
             let mut parsed_key = CoseKey::default();
             let mut idx = 0;
@@ -139,21 +146,38 @@ impl AuthData {
                 let key = read_integer(&mut decoder)?;
                 match key {
                     -1 => {
-                        let value = read_integer(&mut decoder).map_err(|_| Error::ParsingError)?;
+                        let value = read_integer(&mut decoder).map_err(|_| {
+                            Error::FidoError(
+                                "Could not read integer for key -1 (parameters)".to_owned(),
+                            )
+                        })?;
                         parsed_key.parameters.insert(key, value.to_string());
                     }
                     1 => {
-                        parsed_key.key_type =
-                            read_integer(&mut decoder).map_err(|_| Error::ParsingError)?
+                        parsed_key.key_type = read_integer(&mut decoder).map_err(|e| {
+                            Error::FidoError(format!(
+                                "Could not read integer for key 1 (key_type): {e}"
+                            ))
+                        })?
                     }
                     3 => {
-                        parsed_key.algorithm =
-                            read_integer(&mut decoder).map_err(|_| Error::ParsingError)?
+                        parsed_key.algorithm = read_integer(&mut decoder).map_err(|_| {
+                            Error::FidoError(
+                                "Could not read integer for key 3 (algorithm)".to_owned(),
+                            )
+                        })?
                     }
                     -2 | -3 => {
-                        parsed_key.key = decoder.bytes().map_err(|_| Error::ParsingError)?.to_vec()
+                        parsed_key.key = decoder
+                            .bytes()
+                            .map_err(|_| {
+                                Error::FidoError("Could not bytes for key -2|-3 (key)".to_owned())
+                            })?
+                            .to_vec()
                     }
-                    _ => decoder.undefined().map_err(|_| Error::ParsingError)?,
+                    x => decoder.undefined().map_err(|e| {
+                        Error::FidoError(format!("We got something else {x} and threw error {e}"))
+                    })?,
                 };
                 idx += 2;
             }
