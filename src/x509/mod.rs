@@ -110,7 +110,7 @@ fn convert_x509_pki_to_pubkey(
                 .ok_or(Error::ParsingError)?;
 
             let curve_oid = algorithm_parameters
-                .as_oid_val()
+                .as_oid()
                 .map_err(|_| Error::ParsingError)?;
 
             match curve_oid.to_string().as_str() {
