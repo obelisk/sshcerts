@@ -40,12 +40,13 @@ const ECDSA384_SSH_PUBLIC_KEY: &str = concat!(
 // Test signing and parsing work together
 fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let pkcs8_bytes = hex::decode(ECDSA256_CA_PRIVATE_KEY).unwrap();
+    let rng = rand::SystemRandom::new();
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(
         &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
         pkcs8_bytes.as_ref(),
+	&rng,
     )
     .unwrap();
-    let rng = rand::SystemRandom::new();
 
     let pubkey = PublicKey::from_string(ECDSA256_SSH_PUBLIC_KEY).unwrap();
     format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
@@ -54,12 +55,13 @@ fn test_ecdsa256_signer(buf: &[u8]) -> Option<Vec<u8>> {
 // Test signing and parsing work together
 fn test_ecdsa384_signer(buf: &[u8]) -> Option<Vec<u8>> {
     let pkcs8_bytes = hex::decode(ECDSA384_CA_PRIVATE_KEY).unwrap();
+    let rng = rand::SystemRandom::new();
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(
         &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
         pkcs8_bytes.as_ref(),
+	&rng,
     )
     .unwrap();
-    let rng = rand::SystemRandom::new();
 
     let pubkey = PublicKey::from_string(ECDSA384_SSH_PUBLIC_KEY).unwrap();
     format_signature_for_ssh(&pubkey, key_pair.sign(&rng, buf).ok()?.as_ref())
