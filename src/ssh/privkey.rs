@@ -233,8 +233,7 @@ impl super::SSHCertificateSigner for PrivateKey {
                     Err(_) => return None,
                 };
 
-                let rng = rand::SystemRandom::new();
-                let mut signature = vec![0; keypair.public_modulus_len()];
+                let mut signature = vec![0; keypair.public().modulus_len()];
 
                 keypair
                     .sign(&signature::RSA_PKCS1_SHA512, &rng, buffer, &mut signature)
@@ -262,7 +261,7 @@ impl super::SSHCertificateSigner for PrivateKey {
                     &key.key
                 };
                 let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(
-                    alg, key, pubkey,
+                    alg, key, pubkey, &rng
                 ) {
                     Ok(kp) => kp,
                     Err(_) => return None,

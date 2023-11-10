@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.12.0"
+version = "0.12.1"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2021"
 license-file = "LICENSE"
@@ -28,7 +28,7 @@ yubikey-lite = ["x509-support"]
 
 [dependencies]
 base64 = "0.13"
-ring = "0.16"
+ring = "0.17"
 zeroize = {version = "1", features = ["zeroize_derive"]}
 
 # Dependencies for rsa-signing
