@@ -130,14 +130,18 @@ pub fn generate_new_ssh_key(
         intermediate_certs[0].0.clone()
     };
 
+    let attestation = U2FAttestation {
+        auth_data: raw_auth_data,
+        auth_data_sig,
+        intermediate,
+        challenge: chall_bytes.to_vec(),
+        alg,
+    };
+
+    let _ = attestation.verify()?;
+
     Ok(FIDOSSHKey {
         private_key,
-        attestation: U2FAttestation {
-            auth_data: raw_auth_data,
-            auth_data_sig,
-            intermediate,
-            challenge: chall_bytes.to_vec(),
-            alg,
-        },
+        attestation,
     })
 }

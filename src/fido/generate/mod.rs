@@ -10,6 +10,8 @@ mod mozilla;
 #[cfg(any(feature = "fido-support-mozilla"))]
 pub use mozilla::generate_new_ssh_key;
 
+use super::verification::{verify_auth_data, ValidAttestation};
+
 /// The attestation data, signature, and chain for a generated SSH key
 #[derive(Debug)]
 pub struct U2FAttestation {
@@ -33,4 +35,18 @@ pub struct FIDOSSHKey {
     pub private_key: PrivateKey,
     /// The U2F attestation data
     pub attestation: U2FAttestation,
+}
+
+impl U2FAttestation {
+    /// Verify the attestation data, signature, and chain are valid
+    pub fn verify(&self) -> Result<ValidAttestation, crate::error::Error> {
+        verify_auth_data(
+            &self.auth_data,
+            &self.auth_data_sig,
+            &self.challenge,
+            self.alg,
+            &self.intermediate,
+            None,
+        )
+    }
 }

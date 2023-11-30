@@ -106,7 +106,7 @@ required-features = ["x509-support"]
 
 [[example]]
 name = "new-fido-sshkey"
-required-features = ["fido-support"]
+required-features = ["fido-support-mozilla"]
 
 [[test]]
 name = "privkey-encrypted"
@@ -121,7 +121,7 @@ required-features = ["encrypted-keys", "rsa-signing"]
 [[test]]
 name = "fido-lite"
 path = "tests/fido-lite.rs"
-required-features = ["fido-support"]
+required-features = ["fido-support-mozilla"]
 
 [[test]]
 name = "yubikey-lite"
