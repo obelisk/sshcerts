@@ -7,10 +7,10 @@ use ring::digest;
 
 use authenticator::{
     authenticatorservice::{AuthenticatorService, SignArgs},
-    ctap2::{commands::get_assertion::*, server::*},
+    ctap2::server::*,
     errors::{AuthenticatorError, PinError},
     statecallback::StateCallback,
-    Pin, SignResult, StatusUpdate,
+    Pin, StatusUpdate,
 };
 use std::sync::mpsc::channel;
 
@@ -47,11 +47,10 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
         origin: format!(""),
         relying_party_id: sk_application.clone(),
         allow_list,
-        extensions: GetAssertionExtensions::default(),
+        extensions: AuthenticationExtensionsClientInputs::default(),
         pin,
         user_presence_req: true,
         use_ctap1_fallback: false,
-        alternate_rp_id: None,
         user_verification_req: UserVerificationRequirement::Discouraged,
     };
 
@@ -80,11 +79,7 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
         .expect("Problem receiving, unable to continue");
 
     let assertion = match sign_result {
-        Ok(SignResult::CTAP2(assertion_object)) => assertion_object,
-        Ok(_) => {
-            println!("Wrong CTAP response");
-            return None;
-        }
+        Ok(assertion_object) => assertion_object.assertion,
         Err(AuthenticatorError::PinError(PinError::PinRequired)) => {
             println!("PIN needed but not provided!");
             return None;
@@ -94,8 +89,8 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
             return None;
         }
     };
-    let mut format = format_signature_for_ssh(&private_key.pubkey, &assertion.0[0].signature)?;
-    format.push(assertion.0[0].auth_data.flags.bits());
-    format.extend_from_slice(&assertion.0[0].auth_data.counter.to_be_bytes());
+    let mut format = format_signature_for_ssh(&private_key.pubkey, &assertion.signature)?;
+    format.push(assertion.auth_data.flags.bits());
+    format.extend_from_slice(&assertion.auth_data.counter.to_be_bytes());
     Some(format)
 }
