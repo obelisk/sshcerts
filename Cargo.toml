@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.12.1"
+version = "0.13.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2021"
 license-file = "LICENSE"
@@ -11,7 +11,7 @@ keywords = ["ssh", "yubikey", "certs", "certificates"]
 categories = ["authentication"]
 
 [features]
-default = ["rsa-signing", "fido-support-mozilla"]
+default = ["rsa-signing", "fido-support"]
 
 all = [
     "encrypted-keys",

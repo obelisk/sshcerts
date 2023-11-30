@@ -92,11 +92,11 @@ pub fn generate_new_ssh_key(
         .to_vec();
 
     let attestation = U2FAttestation {
-        auth_data: raw_auth_data,
-        auth_data_sig,
+        auth_data: att.auth_data,
+        auth_data_sig: att.attstmt_sig,
         intermediate,
-        challenge: chall_bytes.to_vec(),
-        alg,
+        challenge,
+        alg: att.attstmt_alg,
     };
 
     let _ = attestation.verify()?;
