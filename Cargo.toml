@@ -63,15 +63,23 @@ aes = { version = "0.7", features = ["ctr"], optional = true }
 bcrypt-pbkdf = { version = "0.6", optional = true }
 ctr = { version = "0.8", optional = true }
 
-# Dependencies for fido-support
+# Dependencies for fido-support-*
+minicbor = { version = "0.13", optional = true }
+
+# Dependencies for fido-support-mozilla
+authenticator = { git = "https://github.com/obelisk/authenticator-rs", default-features = false, features = [
+    "crypto_openssl",
+], branch = "add_raw_attestation_data", optional = true }
 #authenticator = { git = "https://github.com/mozilla/authenticator-rs", default-features = false, features = [
 #    "crypto_openssl",
 #], branch = "ctap2-2021", optional = true }
-authenticator = { path = "../authenticator-rs", default-features = false, features = [
-    "crypto_openssl",
-], optional = true }
+# authenticator = { path = "../authenticator-rs", default-features = false, features = [
+#     "crypto_openssl",
+# ], optional = true }
+
+
+# Dependencies for fido-support
 ctap-hid-fido2 = { version = "3", optional = true }
-minicbor = { version = "0.13", optional = true }
 #ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch="master", optional = true}
 #ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="device_by_path", optional = true}
 #ctap-hid-fido2 = {path = "../ctap-hid-fido2", optional = true}
