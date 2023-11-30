@@ -73,7 +73,6 @@ impl AuthData {
 
     /// Parse an attestation statement to extract the encoded information
     pub fn parse(auth_data_raw: &[u8]) -> Result<Self, Error> {
-        println!("{:02x?}", auth_data_raw);
         let mut auth_data = Cursor::new(auth_data_raw);
 
         // RPID Hash
@@ -117,7 +116,6 @@ impl AuthData {
         }
         // Start decoding CBOR objects from after where we got with the cursor
         let cose_key = if credential_data_included {
-            println!("{:02x?}", &auth_data_raw[auth_data.position() as usize..]);
             // Create a new decoder for the COSE data
             let mut decoder = Decoder::new(&auth_data_raw[auth_data.position() as usize..]);
 
@@ -135,8 +133,6 @@ impl AuthData {
             if len > 256 {
                 return Err(Error::FidoError("Map is too long".to_owned()));
             }
-
-            println!("Credential map has {len} entries");
 
             let mut parsed_key = CoseKey::default();
             let mut idx = 0;

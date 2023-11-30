@@ -94,8 +94,7 @@ pub fn generate_new_ssh_key(
         };
     }
 
-    let raw_auth_data = attestation_object.att_obj.auth_data.to_vec();
-
+    let raw_auth_data = attestation_object.att_obj.auth_data.raw_data.clone();
     let auth_data = AuthData::parse(&raw_auth_data)?;
 
     let key_type = KeyType::from_name("sk-ssh-ed25519@openssh.com")?;

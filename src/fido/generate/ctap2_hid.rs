@@ -2,6 +2,7 @@ use ctap_hid_fido2::{
     fidokey::make_credential::{CredentialSupportedKeyType, MakeCredentialArgsBuilder},
     verifier, Cfg, FidoKeyHid, HidParam,
 };
+use ring::digest;
 
 use crate::{
     error::Error,
@@ -84,14 +85,24 @@ pub fn generate_new_ssh_key(
         att.attstmt_x5c[0].clone()
     };
 
+    // Take a SHA256 of the challenge because that's what's part of
+    // the signed data
+    let challenge = digest::digest(&digest::SHA256, &challenge)
+        .as_ref()
+        .to_vec();
+
+    let attestation = U2FAttestation {
+        auth_data: raw_auth_data,
+        auth_data_sig,
+        intermediate,
+        challenge: chall_bytes.to_vec(),
+        alg,
+    };
+
+    let _ = attestation.verify()?;
+
     Ok(FIDOSSHKey {
         private_key,
-        attestation: U2FAttestation {
-            auth_data: att.auth_data,
-            auth_data_sig: att.attstmt_sig,
-            intermediate,
-            challenge: challenge.to_vec(),
-            alg: att.attstmt_alg,
-        },
+        attestation,
     })
 }

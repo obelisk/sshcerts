@@ -64,9 +64,12 @@ bcrypt-pbkdf = { version = "0.6", optional = true }
 ctr = { version = "0.8", optional = true }
 
 # Dependencies for fido-support
-authenticator = { git = "https://github.com/mozilla/authenticator-rs", default-features = false, features = [
+#authenticator = { git = "https://github.com/mozilla/authenticator-rs", default-features = false, features = [
+#    "crypto_openssl",
+#], branch = "ctap2-2021", optional = true }
+authenticator = { path = "../authenticator-rs", default-features = false, features = [
     "crypto_openssl",
-], branch = "ctap2-2021", optional = true }
+], optional = true }
 ctap-hid-fido2 = { version = "3", optional = true }
 minicbor = { version = "0.13", optional = true }
 #ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch="master", optional = true}
