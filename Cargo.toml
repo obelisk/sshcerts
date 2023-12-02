@@ -67,12 +67,12 @@ ctr = { version = "0.8", optional = true }
 minicbor = { version = "0.13", optional = true }
 
 # Dependencies for fido-support-mozilla
-authenticator = { git = "https://github.com/obelisk/authenticator-rs", default-features = false, features = [
+# authenticator = { git = "https://github.com/obelisk/authenticator-rs", default-features = false, features = [
+#     "crypto_openssl",
+# ], branch = "add_raw_attestation_data", optional = true }
+authenticator = { git = "https://github.com/mozilla/authenticator-rs", default-features = false, features = [
     "crypto_openssl",
-], branch = "add_raw_attestation_data", optional = true }
-#authenticator = { git = "https://github.com/mozilla/authenticator-rs", default-features = false, features = [
-#    "crypto_openssl",
-#], branch = "ctap2-2021", optional = true }
+], branch = "ctap2-2021", optional = true }
 # authenticator = { path = "../authenticator-rs", default-features = false, features = [
 #     "crypto_openssl",
 # ], optional = true }
