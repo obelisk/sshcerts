@@ -14,3 +14,10 @@ pub fn device_requires_pin(_: &str) -> Result<bool, Error> {
         "Not currently supported directly fetching key PIN status".to_owned(),
     )))
 }
+
+/// Determine how many pin retries are left on a device
+pub fn device_pin_retries(_: &str) -> Result<i32, Error> {
+    return Err(Error::FidoError(FidoError::Unknown(
+        "Not currently supported directly fetching key PIN status".to_owned(),
+    )));
+}
