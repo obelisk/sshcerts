@@ -11,7 +11,8 @@ use crate::{
 use ring::rand::SecureRandom;
 use ring::rand::SystemRandom;
 
-use authenticator::crypto::COSEAlgorithm;
+use crate::fido::Error as FidoError;
+
 use authenticator::ctap2::attestation::AttestationStatement;
 use authenticator::ctap2::server::PublicKeyCredentialParameters;
 use authenticator::ctap2::server::RelyingParty;
@@ -26,19 +27,23 @@ use authenticator::{
 use authenticator::{
     authenticatorservice::RegisterArgs, ctap2::server::PublicKeyCredentialUserEntity,
 };
+use authenticator::{crypto::COSEAlgorithm, StatusPinUv};
 
-use std::sync::mpsc::channel;
+use std::{
+    sync::mpsc::{channel, RecvError},
+    thread,
+};
 
 /// Generate a new SSH key on a FIDO/U2F device
 pub fn generate_new_ssh_key(
     application: &str,
     comment: &str,
     pin: Option<String>,
-    device_path: Option<String>,
+    _: Option<String>,
 ) -> Result<FIDOSSHKey, Error> {
     let mut manager = match AuthenticatorService::new() {
         Ok(m) => m,
-        Err(e) => return Err(Error::FidoError(e.to_string())),
+        Err(e) => return Err(Error::FidoError(FidoError::Unknown(e.to_string()))),
     };
     manager.add_u2f_usb_hid_platform_transports();
 
@@ -69,30 +74,57 @@ pub fn generate_new_ssh_key(
         use_ctap1_fallback: false,
     };
 
-    let (status_tx, _status_rx) = channel::<StatusUpdate>();
+    let (status_tx, status_rx) = channel::<StatusUpdate>();
 
-    let attestation_object;
-    loop {
-        let (register_tx, register_rx) = channel();
-        let callback = StateCallback::new(Box::new(move |rv| {
-            register_tx.send(rv).unwrap();
-        }));
+    let (register_tx, register_rx) = channel();
+    let (error_tx, error_rx) = channel::<FidoError>();
+    let callback = StateCallback::new(Box::new(move |rv| {
+        let _ = register_tx.send(rv);
+    }));
 
-        if let Err(e) = manager.register(15_000, ctap_args, status_tx.clone(), callback) {
-            panic!("Couldn't register: {:?}", e);
-        };
+    if let Err(e) = manager.register(15_000, ctap_args, status_tx.clone(), callback) {
+        return Err(Error::FidoError(FidoError::Unknown(e.to_string())));
+    };
 
-        let register_result = register_rx
-            .recv()
-            .expect("Problem receiving, unable to continue");
-        match register_result {
-            Ok(attestation) => {
-                attestation_object = attestation;
-                break;
+    thread::spawn(move || loop {
+        let msg = status_rx.recv();
+        match msg {
+            Ok(StatusUpdate::PinUvError(StatusPinUv::PinRequired(_))) => {
+                let _ = error_tx.send(FidoError::PinRequired);
+                return;
             }
-            Err(e) => return Err(Error::FidoError(e.to_string())),
-        };
-    }
+            Ok(StatusUpdate::PinUvError(StatusPinUv::PinAuthBlocked)) => {
+                let _ = error_tx.send(FidoError::KeyLocked);
+                return;
+            }
+            Ok(StatusUpdate::PinUvError(StatusPinUv::PinBlocked)) => {
+                let _ = error_tx.send(FidoError::KeyBlocked);
+                return;
+            }
+            Ok(StatusUpdate::PinUvError(StatusPinUv::InvalidPin(_sender, attempts))) => {
+                let _ = error_tx.send(FidoError::InvalidPin(attempts));
+                return;
+            }
+            Ok(_) => (),
+            Err(RecvError) => {
+                return;
+            }
+        }
+    });
+
+    let register_result = register_rx
+        .recv()
+        .map_err(|e| Error::FidoError(FidoError::Unknown(e.to_string())))?;
+    let attestation_object = match register_result {
+        Ok(attestation) => attestation,
+        Err(e) => {
+            if let Ok(error) = error_rx.recv() {
+                return Err(Error::FidoError(error));
+            } else {
+                return Err(Error::FidoError(FidoError::Unknown(e.to_string())));
+            }
+        }
+    };
 
     let raw_auth_data = attestation_object.att_obj.auth_data.to_vec();
 
@@ -104,7 +136,7 @@ pub fn generate_new_ssh_key(
         handle: auth_data.credential_id.clone(),
         reserved: vec![],
         pin,
-        device_path,
+        device_path: None,
     });
 
     let private_key = PrivateKey {
@@ -121,7 +153,11 @@ pub fn generate_new_ssh_key(
             packed.attestation_cert,
             packed.alg as i32,
         ),
-        _ => return Err(Error::FidoError("Wrong attestation format".to_owned())),
+        _ => {
+            return Err(Error::FidoError(FidoError::Unknown(
+                "Wrong attestation format".to_owned(),
+            )))
+        }
     };
 
     let intermediate = if intermediate_certs.is_empty() {

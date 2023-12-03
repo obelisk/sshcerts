@@ -40,7 +40,7 @@ pub enum Error {
     YubikeyPIVError(crate::yubikey::piv::Error),
     /// An error occured in the FIDO module
     #[cfg(any(feature = "fido-support", feature = "fido-lite"))]
-    FidoError(String),
+    FidoError(crate::fido::Error),
     /// This occurs when you try to use a feature that could technically work
     /// but is currently unimplemented.
     Unsupported,

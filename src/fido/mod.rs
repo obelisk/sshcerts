@@ -5,6 +5,43 @@ use crate::error::Error;
 /// For generating new SSH keys on FIDO devices
 pub mod generate;
 
+/// For handling FIDO related errors
+#[derive(Debug)]
+pub enum Error {
+    /// An operation errored because the incorrect pin was provided
+    InvalidPin(Option<u8>),
+    /// An operation failed because a pin was required but not provided
+    PinRequired,
+    /// The key is temporarily locked because the incorrect pin was provided too many times
+    KeyLocked,
+    /// The key is permanently locked because the incorrect pin was provided too many times
+    KeyBlocked,
+    /// A CBOR formatting error occured
+    CborFormat(String),
+    /// An unknown error occured
+    Unknown(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = match self {
+            Self::InvalidPin(attempts) => {
+                if let Some(attempts) = attempts {
+                    format!("Invalid pin: {} attempts remaining", attempts)
+                } else {
+                    "Invalid pin".to_owned()
+                }
+            }
+            Self::PinRequired => String::from("Pin required for operation"),
+            Self::KeyLocked => String::from("Key locked"),
+            Self::KeyBlocked => String::from("Key blocked"),
+            Self::CborFormat(s) => s.to_string(),
+            Self::Unknown(s) => s.to_string(),
+        };
+        write!(f, "s{}", msg)
+    }
+}
+
 #[cfg(any(
     feature = "fido-support",
     feature = "fido-support-mozilla",
@@ -12,6 +49,10 @@ pub mod generate;
 ))]
 /// For parsing FIDO related data
 pub mod parsing;
+
+/// Contains utility functions for dealing with FIDO keys
+mod utils;
+pub use utils::*;
 
 #[cfg(any(
     feature = "fido-support",
@@ -35,69 +76,3 @@ pub mod verification;
 
 #[cfg(any(feature = "fido-support", feature = "fido-support-mozilla"))]
 pub use generate::FIDOSSHKey;
-
-#[cfg(any(feature = "fido-support"))]
-/// Defines a FIDO device with name and path. The path can be
-/// used in PrivateKey to route the request to a particular device.
-///
-/// These paths are only valid while a device is connected continuously.
-/// Disconnected and reconnecting will result in a new path and a key
-/// must be updated accordingly.
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct FidoDeviceDescriptor {
-    /// Product name that the device reports
-    pub product_string: String,
-    /// Path to be used for connecting to this particular device
-    pub path: String,
-}
-
-#[cfg(feature = "fido-support")]
-/// For listing all connected FIDO2 devices. The pathes returned
-/// in the descriptors can be used in private keys to route calls
-/// to the correct device.
-pub fn list_fido_devices() -> Vec<FidoDeviceDescriptor> {
-    use ctap_hid_fido2::HidParam;
-
-    ctap_hid_fido2::get_fidokey_devices()
-        .into_iter()
-        .filter_map(|x| match x.param {
-            HidParam::Path(p) => Some(FidoDeviceDescriptor {
-                path: p,
-                product_string: x.product_string,
-            }),
-            _ => None,
-        })
-        .collect()
-}
-
-#[cfg(feature = "fido-support")]
-/// Determine if the given device path requires a pin
-pub fn device_requires_pin(path: &str) -> Result<bool, Error> {
-    use ctap_hid_fido2::{fidokey::get_info::InfoOption, Cfg, FidoKeyHid, HidParam};
-
-    let device = match FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init()) {
-        Ok(dev) => dev,
-        Err(e) => return Err(Error::FidoError(e.to_string())),
-    };
-
-    match device.enable_info_option(&InfoOption::ClientPin) {
-        Ok(Some(result)) => Ok(result),
-        Ok(None) => return Err(Error::FidoError("Could not get pin status".to_owned())),
-        Err(e) => return Err(Error::FidoError(e.to_string())),
-    }
-}
-
-#[cfg(feature = "fido-support")]
-/// Determine if the given device path requires a pin
-pub fn device_pin_retries(path: &str) -> Result<i32, Error> {
-    use ctap_hid_fido2::{Cfg, FidoKeyHid, HidParam};
-
-    let device = match FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init()) {
-        Ok(dev) => dev,
-        Err(e) => return Err(Error::FidoError(e.to_string())),
-    };
-
-    device
-        .get_pin_retries()
-        .map_err(|e| Error::FidoError(e.to_string()))
-}

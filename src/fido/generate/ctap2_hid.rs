@@ -41,10 +41,10 @@ pub fn generate_new_ssh_key(
         args.without_pin_and_uv()
     };
 
-    let device = device.map_err(|e| Error::FidoError(e.to_string()))?;
+    let device = device.map_err(|e| Error::FidoError(FidoError::Unknown(e.to_string())))?;
     let att = device
         .make_credential_with_args(&args.build())
-        .map_err(|e| Error::FidoError(e.to_string()))?;
+        .map_err(|e| Error::FidoError(FidoError::Unknown(e.to_string())))?;
 
     let mut ret = 0x0;
     if att.flags_user_present_result {
