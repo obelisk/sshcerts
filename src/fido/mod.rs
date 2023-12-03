@@ -1,6 +1,3 @@
-#[cfg(any(feature = "fido-support"))]
-use crate::error::Error;
-
 #[cfg(any(feature = "fido-support", feature = "fido-support-mozilla"))]
 /// For generating new SSH keys on FIDO devices
 pub mod generate;

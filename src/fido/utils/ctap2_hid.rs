@@ -1,17 +1,6 @@
-#[cfg(any(feature = "fido-support"))]
-/// Defines a FIDO device with name and path. The path can be
-/// used in PrivateKey to route the request to a particular device.
-///
-/// These paths are only valid while a device is connected continuously.
-/// Disconnected and reconnecting will result in a new path and a key
-/// must be updated accordingly.
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct FidoDeviceDescriptor {
-    /// Product name that the device reports
-    pub product_string: String,
-    /// Path to be used for connecting to this particular device
-    pub path: String,
-}
+use super::FidoDeviceDescriptor;
+use crate::error::Error;
+use crate::fido::Error as FidoError;
 
 #[cfg(feature = "fido-support")]
 /// For listing all connected FIDO2 devices. The pathes returned
@@ -39,13 +28,17 @@ pub fn device_requires_pin(path: &str) -> Result<bool, Error> {
 
     let device = match FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init()) {
         Ok(dev) => dev,
-        Err(e) => return Err(Error::FidoError(e.to_string())),
+        Err(e) => return Err(Error::FidoError(FidoError::Unknown(e.to_string()))),
     };
 
     match device.enable_info_option(&InfoOption::ClientPin) {
         Ok(Some(result)) => Ok(result),
-        Ok(None) => return Err(Error::FidoError("Could not get pin status".to_owned())),
-        Err(e) => return Err(Error::FidoError(e.to_string())),
+        Ok(None) => {
+            return Err(Error::FidoError(FidoError::Unknown(
+                "Could not get pin status".to_owned(),
+            )))
+        }
+        Err(e) => return Err(Error::FidoError(FidoError::Unknown(e.to_string()))),
     }
 }
 
@@ -56,10 +49,10 @@ pub fn device_pin_retries(path: &str) -> Result<i32, Error> {
 
     let device = match FidoKeyHid::new(&[HidParam::Path(path.to_string())], &Cfg::init()) {
         Ok(dev) => dev,
-        Err(e) => return Err(Error::FidoError(e.to_string())),
+        Err(e) => return Err(Error::FidoError(FidoError::Unknown(e.to_string()))),
     };
 
     device
         .get_pin_retries()
-        .map_err(|e| Error::FidoError(e.to_string()))
+        .map_err(|e| Error::FidoError(FidoError::Unknown(e.to_string())))
 }

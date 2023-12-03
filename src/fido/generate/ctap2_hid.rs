@@ -14,6 +14,8 @@ use crate::{
     PrivateKey,
 };
 
+use crate::fido::Error as FidoError;
+
 /// Generate a new SSH key on a FIDO/U2F device
 pub fn generate_new_ssh_key(
     application: &str,
