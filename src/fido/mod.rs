@@ -51,7 +51,9 @@ impl std::fmt::Display for Error {
 pub mod parsing;
 
 /// Contains utility functions for dealing with FIDO keys
+#[cfg(any(feature = "fido-support", feature = "fido-support-mozilla"))]
 mod utils;
+#[cfg(any(feature = "fido-support", feature = "fido-support-mozilla"))]
 pub use utils::*;
 
 #[cfg(any(
