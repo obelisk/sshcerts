@@ -35,9 +35,6 @@ use aes::{
 #[cfg(feature = "encrypted-keys")]
 use bcrypt_pbkdf::bcrypt_pbkdf;
 
-#[cfg(feature = "fido-support")]
-use crate::fido::signing;
-
 /// RSA private key.
 #[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct RsaPrivateKey {
@@ -285,11 +282,11 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 format_signature_for_ssh(&self.pubkey, key_pair.sign(buffer).as_ref())
             }
-            #[cfg(feature = "fido-support")]
+            #[cfg(any(feature = "fido-support", feature = "fido-support-mozilla"))]
             PrivateKeyKind::Ed25519Sk(_) | PrivateKeyKind::EcdsaSk(_) => {
-                signing::sign_with_private_key(&self, buffer)
+                crate::fido::signing::sign_with_private_key(&self, buffer)
             }
-            #[cfg(not(feature = "fido-support"))]
+            #[cfg(not(any(feature = "fido-support", feature = "fido-support-mozilla")))]
             PrivateKeyKind::Ed25519Sk(_) | PrivateKeyKind::EcdsaSk(_) => None,
         }
     }

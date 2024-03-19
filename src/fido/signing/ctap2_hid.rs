@@ -31,7 +31,7 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
 
     let sk_application = match sk_application {
         Some(sk) => sk,
-        None => return None
+        None => return None,
     };
 
     let device = if let Some(path) = &device_path {

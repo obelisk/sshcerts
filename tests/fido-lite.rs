@@ -1,6 +1,8 @@
 use sshcerts::fido::verification::Transport;
 use sshcerts::fido::*;
 
+use ring::digest;
+
 const YUBIKEY_BIO_AUTH_DATA_ED25519: [u8; 225] = [
     159, 134, 208, 129, 136, 76, 125, 101, 154, 47, 234, 160, 197, 90, 208, 21, 163, 191, 79, 27,
     43, 11, 130, 44, 209, 93, 108, 21, 176, 240, 10, 8, 69, 0, 0, 0, 4, 216, 82, 45, 159, 87, 91,
@@ -126,10 +128,11 @@ const YUBIKEY_5C_NFC_INTERMEDIATE: [u8; 705] = [
 
 #[test]
 fn verify_and_parse_auth_data_yubikey_bio() {
+    let hash_challenge = digest::digest(&digest::SHA256, &YUBIKEY_BIO_CHALLENGE_ED25519);
     let verified_data = verification::verify_auth_data(
         &YUBIKEY_BIO_AUTH_DATA_ED25519,
         &YUBIKEY_BIO_AUTH_SIG_ED25519,
-        &YUBIKEY_BIO_CHALLENGE_ED25519,
+        hash_challenge.as_ref(),
         -7,
         &YUBIKEY_BIO_INTERMEDIATE,
         None,
@@ -157,10 +160,11 @@ fn verify_and_parse_auth_data_yubikey_bio() {
 
 #[test]
 fn verify_and_parse_auth_data_yubikey_5c_nfc() {
+    let hash_challenge = digest::digest(&digest::SHA256, &YUBIKEY_5C_NFC_CHALLENGE_ED25519);
     let verified_data = verification::verify_auth_data(
         &YUBIKEY_5C_NFC_AUTH_DATA_ED25519,
         &YUBIKEY_5C_NFC_AUTH_SIG_ED25519,
-        &YUBIKEY_5C_NFC_CHALLENGE_ED25519,
+        hash_challenge.as_ref(),
         -7,
         &YUBIKEY_5C_NFC_INTERMEDIATE,
         None,
