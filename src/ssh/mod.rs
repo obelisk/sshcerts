@@ -13,6 +13,7 @@ mod keytype;
 mod privkey;
 mod pubkey;
 mod reader;
+mod signature;
 mod writer;
 
 /// Types that implement this trait can be used to sign SSH certificates using
@@ -33,4 +34,5 @@ pub use self::pubkey::{
     RsaPublicKey,
 };
 pub use self::reader::Reader;
+pub use self::signature::{HashAlgorithm, SshSignature, VerifiedSshSignature};
 pub use self::writer::Writer;
