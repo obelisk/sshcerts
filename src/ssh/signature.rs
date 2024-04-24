@@ -277,6 +277,8 @@ pub(crate) fn verify_signature(
     let mut reader = Reader::new(&signature_buf);
     let sig_type = reader.read_string().and_then(|v| KeyType::from_name(&v))?;
 
+    // If these types don't match we can't continue verification as it's unclear
+    // what the correct type even is.
     if public_key.key_type.kind != sig_type.kind {
         return Err(Error::KeyTypeMismatch);
     }
@@ -299,7 +301,7 @@ pub(crate) fn verify_signature(
             // Read the S value
             let s_bytes = sig_reader.read_positive_mpint()?;
 
-            // (r/s)_bytes are user controlled so ensure maliciously signatures
+            // (r/s)_bytes are user controlled so ensure maliciously crafted signatures
             // can't cause integer underflow.
             if r_bytes.len() > len || s_bytes.len() > len {
                 return Err(Error::InvalidFormat);
@@ -317,6 +319,8 @@ pub(crate) fn verify_signature(
             let mut sig = r;
             sig.extend(s);
 
+            // If this this is a FIDO key, we follow a slightly different process that includes metadata
+            // from the key to create the signed data.
             if let Some(sk_application) = &key.sk_application {
                 let flags = reader.read_raw_bytes(1)?[0];
                 let signature_counter = reader.read_u32()?;
