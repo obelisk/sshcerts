@@ -16,8 +16,12 @@ fn ensure_verification_fail_ecdsa_256_bitflip() {
         .pubkey
         .clone();
 
-    let vs =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key));
+    let vs = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    );
 
     assert!(vs.is_err());
 }

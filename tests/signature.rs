@@ -70,9 +70,13 @@ fn check_verification_ed25519() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 }
 
 #[test]
@@ -86,9 +90,13 @@ fn check_verification_sk_ed25519() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 }
 
 #[test]
@@ -102,9 +110,13 @@ fn check_verification_ecdsa_256() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 }
 
 #[test]
@@ -118,9 +130,13 @@ fn check_verification_sk_ecdsa() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 }
 
 #[test]
@@ -134,9 +150,13 @@ fn check_verification_ecdsa_384() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 }
 
 #[test]
@@ -150,9 +170,13 @@ fn check_verification_rsa_2048() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 }
 
 #[test]
@@ -167,9 +191,13 @@ fn check_verification_rsa_sha2_256() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 }
 
 #[test]
@@ -184,9 +212,13 @@ fn check_verification_rsa_sha2_512() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 
     let signature =
         SshSignature::from_armored_string(include_str!("signatures/rsa-sha2-512-8192_Test.sig"))
@@ -198,7 +230,11 @@ fn check_verification_rsa_sha2_512() {
         .pubkey
         .clone();
 
-    let _verified_signature =
-        VerifiedSshSignature::from_ssh_signature(message.as_slice(), signature, Some(public_key))
-            .expect("Failed to verify signature");
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
 }

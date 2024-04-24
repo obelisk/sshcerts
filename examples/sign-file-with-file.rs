@@ -34,6 +34,14 @@ fn main() {
                 .required(true)
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("namespace")
+                .help("The signing namespace you'd like the signature to be in")
+                .long("namespace")
+                .short('n')
+                .default_value("file")
+                .takes_value(true),
+        )
         .get_matches();
 
     let mut private_key = PrivateKey::from_path(matches.value_of("sign").unwrap()).unwrap();
@@ -42,10 +50,13 @@ fn main() {
         private_key.set_pin(pin);
     }
 
+    let namespace = matches.value_of("namespace").unwrap();
+
     let contents = std::fs::read(matches.value_of("file").unwrap()).unwrap();
 
     let signature =
-        VerifiedSshSignature::new_with_private_key(&contents, "file", private_key, None).unwrap();
+        VerifiedSshSignature::new_with_private_key(&contents, namespace, private_key, None)
+            .unwrap();
 
     println!("{}", signature);
 }

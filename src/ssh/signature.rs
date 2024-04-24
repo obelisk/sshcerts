@@ -203,6 +203,7 @@ impl VerifiedSshSignature {
     pub fn from_ssh_signature(
         message: &[u8],
         ssh_signature: SshSignature,
+        namespace: &str,
         pub_key: Option<PublicKey>,
     ) -> Result<Self> {
         // If a public key is provided, then we will check the signature also contains that same
@@ -212,6 +213,10 @@ impl VerifiedSshSignature {
             if ssh_signature.pubkey != pub_key {
                 return Err(Error::InvalidSignature);
             }
+        }
+
+        if namespace != ssh_signature.namespace {
+            return Err(Error::InvalidSignature);
         }
 
         match verify_signature(
@@ -255,6 +260,7 @@ impl VerifiedSshSignature {
         VerifiedSshSignature::from_ssh_signature(
             message,
             ssh_signature,
+            namespace,
             Some(private_key.pubkey.clone()),
         )
     }

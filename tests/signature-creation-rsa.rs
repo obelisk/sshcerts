@@ -28,6 +28,7 @@ fn check_basic_creation_rsa_2048_1_full_loop() {
     let fl_vss = VerifiedSshSignature::from_ssh_signature(
         &message,
         SshSignature::from_armored_string(&armored_signature).unwrap(),
+        "file",
         Some(public_key),
     );
 

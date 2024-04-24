@@ -50,6 +50,7 @@ fn check_basic_creation_ed25519_full_loop() {
     let fl_vss = VerifiedSshSignature::from_ssh_signature(
         &message,
         SshSignature::from_armored_string(&armored_signature).unwrap(),
+        "file",
         Some(public_key),
     );
 
@@ -72,6 +73,7 @@ fn check_basic_creation_ecdsa_256_full_loop() {
     let fl_vss = VerifiedSshSignature::from_ssh_signature(
         &message,
         SshSignature::from_armored_string(&armored_signature).unwrap(),
+        "file",
         Some(public_key),
     );
 
@@ -94,6 +96,7 @@ fn check_basic_creation_ecdsa_384_full_loop() {
     let fl_vss = VerifiedSshSignature::from_ssh_signature(
         &message,
         SshSignature::from_armored_string(&armored_signature).unwrap(),
+        "file",
         Some(public_key),
     );
 
