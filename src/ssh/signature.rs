@@ -7,9 +7,9 @@ use ring::{
     },
 };
 
-use crate::{error::Error, ssh::Writer, PublicKey, Result};
+use crate::{error::Error, ssh::Writer, PrivateKey, PublicKey, Result};
 
-use super::{KeyType, PublicKeyKind, Reader};
+use super::{KeyType, PublicKeyKind, Reader, SSHCertificateSigner};
 
 /// The hash algorithm used to sign the data in the SshSignature
 #[derive(Debug)]
@@ -44,6 +44,34 @@ pub struct SshSignature {
     pub signature: Vec<u8>,
 }
 
+impl std::fmt::Display for SshSignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut writer = Writer::new();
+        writer.write_raw_bytes(&[0x53, 0x53, 0x48, 0x53, 0x49, 0x47]);
+        writer.write_u32(1);
+        writer.write_pub_key(&self.pubkey);
+        writer.write_string(&self.namespace);
+        writer.write_bytes(&[]);
+        writer.write_string(self.hash_algorithm.as_str());
+        writer.write_bytes(&self.signature);
+
+        let encoded = base64::encode(&writer.into_bytes());
+
+        let lines: Vec<_> = encoded
+            .chars()
+            .collect::<Vec<char>>()
+            .chunks(76)
+            .map(|chunk| chunk.into_iter().collect::<String>())
+            .collect();
+
+        write!(
+            f,
+            "-----BEGIN SSH SIGNATURE-----\n{}\n-----END SSH SIGNATURE-----",
+            lines.join("\n")
+        )
+    }
+}
+
 /// An SSH signature that has an attached message we've successfully
 /// verified against the signature.
 #[derive(Debug)]
@@ -52,6 +80,12 @@ pub struct VerifiedSshSignature {
     pub signature: SshSignature,
     /// The message that was signed
     pub message: Vec<u8>,
+}
+
+impl std::fmt::Display for VerifiedSshSignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self.signature)
+    }
 }
 
 /// Implement the SSHSIG specification as closely as possible:
@@ -191,6 +225,38 @@ impl VerifiedSshSignature {
             }),
             Err(_) => Err(Error::InvalidSignature),
         }
+    }
+
+    /// Create a new `VerifiedSshSignature` from a message, namespace, public key, and hash algorithm.
+    ///
+    /// This can then be exported into the armored SSHSignature format which is compatible with tools
+    /// like ssh-keygen.
+    pub fn new_with_private_key(
+        message: &[u8],
+        namespace: &str,
+        private_key: PrivateKey,
+        hash_algorithm: Option<HashAlgorithm>,
+    ) -> Result<Self> {
+        let hash_algorithm = hash_algorithm.unwrap_or(HashAlgorithm::Sha512);
+
+        let mut ssh_signature = SshSignature {
+            pubkey: private_key.pubkey.clone(),
+            namespace: namespace.to_string(),
+            hash_algorithm,
+            signature: vec![],
+        };
+
+        let tbs_message = ssh_signature.to_signed_format(message);
+
+        let signature = private_key.sign(&tbs_message).ok_or(Error::SigningError)?;
+
+        ssh_signature.signature = signature;
+
+        VerifiedSshSignature::from_ssh_signature(
+            message,
+            ssh_signature,
+            Some(private_key.pubkey.clone()),
+        )
     }
 }
 

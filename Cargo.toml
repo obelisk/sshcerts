@@ -142,3 +142,8 @@ required-features = ["fido-support-mozilla"]
 name = "yubikey-lite"
 path = "tests/yubikey-lite.rs"
 required-features = ["yubikey-lite"]
+
+[[test]]
+name = "signature-creation-rsa"
+path = "tests/signature-creation-rsa.rs"
+required-features = ["rsa-signing"]
