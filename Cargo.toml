@@ -108,7 +108,7 @@ name = "yk-provision"
 required-features = ["yubikey-support"]
 
 [[example]]
-name = "sign-with-yubikey"
+name = "sign-cert-with-yubikey"
 required-features = ["yubikey-support"]
 
 [[example]]
