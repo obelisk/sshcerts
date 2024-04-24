@@ -11,7 +11,7 @@ keywords = ["ssh", "yubikey", "certs", "certificates"]
 categories = ["authentication"]
 
 [features]
-default = ["rsa-signing", "experimental"]
+default = ["all"]
 
 all = [
     "encrypted-keys",
@@ -19,6 +19,13 @@ all = [
     "x509-support",
     "yubikey-support",
     "fido-support-mozilla",
+]
+
+all-but-fido = [
+    "encrypted-keys",
+    "rsa-signing",
+    "x509-support",
+    "yubikey-support",
 ]
 
 experimental = [
