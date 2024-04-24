@@ -6,7 +6,7 @@ use sshcerts::*;
 
 fn main() {
     env_logger::init();
-    let matches = Command::new("sign-with-file")
+    let matches = Command::new("sign-cert-with-file")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Mitchell Grenier <mitchell@confurious.io>")
         .about("Sign an OpenSSH private key with another OpenSSH private key")
