@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
+use ring::signature::Ed25519KeyPair;
 use ring::{rand, signature, signature::KeyPair};
 
 use zeroize::Zeroize;
@@ -258,7 +259,7 @@ impl super::SSHCertificateSigner for PrivateKey {
                     &key.key
                 };
                 let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(
-                    alg, key, pubkey, &rng
+                    alg, key, pubkey, &rng,
                 ) {
                     Ok(kp) => kp,
                     Err(_) => return None,
@@ -272,13 +273,11 @@ impl super::SSHCertificateSigner for PrivateKey {
                     _ => return None,
                 };
 
-                let key_pair = match signature::Ed25519KeyPair::from_seed_and_public_key(
-                    &key.key[..32],
-                    public_key,
-                ) {
-                    Ok(kp) => kp,
-                    Err(_) => return None,
-                };
+                let key_pair =
+                    match Ed25519KeyPair::from_seed_and_public_key(&key.key[..32], public_key) {
+                        Ok(kp) => kp,
+                        Err(_) => return None,
+                    };
 
                 format_signature_for_ssh(&self.pubkey, key_pair.sign(buffer).as_ref())
             }
@@ -448,7 +447,7 @@ impl PrivateKey {
                 // in code to parse it.
                 let seed: [u8; 32] = rand::generate(&rng).unwrap().expose();
                 let magic: [u8; 4] = rand::generate(&rng).unwrap().expose();
-                let public_key_bytes = ring::signature::Ed25519KeyPair::from_seed_unchecked(&seed)
+                let public_key_bytes = Ed25519KeyPair::from_seed_unchecked(&seed)
                     .unwrap()
                     .public_key()
                     .as_ref()
