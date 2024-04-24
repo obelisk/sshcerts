@@ -11,9 +11,9 @@ impl super::Yubikey {
     pub fn ssh_cert_fetch_pubkey(&mut self, slot: &SlotId) -> Result<PublicKey> {
         match extract_ssh_pubkey_from_x509_certificate(&self.fetch_certificate(slot)?) {
             Ok(public_key) => Ok(public_key),
-            Err(crate::error::Error::ParsingError) => Err(super::Error::ParsingError),
-            Err(crate::error::Error::KeyTypeMismatch) => Err(super::Error::WrongKeyType),
-            Err(_) => Err(super::Error::Unsupported),
+            Err(crate::error::Error::ParsingError) => Err(Error::ParsingError),
+            Err(crate::error::Error::KeyTypeMismatch) => Err(Error::WrongKeyType),
+            Err(_) => Err(Error::Unsupported),
         }
     }
 
@@ -46,7 +46,7 @@ impl super::Yubikey {
 
         match crate::utils::format_signature_for_ssh(&pub_key, &buf) {
             Some(x) => Ok(x),
-            None => Err(super::Error::ParsingError),
+            None => Err(Error::ParsingError),
         }
     }
 }
