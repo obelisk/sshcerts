@@ -40,8 +40,8 @@ jobs:
     - name: Run tests
       run: cargo test --no-default-features --features="encrypted-keys,rsa-signing,x509-support" --verbose
     
-  ubuntu-build-check-ctap2:
-    runs-on: ubuntu-latest
+  macos-build-check-ctap2:
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -50,8 +50,8 @@ jobs:
     - name: Run tests
       run: cargo test --no-default-features --features="all-but-fido, fido-support" --verbose
 
-  ubuntu-build-check-mozilla:
-    runs-on: ubuntu-latest
+  macos-build-check-mozilla:
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v2
