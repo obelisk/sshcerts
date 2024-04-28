@@ -22,7 +22,8 @@ pub struct AllowedSigner {
     /// Specifies a list of namespaces that are accepted for this key.
     /// This is a standard option.
     ///
-    /// Note: The specification allows spaces inside double quotes. However, this is not supported.
+    /// Note: The specification allows spaces inside double quotes. However, in this
+    /// implementation, spaces would cause the parser to reject the input.
     pub namespaces: Option<Vec<String>>,
 
     /// Time at or after which the key is valid.
