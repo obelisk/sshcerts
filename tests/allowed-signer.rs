@@ -59,6 +59,19 @@ fn parse_bad_allowed_signer_with_invalid_option() {
 }
 
 #[test]
+fn parse_bad_allowed_signer_with_invalid_namespaces() {
+    let allowed_signer =
+        "mitchell@confurious.io namespaces=a\"test\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
+    let allowed_signer = AllowedSigner::from_string(allowed_signer);
+    assert!(allowed_signer.is_err());
+
+    let allowed_signer =
+        "mitchell@confurious.io namespaces=\"tester,thanh\"\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
+    let allowed_signer = AllowedSigner::from_string(allowed_signer);
+    assert!(allowed_signer.is_err());
+}
+
+#[test]
 fn parse_bad_allowed_signer_with_invalid_principals() {
     let allowed_signer =
         "mitchell@confurious.io ,thanh@timweri.me option=test ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
@@ -70,6 +83,14 @@ fn parse_bad_allowed_signer_with_invalid_principals() {
 fn parse_bad_allowed_signer_with_timestamp_option() {
     let allowed_signer =
         "mitchell@confurious.io valid-before=-143 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
+    let allowed_signer = AllowedSigner::from_string(allowed_signer);
+    assert!(allowed_signer.is_err());
+}
+
+#[test]
+fn parse_bad_allowed_signer_with_conflicting_timestamps() {
+    let allowed_signer =
+        "mitchell@confurious.io valid-before=143 valid-after=145 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
     let allowed_signer = AllowedSigner::from_string(allowed_signer);
     assert!(allowed_signer.is_err());
 }

@@ -4,7 +4,7 @@ use sshcerts::ssh::AllowedSigners;
 fn parse_good_allowed_signers() {
     let allowed_signers = AllowedSigners::from_path("tests/allowed_signers/good_allowed_signers");
     assert!(allowed_signers.is_ok());
-    let allowed_signers = allowed_signers.unwrap().allowed_signers;
+    let AllowedSigners(allowed_signers) = allowed_signers.unwrap();
     assert_eq!(allowed_signers.len(), 2);
 
     assert_eq!(

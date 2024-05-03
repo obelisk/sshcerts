@@ -23,7 +23,7 @@ pub struct AllowedSigner {
     /// This is a standard option.
     ///
     /// Note: The specification allows spaces inside double quotes. However, in this
-    /// implementation, spaces would cause the parser to reject the input.
+    ///       implementation, we don't support this.
     pub namespaces: Option<Vec<String>>,
 
     /// Time at or after which the key is valid.
@@ -42,10 +42,7 @@ pub struct AllowedSigner {
 /// Please refer to [ssh-keygen-1.ALLOWED_SIGNERS] for more details about the format.
 /// [ssh-keygen-1.ALLOWED_SIGNERS]: https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS
 #[derive(Debug, PartialEq, Eq)]
-pub struct AllowedSigners {
-    /// A collection of allowed signers
-    pub allowed_signers: Vec<AllowedSigner>,
-}
+pub struct AllowedSigners(pub Vec<AllowedSigner>);
 
 impl AllowedSigner {
     /// Parse an allowed signer entry from a given string.
@@ -67,15 +64,15 @@ impl AllowedSigner {
 
         // An allowed signer must contian at least 3 parts: principals, key type and pubkey data
         if parts.len() < 3 {
-            return Err(Error::InvalidFormat);
+            return Err(Error::InvalidAllowedSigner("must include at least 3 parts (principals, keytype, publickey)".to_string()));
         }
 
-        let principals = parts.pop_front().ok_or(Error::InvalidFormat)?;
+        let principals = parts.pop_front().ok_or(Error::ParsingError)?;
         let principals: Vec<&str> = principals.split(',').collect();
         let principals = principals.iter().map(|s| s.to_string()).collect();
 
-        let key_data = parts.pop_back().ok_or(Error::InvalidFormat)?;
-        let kt = parts.pop_back().ok_or(Error::InvalidFormat)?;
+        let key_data = parts.pop_back().ok_or(Error::ParsingError)?;
+        let kt = parts.pop_back().ok_or(Error::ParsingError)?;
         let key = PublicKey::from_string(format!("{} {}", kt, key_data).as_str())?;
 
         let mut cert_authority = false;
@@ -93,10 +90,11 @@ impl AllowedSigner {
                 "cert-authority" => cert_authority = true,
                 "namespaces" => {
                     if namespaces.is_some() {
-                        return Err(Error::InvalidFormat);
+                        return Err(Error::InvalidAllowedSigner("multiple \"namespaces\" clauses".to_string()));
                     }
-                    let namespaces_inner: Vec<&str> = value.trim_matches('"')
-                            .split(',')
+                    let value = dequote_option(value)
+                        .map_err(|_| Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()))?;
+                    let namespaces_inner: Vec<&str> = value.split(',')
                             .collect();
                     namespaces = Some(
                         namespaces_inner.iter()
@@ -106,18 +104,27 @@ impl AllowedSigner {
                 },
                 "valid-after" => {
                     if valid_after.is_some() {
-                        return Err(Error::InvalidFormat);
+                        return Err(Error::InvalidAllowedSigner("multiple \"valid-after\" clauses".to_string()));
                     }
-                    valid_after = Some(parse_timestamp(value)?);
+                    valid_after = Some(parse_timestamp(value)
+                        .map_err(|_| Error::InvalidAllowedSigner("invalid \"valid-after\" time".to_string()))?);
                 },
                 "valid-before" => {
                     if valid_before.is_some() {
-                        return Err(Error::InvalidFormat);
+                        return Err(Error::InvalidAllowedSigner("multiple \"valid-before\" clauses".to_string()));
                     }
-                    valid_before = Some(parse_timestamp(value)?);
+                    valid_before = Some(parse_timestamp(value)
+                        .map_err(|_| Error::InvalidAllowedSigner("invalid \"valid-before\" time".to_string()))?);
                 },
-                _ => return Err(Error::InvalidFormat),
+                _ => return Err(Error::InvalidAllowedSigner(format!("Unknown option {}", key))),
             };
+        }
+
+        // Timestamp sanity check
+        if let (Some(valid_before), Some(valid_after)) = (valid_before, valid_after) {
+            if valid_before <= valid_after {
+                return Err(Error::InvalidAllowedSigner("\"valid-before\" time is before \"valid-after\"".to_string()));
+            }
         }
 
         Ok(AllowedSigner{
@@ -203,11 +210,15 @@ impl AllowedSigners {
             if line.is_empty() || line.starts_with("#") {
                 continue;
             }
-            let allowed_signer = AllowedSigner::from_string(line)?;
-            allowed_signers.push(allowed_signer);
+            
+            // Remove everything from the first #
+            if let Some(line) = line.split('#').next() {
+                let allowed_signer = AllowedSigner::from_string(line)?;
+                allowed_signers.push(allowed_signer);
+            }
         }
 
-        Ok(AllowedSigners{allowed_signers})
+        Ok(AllowedSigners(allowed_signers))
     }
 }
 
@@ -216,4 +227,22 @@ impl AllowedSigners {
 fn parse_timestamp(s: &str) -> Result<u64> {
     let s = s.trim_matches('"');
     Ok(s.parse::<u64>().map_err(|_| Error::InvalidFormat)?)
+}
+
+/// Remove enclosing pair of double quotes if applicable.
+/// If enclosing double quotes are malformed, return error.
+/// If the content inside the quotes contains quotes, return error.
+fn dequote_option(s: &str) -> Result<String> {
+    let mut s = s.to_string();
+    if s.starts_with('"') &&  s.ends_with('"') {
+        s = s[1..s.len() - 1].to_string();
+    } else if s.starts_with('"') || s.ends_with('"') {
+        return Err(Error::InvalidFormat);
+    }
+
+    if s.contains('"') {
+        return Err(Error::InvalidFormat);
+    }
+
+    Ok(s)
 }
