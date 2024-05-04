@@ -20,9 +20,6 @@ pub struct AllowedSigner {
 
     /// Specifies a list of namespaces that are accepted for this key.
     /// This is a standard option.
-    ///
-    /// Note: The specification allows spaces inside double quotes. However, in this
-    ///       implementation, we don't support spaces.
     pub namespaces: Option<Vec<String>>,
 
     /// Time at or after which the key is valid.
@@ -61,7 +58,6 @@ impl AllowedSigner {
     pub fn from_string(s: &str) -> Result<AllowedSigner> {
         let (mut head, mut rest) = s.split_once(char::is_whitespace)
             .ok_or(Error::InvalidAllowedSigner("missing key data".to_string()))?;
-        rest = rest.trim_start();
 
         let principals: Vec<&str> = head.split(',').collect();
         if principals.iter().any(|p| p.is_empty()) {
@@ -74,9 +70,11 @@ impl AllowedSigner {
         let mut valid_after = None;
         let mut valid_before = None;
 
+        // We need to trim here and below since split_once(char::is_whitespace) treats
+        // consecutive whitespaces as separate delimiters
+        rest = rest.trim_start();
         (head, rest) = rest.split_once(char::is_whitespace)
                 .ok_or(Error::InvalidAllowedSigner("missing key data".to_string()))?;
-        rest = rest.trim_start();
         loop {
             // Check if this is a valid option
             let (option_key, option_value) = match head.split_once('=') {
@@ -89,12 +87,14 @@ impl AllowedSigner {
                     if namespaces.is_some() {
                         return Err(Error::InvalidAllowedSigner("multiple \"namespaces\" clauses".to_string()));
                     }
-                    let option_value = dequote_option(option_value)
-                        .map_err(|_| Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()))?;
-                    let namespaces_inner: Vec<&str> = option_value.split(',')
+
+                    let (namespaces_value, rest_) = parse_namespaces(option_value, &mut rest)?;
+                    rest = rest_;
+                    let namespaces_value: Vec<&str> = namespaces_value.split(',')
+                        .filter(|e| !e.is_empty())
                         .collect();
                     namespaces = Some(
-                        namespaces_inner.iter()
+                        namespaces_value.iter()
                             .map(|s| s.to_string())
                             .collect()
                     );
@@ -117,13 +117,14 @@ impl AllowedSigner {
                 _ => break,
             };
 
+            rest = rest.trim_start();
             (head, rest) = rest.split_once(char::is_whitespace)
                 .ok_or(Error::InvalidAllowedSigner("missing key data".to_string()))?;
-            rest = rest.trim_start();
         }
 
         let kt = head;
 
+        rest = rest.trim_start();
         (head, rest) = match rest.split_once(char::is_whitespace) {
             Some(v) => v,
             None => (rest, ""),
@@ -242,20 +243,47 @@ fn parse_timestamp(s: &str) -> Result<u64> {
     Ok(s.parse::<u64>().map_err(|_| Error::InvalidFormat)?)
 }
 
-/// Remove enclosing pair of double quotes if applicable.
-/// If enclosing double quotes are malformed, return error.
-/// If the content inside the quotes contains quotes, return error.
-fn dequote_option(s: &str) -> Result<String> {
-    let mut s = s.to_string();
-    if s.starts_with('"') &&  s.ends_with('"') {
-        s = s[1..s.len() - 1].to_string();
-    } else if s.starts_with('"') || s.ends_with('"') {
-        return Err(Error::InvalidFormat);
+/// Parse the namespaces value.
+/// We have `namespaces=<first_part> <rest>`.
+/// If `first_part` starts with " but does not have a closing ", we will try to find the closing "
+/// in `rest`.
+fn parse_namespaces<'a>(first_part: &str, rest: &'a str) -> Result<(String, &'a str)> {
+    let mut rest = rest;
+    if !first_part.starts_with('"') {
+        if first_part.contains('"') {
+            return Err(Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()));
+        } else {
+            return Ok((first_part.to_string(), rest));
+        }
     }
 
-    if s.contains('"') {
-        return Err(Error::InvalidFormat);
+    // Here, we begins dequoting
+    // First, we remove the opening "
+    let (_, first_part) = first_part.split_once('"')
+        .ok_or(Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()))?;
+    
+    // We find the closing " in first_part
+    let namespaces_value = if let Some(v) = first_part.split_once('"') {
+        if !v.1.is_empty() {
+            return Err(Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()));
+        }
+        v.0.to_string()
+    } else {
+        let (second_part, rest_) = rest.split_once('"')
+            .ok_or(Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()))?;
+        // There must be spaces after the closing "
+        if !rest_.starts_with(char::is_whitespace) {
+            return Err(Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()));
+        }
+        rest = rest_.trim_start();
+
+        format!("{} {}", first_part, second_part)
+    };
+
+    // There should be no " after dequoting
+    if namespaces_value.contains('"') {
+        return Err(Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()));
     }
 
-    Ok(s)
+    Ok((namespaces_value, rest))
 }

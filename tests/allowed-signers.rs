@@ -5,7 +5,7 @@ fn parse_good_allowed_signers() {
     let allowed_signers = AllowedSigners::from_path("tests/allowed_signers/good_allowed_signers");
     assert!(allowed_signers.is_ok());
     let AllowedSigners(allowed_signers) = allowed_signers.unwrap();
-    assert_eq!(allowed_signers.len(), 2);
+    assert_eq!(allowed_signers.len(), 3);
 
     assert_eq!(
         allowed_signers[0].key.fingerprint().to_string(),
@@ -31,4 +31,14 @@ fn parse_good_allowed_signers() {
     );
     assert!(allowed_signers[1].valid_after.is_none());
     assert_eq!(allowed_signers[1].valid_before, Some(123u64));
+
+    assert_eq!(
+        allowed_signers[2].namespaces, 
+        Some(vec![
+            "thanh".to_string(),
+            " ".to_string(),
+            "mitchell mitchell".to_string(),
+            " andrew   andrew".to_string(),
+        ]),
+    );
 }

@@ -3,3 +3,4 @@ mitchell@confurious.io ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf
 # Empty lines are also ignored
 
 mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces="thanh,#mitchell" valid-before="123" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5  # End of line comment is ignored
+mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces="thanh, ,mitchell mitchell, andrew   andrew" valid-before="123" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5
