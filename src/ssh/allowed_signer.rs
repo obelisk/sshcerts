@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
@@ -23,7 +22,7 @@ pub struct AllowedSigner {
     /// This is a standard option.
     ///
     /// Note: The specification allows spaces inside double quotes. However, in this
-    ///       implementation, we don't support this.
+    ///       implementation, we don't support spaces.
     pub namespaces: Option<Vec<String>>,
 
     /// Time at or after which the key is valid.
@@ -60,42 +59,40 @@ impl AllowedSigner {
     /// println!("{:?}", allowed_signer);
     /// ```
     pub fn from_string(s: &str) -> Result<AllowedSigner> {
-        let mut parts: VecDeque<&str> = s.split_whitespace().collect();
+        let (mut head, mut rest) = s.split_once(char::is_whitespace)
+            .ok_or(Error::InvalidAllowedSigner("missing key data".to_string()))?;
+        rest = rest.trim_start();
 
-        // An allowed signer must contian at least 3 parts: principals, key type and pubkey data
-        if parts.len() < 3 {
-            return Err(Error::InvalidAllowedSigner("must include at least 3 parts (principals, keytype, publickey)".to_string()));
+        let principals: Vec<&str> = head.split(',').collect();
+        if principals.iter().any(|p| p.is_empty()) {
+            return Err(Error::InvalidAllowedSigner("principal cannot be empty".to_string()));
         }
-
-        let principals = parts.pop_front().ok_or(Error::ParsingError)?;
-        let principals: Vec<&str> = principals.split(',').collect();
         let principals = principals.iter().map(|s| s.to_string()).collect();
-
-        let key_data = parts.pop_back().ok_or(Error::ParsingError)?;
-        let kt = parts.pop_back().ok_or(Error::ParsingError)?;
-        let key = PublicKey::from_string(format!("{} {}", kt, key_data).as_str())?;
 
         let mut cert_authority = false;
         let mut namespaces = None;
         let mut valid_after = None;
         let mut valid_before = None;
 
-        for option in parts {
-            let option = option.to_lowercase();
-            let (key, value) = match option.split_once('=') {
+        (head, rest) = rest.split_once(char::is_whitespace)
+                .ok_or(Error::InvalidAllowedSigner("missing key data".to_string()))?;
+        rest = rest.trim_start();
+        loop {
+            // Check if this is a valid option
+            let (option_key, option_value) = match head.split_once('=') {
                 Some(v) => v,
-                None => (option.as_str(), ""),
+                None => (head, ""),
             };
-            match key {
+            match option_key.to_lowercase().as_str() {
                 "cert-authority" => cert_authority = true,
                 "namespaces" => {
                     if namespaces.is_some() {
                         return Err(Error::InvalidAllowedSigner("multiple \"namespaces\" clauses".to_string()));
                     }
-                    let value = dequote_option(value)
+                    let option_value = dequote_option(option_value)
                         .map_err(|_| Error::InvalidAllowedSigner("invalid \"namespaces\" clause".to_string()))?;
-                    let namespaces_inner: Vec<&str> = value.split(',')
-                            .collect();
+                    let namespaces_inner: Vec<&str> = option_value.split(',')
+                        .collect();
                     namespaces = Some(
                         namespaces_inner.iter()
                             .map(|s| s.to_string())
@@ -106,25 +103,46 @@ impl AllowedSigner {
                     if valid_after.is_some() {
                         return Err(Error::InvalidAllowedSigner("multiple \"valid-after\" clauses".to_string()));
                     }
-                    valid_after = Some(parse_timestamp(value)
+                    valid_after = Some(parse_timestamp(option_value)
                         .map_err(|_| Error::InvalidAllowedSigner("invalid \"valid-after\" time".to_string()))?);
                 },
                 "valid-before" => {
                     if valid_before.is_some() {
                         return Err(Error::InvalidAllowedSigner("multiple \"valid-before\" clauses".to_string()));
                     }
-                    valid_before = Some(parse_timestamp(value)
+                    valid_before = Some(parse_timestamp(option_value)
                         .map_err(|_| Error::InvalidAllowedSigner("invalid \"valid-before\" time".to_string()))?);
                 },
-                _ => return Err(Error::InvalidAllowedSigner(format!("Unknown option {}", key))),
+                // If option_key does not match any valid option, we test if it's the key data
+                _ => break,
             };
+
+            (head, rest) = rest.split_once(char::is_whitespace)
+                .ok_or(Error::InvalidAllowedSigner("missing key data".to_string()))?;
+            rest = rest.trim_start();
         }
+
+        let kt = head;
+
+        (head, rest) = match rest.split_once(char::is_whitespace) {
+            Some(v) => v,
+            None => (rest, ""),
+        };
+        let key_data = head;
+
+        let key = PublicKey::from_string(format!("{} {}", kt, key_data).as_str())?;
 
         // Timestamp sanity check
         if let (Some(valid_before), Some(valid_after)) = (valid_before, valid_after) {
             if valid_before <= valid_after {
                 return Err(Error::InvalidAllowedSigner("\"valid-before\" time is before \"valid-after\"".to_string()));
             }
+        }
+
+        // After key data, there must be only comment or nothing
+        rest = rest.trim_start();
+        if !rest.is_empty() && !rest.starts_with('#') {
+            return Err(Error::InvalidAllowedSigner("unexpected data after key data".to_string()));
         }
 
         Ok(AllowedSigner{
@@ -205,17 +223,12 @@ impl AllowedSigners {
     pub fn from_string(s: &str) -> Result<AllowedSigners> {
         let mut allowed_signers = Vec::new();
 
-        for line in s.split('\n') {
+        for line in s.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with("#") {
                 continue;
             }
-            
-            // Remove everything from the first #
-            if let Some(line) = line.split('#').next() {
-                let allowed_signer = AllowedSigner::from_string(line)?;
-                allowed_signers.push(allowed_signer);
-            }
+            allowed_signers.push(AllowedSigner::from_string(line)?);
         }
 
         Ok(AllowedSigners(allowed_signers))
