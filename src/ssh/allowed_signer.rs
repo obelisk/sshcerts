@@ -111,12 +111,9 @@ impl AllowedSigner {
         let mut valid_after = None;
         let mut valid_before = None;
 
-        println!("principals: {:?}", principals);
-
         let kt = loop {
             let option = tokenizer.next(false)?
                 .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingKey))?;
-            println!("option: {}", option);
 
             let (option_key, option_value) = match option.split_once('=') {
                 Some(v) => v,
@@ -299,21 +296,27 @@ struct AllowedSignerSplitter {
 }
 
 impl AllowedSignerSplitter {
-    /// Split the string by delimiter but keep the delimiter as a separate token.
+    /// Split the string by delimiters but keep the delimiters.
     pub(in self) fn new(s: &str) -> Self {
         let mut buffer = Vec::new();
         let mut last = 0;
+
         for (index, matched) in s.match_indices([' ', '"', '#']) {
+            // Push the new text before the delimiter
             if last != index {
                 buffer.push(s[last..index].to_owned());
             }
+            // Push the delimiter
             buffer.push(matched.to_owned());
             last = index + matched.len();
         }
+
+        // Push the remaining text
         if last < s.len() {
             buffer.push(s[last..].to_owned());
         }
 
+        // We parse from left to right so reversing allow us to use Vec's last() and pop()
         buffer.reverse();
 
         Self { buffer }

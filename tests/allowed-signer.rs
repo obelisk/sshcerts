@@ -5,7 +5,6 @@ fn parse_good_allowed_signer() {
     let allowed_signer =
         "mitchell@confurious.io ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
     let allowed_signer = AllowedSigner::from_string(allowed_signer);
-    println!("{:?}", allowed_signer);
     assert!(allowed_signer.is_ok());
     let allowed_signer = allowed_signer.unwrap();
     assert_eq!(
@@ -27,7 +26,6 @@ fn parse_good_allowed_signer_with_quoted_principals() {
     let allowed_signer =
         "\"mitchell@confurious.io,mitchell\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
     let allowed_signer = AllowedSigner::from_string(allowed_signer);
-    println!("{:?}", allowed_signer);
     assert!(allowed_signer.is_ok());
     let allowed_signer = allowed_signer.unwrap();
     assert_eq!(
@@ -49,7 +47,6 @@ fn parse_good_allowed_signer_with_options() {
     let allowed_signer =
         "mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces=\"thanh,mitchell\" valid-before=\"123\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
     let allowed_signer = AllowedSigner::from_string(allowed_signer);
-    println!("{:?}", allowed_signer);
     assert!(allowed_signer.is_ok());
     let allowed_signer = allowed_signer.unwrap();
     assert_eq!(allowed_signer.key.fingerprint().to_string(), "SHA256:QAtqtvvCePelMMUNPP7madH2zNa1ATxX1nt9L/0C5+M");
