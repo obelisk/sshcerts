@@ -24,7 +24,7 @@ pub trait SSHCertificateSigner {
     fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>>;
 }
 
-pub use self::allowed_signer::{AllowedSigner, AllowedSigners};
+pub use self::allowed_signer::{AllowedSigner, AllowedSigners, AllowedSignerParsingError};
 pub use self::cert::{CertType, Certificate};
 pub use self::keytype::{Curve, CurveKind, KeyType, KeyTypeKind};
 pub use self::privkey::{
