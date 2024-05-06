@@ -293,6 +293,11 @@ impl AllowedSigners {
 }
 
 /// A type used to split the allowed signer segments, abstracting out the handling of double quotes.
+/// The splitter is highly aware of the allowed_signer format and will catch certain invalid
+/// formats.
+///
+/// For example: "principals   option1=\"value1   value2\" option2 option3=value kt key_data" is split into
+/// ["principals", "option1=\"value1   value2\"", "option2", "option3=value", "kt", "key_data"]
 struct AllowedSignerSplitter {
     /// A buffer of remaining tokens in reverse order.
     buffer: Vec<String>,
