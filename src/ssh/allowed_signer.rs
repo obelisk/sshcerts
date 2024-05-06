@@ -3,6 +3,9 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use chrono::prelude::Local;
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+
 use super::pubkey::PublicKey;
 use crate::{error::Error, Result};
 
@@ -23,6 +26,8 @@ pub enum AllowedSignerParsingError {
     InvalidOption(String),
     /// Invalid key
     InvalidKey,
+    /// Invalid timestamp
+    InvalidTimestamp,
     /// valid-before and valid-after are conflicting
     InvalidTimestamps,
     /// Unexpected end of allowed signer
@@ -39,6 +44,7 @@ impl fmt::Display for AllowedSignerParsingError {
             AllowedSignerParsingError::DuplicateOptions(ref v) => write!(f, "option {} specified more than once", v),
             AllowedSignerParsingError::InvalidOption(ref v) => write!(f, "invalid option {}", v),
             AllowedSignerParsingError::InvalidKey => write!(f, "invalid public key"),
+            AllowedSignerParsingError::InvalidTimestamp => write!(f, "invalid timestamp"),
             AllowedSignerParsingError::InvalidTimestamps => write!(f, "conflicting valid-before and valid-after options"),
             AllowedSignerParsingError::UnexpectedEnd => write!(f, "unexpected data at the end"),
         }
@@ -54,20 +60,16 @@ pub struct AllowedSigner {
     pub principals: Vec<String>,
 
     /// Indicates that this key is accepted as a CA.
-    /// This is a standard option.
     pub cert_authority: bool,
 
     /// Specifies a list of namespaces that are accepted for this key.
-    /// This is a standard option.
     pub namespaces: Option<Vec<String>>,
 
-    /// Time at or after which the key is valid.
-    /// This is a standard option.
-    pub valid_after: Option<u64>,
+    /// Time at or after which the key is valid, in local timezone.
+    pub valid_after: Option<i64>,
 
-    /// Time at or before which the key is valid.
-    /// This is a standard option.
-    pub valid_before: Option<u64>,
+    /// Time at or before which the key is valid, in local timezone.
+    pub valid_before: Option<i64>,
 
     /// Public key of the entry.
     pub key: PublicKey,
@@ -170,12 +172,13 @@ impl AllowedSigner {
         };
 
         let key_data = tokenizer.next(false)?
-            .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingKey))?;
+            .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidKey))?;
 
-        let key = PublicKey::from_string(format!("{} {}", kt, key_data).as_str())?;
+        let key = PublicKey::from_string(format!("{} {}", kt, key_data).as_str())
+            .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidKey))?;
 
         // Timestamp sanity check
-        if let (Some(valid_before), Some(valid_after)) = (valid_before, valid_after) {
+        if let (Some(valid_before), Some(valid_after)) = (&valid_before, &valid_after) {
             if valid_before <= valid_after {
                 return Err(
                     Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamps),
@@ -215,11 +218,11 @@ impl fmt::Display for AllowedSigner {
             output.push_str(&format!(" namespaces={}", namespaces.join(",")));
         }
 
-        if let Some(valid_after) = self.valid_after {
+        if let Some(ref valid_after) = self.valid_after {
             output.push_str(&format!(" valid-after={}", valid_after));
         }
 
-        if let Some(valid_before) = self.valid_before {
+        if let Some(ref valid_before) = self.valid_before {
             output.push_str(&format!(" valid-before={}", valid_before));
         }
 
@@ -407,8 +410,42 @@ impl AllowedSignerSplitter {
 }
 
 /// Parse a string into a u64 representing a timestamp.
+/// The timestamp has format YYYYMMDD[HHMM[SS]][Z]
 /// The timestamp can be enclosed by quotation marks.
-fn parse_timestamp(s: &str) -> Result<u64> {
-    let s = s.trim_matches('"');
-    Ok(s.parse::<u64>().map_err(|_| Error::InvalidFormat)?)
+fn parse_timestamp(s: &str) -> Result<i64> {
+    let mut s = s.trim_matches('"');
+    println!("s: {}", s);
+    let is_utc = s.ends_with('Z');
+    if s.len() % 2 == 1 && !is_utc {
+        return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp));
+    }
+    if is_utc {
+        s = s.trim_end_matches('Z');
+    }
+    let datetime = match s.len() {
+        8 => {
+            let date = NaiveDate::parse_from_str(s, "%Y%m%d")
+                .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp))?;
+            date.and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+        },
+        12 => {
+            NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M")
+                .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp))?
+        },
+        14 => {
+            NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M%S")
+                .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp))?
+        },
+        _ => return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp)),
+    };
+
+    let timestamp = if is_utc {
+        datetime.and_utc()
+            .with_timezone(&Local)
+            .timestamp()
+    } else {
+        datetime.timestamp()
+    };
+
+    Ok(timestamp)
 }

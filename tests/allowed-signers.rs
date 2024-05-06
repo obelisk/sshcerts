@@ -30,7 +30,10 @@ fn parse_good_allowed_signers() {
         Some(vec!["thanh".to_string(), "#mitchell".to_string()])
     );
     assert!(allowed_signers[1].valid_after.is_none());
-    assert_eq!(allowed_signers[1].valid_before, Some(123u64));
+    assert_eq!(
+        allowed_signers[1].valid_before,
+        Some(1714867200i64),
+    );
 
     assert_eq!(
         allowed_signers[2].namespaces, 
