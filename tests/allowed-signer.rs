@@ -46,7 +46,7 @@ fn parse_good_allowed_signer_with_quoted_principals() {
 #[test]
 fn parse_good_allowed_signer_with_options() {
     let allowed_signer =
-        "mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces=\"thanh,mitchell\" valid-before=\"20240505\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
+        "mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces=\"thanh,mitchell\" valid-before=\"20240505Z\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
     let allowed_signer = AllowedSigner::from_string(allowed_signer);
     assert!(allowed_signer.is_ok());
     let allowed_signer = allowed_signer.unwrap();
@@ -61,7 +61,7 @@ fn parse_good_allowed_signer_with_options() {
         Some(vec!["thanh".to_string(), "mitchell".to_string()])
     );
     assert!(allowed_signer.valid_after.is_none());
-    assert_eq!(allowed_signer.valid_before, Some(1714881600i64));
+    assert_eq!(allowed_signer.valid_before, Some(1714867200i64));
 }
 
 #[test]
@@ -88,7 +88,7 @@ fn parse_good_allowed_signer_with_utc_timestamp() {
 #[test]
 fn parse_good_allowed_signer_with_hm_timestamp() {
     let allowed_signer =
-        "mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces=\"thanh,mitchell\" valid-after=202405050102 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
+        "mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces=\"thanh,mitchell\" valid-after=202405050102Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
     let allowed_signer = AllowedSigner::from_string(allowed_signer);
     assert!(allowed_signer.is_ok());
     let allowed_signer = allowed_signer.unwrap();
@@ -102,14 +102,14 @@ fn parse_good_allowed_signer_with_hm_timestamp() {
         allowed_signer.namespaces,
         Some(vec!["thanh".to_string(), "mitchell".to_string()])
     );
-    assert_eq!(allowed_signer.valid_after, Some(1714885320i64));
+    assert_eq!(allowed_signer.valid_after, Some(1714870920i64));
     assert!(allowed_signer.valid_before.is_none());
 }
 
 #[test]
 fn parse_good_allowed_signer_with_hms_timestamp() {
     let allowed_signer =
-        "mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces=\"thanh,mitchell\" valid-after=20240505010230 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
+        "mitchell@confurious.io,mitchel2@confurious.io cert-authority namespaces=\"thanh,mitchell\" valid-after=20240505010230Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
     let allowed_signer = AllowedSigner::from_string(allowed_signer);
     assert!(allowed_signer.is_ok());
     let allowed_signer = allowed_signer.unwrap();
@@ -123,14 +123,14 @@ fn parse_good_allowed_signer_with_hms_timestamp() {
         allowed_signer.namespaces,
         Some(vec!["thanh".to_string(), "mitchell".to_string()])
     );
-    assert_eq!(allowed_signer.valid_after, Some(1714885350i64));
+    assert_eq!(allowed_signer.valid_after, Some(1714870950i64));
     assert!(allowed_signer.valid_before.is_none());
 }
 
 #[test]
 fn parse_good_allowed_signer_with_consecutive_spaces() {
     let allowed_signer =
-        "mitchell@confurious.io,mitchel2@confurious.io    cert-authority    namespaces=\"thanh,#mitchell\" valid-before=\"20240505\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5  ";
+        "mitchell@confurious.io,mitchel2@confurious.io    cert-authority    namespaces=\"thanh,#mitchell\" valid-before=\"20240505Z\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5  ";
     let allowed_signer = AllowedSigner::from_string(allowed_signer);
     assert!(allowed_signer.is_ok());
     let allowed_signer = allowed_signer.unwrap();
@@ -145,7 +145,7 @@ fn parse_good_allowed_signer_with_consecutive_spaces() {
         Some(vec!["thanh".to_string(), "#mitchell".to_string()])
     );
     assert!(allowed_signer.valid_after.is_none());
-    assert_eq!(allowed_signer.valid_before, Some(1714881600i64));
+    assert_eq!(allowed_signer.valid_before, Some(1714867200i64));
 }
 
 #[test]
