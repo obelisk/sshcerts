@@ -306,7 +306,7 @@ struct AllowedSignerSplitter {
 
 impl AllowedSignerSplitter {
     /// Split the string by delimiters but keep the delimiters.
-    pub(self) fn new(s: &str) -> Self {
+    fn new(s: &str) -> Self {
         let mut buffer = Vec::new();
         let mut last = 0;
 
@@ -331,14 +331,14 @@ impl AllowedSignerSplitter {
         Self { buffer }
     }
 
-    pub(self) fn is_empty_after_trim(&mut self) -> bool {
+    fn is_empty_after_trim(&mut self) -> bool {
         self.trim();
         return self.buffer.is_empty();
     }
 
     /// Get the next part that is not an option (principals, key)
     /// If opening_quotes_allowed is set to false, we reject the next token if it starts with ".
-    pub(self) fn next(&mut self, opening_quotes_allowed: bool) -> Result<Option<String>> {
+    fn next(&mut self, opening_quotes_allowed: bool) -> Result<Option<String>> {
         if self.is_empty_after_trim() {
             return Ok(None);
         }
