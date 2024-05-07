@@ -102,11 +102,12 @@ impl AllowedSigner {
         let principals = tokenizer.next(true)?
             .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingPrincipals))?;
         let principals = principals.trim_matches('"');
-        let principals: Vec<&str> = principals.split(',').collect();
+        let principals: Vec<String> = principals.split(',')
+            .map(|s| s.to_string())
+            .collect();
         if principals.iter().any(|p| p.is_empty()) {
             return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidPrincipals));
         }
-        let principals = principals.iter().map(|s| s.to_string()).collect();
 
         let mut cert_authority = false;
         let mut namespaces = None;
