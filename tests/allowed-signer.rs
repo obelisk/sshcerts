@@ -61,7 +61,7 @@ fn parse_good_allowed_signer_with_options() {
         Some(vec!["thanh".to_string(), "mitchell".to_string()])
     );
     assert!(allowed_signer.valid_after.is_none());
-    assert_eq!(allowed_signer.valid_before, Some(1714867200i64));
+    assert_eq!(allowed_signer.valid_before, Some(1714881600i64));
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn parse_good_allowed_signer_with_hm_timestamp() {
         allowed_signer.namespaces,
         Some(vec!["thanh".to_string(), "mitchell".to_string()])
     );
-    assert_eq!(allowed_signer.valid_after, Some(1714870920));
+    assert_eq!(allowed_signer.valid_after, Some(1714885320i64));
     assert!(allowed_signer.valid_before.is_none());
 }
 
@@ -123,7 +123,7 @@ fn parse_good_allowed_signer_with_hms_timestamp() {
         allowed_signer.namespaces,
         Some(vec!["thanh".to_string(), "mitchell".to_string()])
     );
-    assert_eq!(allowed_signer.valid_after, Some(1714870950));
+    assert_eq!(allowed_signer.valid_after, Some(1714885350i64));
     assert!(allowed_signer.valid_before.is_none());
 }
 
@@ -145,7 +145,7 @@ fn parse_good_allowed_signer_with_consecutive_spaces() {
         Some(vec!["thanh".to_string(), "#mitchell".to_string()])
     );
     assert!(allowed_signer.valid_after.is_none());
-    assert_eq!(allowed_signer.valid_before, Some(1714867200i64));
+    assert_eq!(allowed_signer.valid_before, Some(1714881600i64));
 }
 
 #[test]

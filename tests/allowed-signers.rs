@@ -44,4 +44,9 @@ fn parse_good_allowed_signers() {
             " andrew   andrew".to_string(),
         ]),
     );
+    assert!(allowed_signers[2].valid_after.is_none());
+    assert_eq!(
+        allowed_signers[2].valid_before,
+        Some(1714881600i64),
+    );
 }

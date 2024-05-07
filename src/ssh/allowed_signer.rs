@@ -65,10 +65,10 @@ pub struct AllowedSigner {
     /// Specifies a list of namespaces that are accepted for this key.
     pub namespaces: Option<Vec<String>>,
 
-    /// Time at or after which the key is valid, in local timezone.
+    /// UNIX timestamp at or after which the key is valid.
     pub valid_after: Option<i64>,
 
-    /// Time at or before which the key is valid, in local timezone.
+    /// UNIX timestamp at or before which the key is valid.
     pub valid_before: Option<i64>,
 
     /// Public key of the entry.
@@ -357,20 +357,27 @@ impl AllowedSignerSplitter {
         // If we don't see any double quote in the token, we greedily parse the token until the
         // next whitespace.
         let mut s = String::new();
-        while !self.buffer.is_empty()
-            && ![" ", "\"", "#"].contains(&self.buffer.last().unwrap().as_str()) {
-            s.push_str(&self.buffer.pop().unwrap());
+        while let Some(last) = self.buffer.pop() {
+            if [" ", "\"", "#"].contains(&last.as_str()) {
+                self.buffer.push(last);
+                break;
+            }
+
+            s.push_str(&last);
         }
 
         // This should only apply to options
-        if !self.buffer.is_empty() && self.buffer.last().unwrap().as_str() == "\"" {
-            s.push_str(self.split_quote()?.as_str());
+        if let Some(last) = self.buffer.last() {
+            if last == "\"" {
+                s.push_str(self.split_quote()?.as_str());
 
-            // After the double quotes in the option token, there can only be nothing, a
-            // whitespace, or a pound
-            if !self.buffer.is_empty()
-                && ![" ", "#"].contains(&self.buffer.last().unwrap().as_str()) {
-                return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
+                // After the double quotes in the option token, there can only be nothing, a
+                // whitespace, or a pound
+                if let Some(last) = self.buffer.last() {
+                    if ![" ", "#"].contains(&last.as_str()) {
+                        return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
+                    }
+                }
             }
         }
 
@@ -379,8 +386,8 @@ impl AllowedSignerSplitter {
 
     /// Trim comment and whitespaces
     fn trim(&mut self) {
-        while !self.buffer.is_empty(){
-            match self.buffer.last().unwrap().as_str() {
+        while let Some(last) = self.buffer.last(){
+            match last.as_str() {
                 " " => {
                     self.buffer.pop();
                 },
@@ -396,8 +403,13 @@ impl AllowedSignerSplitter {
     /// Extract content inside the double quotes.
     /// This function assumes buffer starst with a ".
     fn split_quote(&mut self) -> Result<String> {
-        if self.buffer.is_empty() || self.buffer.pop().unwrap() != "\"" {
-            return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
+        match self.buffer.pop() {
+            Some(v) => {
+                if v != "\"" {
+                    return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
+                }
+            },
+            None => return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes)),
         }
 
         let mut s = String::from("\"");
@@ -419,7 +431,6 @@ impl AllowedSignerSplitter {
 /// The timestamp can be enclosed by quotation marks.
 fn parse_timestamp(s: &str) -> Result<i64> {
     let mut s = s.trim_matches('"');
-    println!("s: {}", s);
     let is_utc = s.ends_with('Z');
     if s.len() % 2 == 1 && !is_utc {
         return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp));
@@ -431,7 +442,7 @@ fn parse_timestamp(s: &str) -> Result<i64> {
         8 => {
             let date = NaiveDate::parse_from_str(s, "%Y%m%d")
                 .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp))?;
-            date.and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+            date.and_time(NaiveTime::from_hms_opt(0, 0, 0).expect("initializing NaiveTime from constants should not fail"))
         },
         12 => {
             NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M")
@@ -446,10 +457,11 @@ fn parse_timestamp(s: &str) -> Result<i64> {
 
     let timestamp = if is_utc {
         datetime.and_utc()
-            .with_timezone(&Local)
             .timestamp()
     } else {
-        datetime.timestamp()
+        datetime.and_local_timezone(Local)
+            .unwrap()
+            .timestamp()
     };
 
     Ok(timestamp)
