@@ -38,6 +38,8 @@ experimental = [
 
 encrypted-keys = ["aes", "bcrypt-pbkdf", "ctr"]
 
+wasm_experimental = ["ring/wasm32_unknown_unknown_js"]
+
 # Full FIDO support pulls in ctap-hid-fido2 with USB dependencies. Use fido-lite
 # if you need to work with fido data, without needing to generate it.
 fido-support = ["ctap-hid-fido2", "fido-lite"]
