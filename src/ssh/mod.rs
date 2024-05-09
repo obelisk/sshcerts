@@ -8,6 +8,7 @@ All rights reserved.
 //! support that. The original licence for the code is in the source
 //! code provided
 
+mod allowed_signer;
 mod cert;
 mod keytype;
 mod privkey;
@@ -23,6 +24,7 @@ pub trait SSHCertificateSigner {
     fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>>;
 }
 
+pub use self::allowed_signer::{AllowedSigner, AllowedSigners, AllowedSignerParsingError};
 pub use self::cert::{CertType, Certificate};
 pub use self::keytype::{Curve, CurveKind, KeyType, KeyTypeKind};
 pub use self::privkey::{

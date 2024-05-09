@@ -1,4 +1,5 @@
 use std::{fmt, io, string};
+use crate::ssh::AllowedSignerParsingError;
 
 /// A type to represent the different kinds of errors.
 #[derive(Debug)]
@@ -22,6 +23,10 @@ pub enum Error {
     KeyTypeMismatch,
     /// The certificate is not signed correctly and invalid
     InvalidSignature,
+    /// A parsing error for one allowed signer
+    InvalidAllowedSigner(AllowedSignerParsingError),
+    /// A parsing error for a collection/file of allowed signers
+    InvalidAllowedSigners(AllowedSignerParsingError, usize),
     /// A cryptographic operation failed.
     SigningError,
     /// An encrypted private key was provided with no decryption key
@@ -58,6 +63,8 @@ impl fmt::Display for Error {
             Error::NotCertificate => write!(f, "Not a certificate"),
             Error::KeyTypeMismatch => write!(f, "Key type mismatch"),
             Error::InvalidSignature => write!(f, "Data is improperly signed"),
+            Error::InvalidAllowedSigner(ref v) => write!(f, "Invalid allowed signer format: {}", v),
+            Error::InvalidAllowedSigners(ref v, line) => write!(f, "Invalid allowed signer format on line {}: {}", line, v),
             Error::SigningError => write!(f, "Could not sign data"),
             Error::EncryptedPrivateKey => write!(f, "Encountered encrypted private key with no decryption key"),
             Error::EncryptedPrivateKeyNotSupported => write!(f, "This method of private key encryption is not supported or sshcerts was not compiled with encrypted private key support"),

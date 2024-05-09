@@ -52,6 +52,7 @@ yubikey-lite = ["x509-support"]
 
 [dependencies]
 base64 = "0.13"
+chrono = "0.4"
 ring = "0.17"
 zeroize = { version = "1", features = ["zeroize_derive"] }
 
