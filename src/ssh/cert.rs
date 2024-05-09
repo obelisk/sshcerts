@@ -57,7 +57,7 @@ const STANDARD_EXTENSIONS: [(&str, &str); 5] = [
 /// A type which represents an OpenSSH certificate key.
 /// Please refer to [PROTOCOL.certkeys] for more details about OpenSSH certificates.
 /// [PROTOCOL.certkeys]: https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.certkeys?annotate=HEAD
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Certificate {
     /// Type of key.
     pub key_type: KeyType,
