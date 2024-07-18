@@ -126,6 +126,10 @@ required-features = ["x509-support"]
 name = "new-fido-sshkey"
 required-features = ["fido-support-mozilla"]
 
+[[example]]
+name = "parse-ssh-signature"
+required-features = ["fido-support-mozilla"]
+
 [[test]]
 name = "privkey-encrypted"
 path = "tests/privkey_encrypted.rs"
