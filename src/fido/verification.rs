@@ -10,7 +10,8 @@ use super::AuthData;
 
 use ring::signature::{UnparsedPublicKey, ECDSA_P256_SHA256_ASN1};
 
-const YUBICO_U2F_ROOT_CA: &str = "-----BEGIN CERTIFICATE-----
+/// From https://developers.yubico.com/PKI/yubico-ca-certs.txt
+const YUBICO_U2F_ROOT_CA_457200631: &str = "-----BEGIN CERTIFICATE-----
 MIIDHjCCAgagAwIBAgIEG0BT9zANBgkqhkiG9w0BAQsFADAuMSwwKgYDVQQDEyNZ
 dWJpY28gVTJGIFJvb3QgQ0EgU2VyaWFsIDQ1NzIwMDYzMTAgFw0xNDA4MDEwMDAw
 MDBaGA8yMDUwMDkwNDAwMDAwMFowLjEsMCoGA1UEAxMjWXViaWNvIFUyRiBSb290
@@ -28,6 +29,28 @@ hX7Y+9XFN9NpmYxr+ekVY5xOxi8h9JDIgoMP4VB1uS0aunL1IGqrNooL9mmFnL2k
 LVVee6/VR6C5+KSTCMCWppMuJIZII2v9o4dkoZ8Y7QRjQlLfYzd3qGtKbw7xaF1U
 sG/5xUb/Btwb2X2g4InpiB/yt/3CpQXpiWX/K4mBvUKiGn05ZsqeY1gx4g0xLBqc
 U9psmyPzK+Vsgw2jeRQ5JlKDyqE0hebfC1tvFu0CCrJFcw==
+-----END CERTIFICATE-----";
+
+/// From https://developers.yubico.com/PKI/yubico-ca-certs.txt
+const YUBICO_FIDO_ROOT_CA_450203556: &str = "-----BEGIN CERTIFICATE-----
+MIIDMzCCAhugAwIBAgIUSOEjTf//yqRfPW7Qq8qtIyCrAg8wDQYJKoZIhvcNAQEL
+BQAwLzEtMCsGA1UEAwwkWXViaWNvIEZJRE8gUm9vdCBDQSBTZXJpYWwgNDUwMjAz
+NTU2MCAXDTI0MDUwMTAwMDAwMFoYDzIwNjAwNDMwMDAwMDAwWjAvMS0wKwYDVQQD
+DCRZdWJpY28gRklETyBSb290IENBIFNlcmlhbCA0NTAyMDM1NTYwggEiMA0GCSqG
+SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCdvl27w2gu1fPXeEFbIdqx0BalvVDVWrQP
+J7HqviuEtZHlxSLxSFtcXpTolvLvof8f4tMerQTkVGzcmYzm1EBT4IJuMmoEqfkE
+EhWpsADMFrjZkqlZY9EqxQzLoVEEonE5oGxSdVCxCcLIackpyR/CCXvj1Bt/hTgE
+9hTlF4pRqxMkx3plF7y8dDZlRHWs7vbnhmBCGeI0ZPEQ6nl2mCg2r74adF2u6K9r
+rLfhBC3QLE8EPrgqUsI+hkuq2tK4M2SMOp8uUVVkqUeu3h0kr3WVI0W02pkgrOgi
+FKLFNkSrbYhdjMBDj5izmqfc9xJRKoDX612qd8ZGVHpT5AYFX+1hAgMBAAGjRTBD
+MB0GA1UdDgQWBBTZyU5DiQ/a2UEgE7qBK0zhIsRNRjASBgNVHRMBAf8ECDAGAQH/
+AgEAMA4GA1UdDwEB/wQEAwIBBjANBgkqhkiG9w0BAQsFAAOCAQEAXvnB4SLuUJfY
+MSVGAhssL/SmWli3FSccgxydvKlACcidIIWKQqa3q/QSUEQzC9DgEfMgr7iC1BkT
+ZbILboV6UZ5knNsvjEZWuMeogJ8tgZs1hVvKwZizwJ+mEcmsjhIrBYuoL1T6yrOJ
+vKFg1jv+Cy4ZwA9Bpk/V3UOir1VyK8dCtyHu6vfosotAdYx8FAuR243gRTMV6Jx8
+Jdig2JDIAQMlzVeDpSUHX/K2HXRHxHwfgjbgUjjBu/72r8OfehyhzHXI3K8CFFdf
+lO+8nEOJK3y8F1ivgS5uN/8SmcYw/STQYwhrxPuwz3nP8baMum4BB2nnYmpB60sX
+3bl5k8QUSw==
 -----END CERTIFICATE-----";
 
 /// Defines the transports supported by the FIDO standard
@@ -132,8 +155,25 @@ fn extract_certificate_extension_data(
     Ok(valid_attestation)
 }
 
+/// Verify that the intermediate was signed by the root CA.
+fn verify_intermediate(
+    parsed_intermediate: &X509Certificate<'_>,
+    root_ca_pem: &str,
+) -> Result<(), Error> {
+    // Parse the root CA
+    let (_, root_ca) = parse_x509_pem(root_ca_pem.as_bytes())
+        .map_err(|_| Error::ParsingError)?;
+    let root_ca = Pem::parse_x509(&root_ca).map_err(|_| Error::ParsingError)?;
+    // Check the root CA has signed the intermediate, return error if not
+    parsed_intermediate
+        .verify_signature(Some(&root_ca.tbs_certificate.public_key()))
+        .map_err(|_| Error::InvalidSignature)?;
+
+    Ok(())
+}
+
 /// Verify a provided U2F attestation, signature, and certificate are valid
-/// against the root. If no root is given, the Yubico U2F Root is used.
+/// against the root. If no root is given, the Yubico U2F Root and FIDO root are used.
 pub fn verify_auth_data(
     auth_data: &[u8],
     auth_data_signature: &[u8],
@@ -145,20 +185,16 @@ pub fn verify_auth_data(
     match alg {
         // Verify using ECDSA256
         -7 => {
-            let root_ca_pem = root_pem.unwrap_or(YUBICO_U2F_ROOT_CA);
-
-            // Parse the U2F root CA
-            let (_, root_ca) =
-                parse_x509_pem(root_ca_pem.as_bytes()).map_err(|_| Error::ParsingError)?;
-            let root_ca = Pem::parse_x509(&root_ca).map_err(|_| Error::ParsingError)?;
-
             let (_, parsed_intermediate) =
                 X509Certificate::from_der(intermediate).map_err(|_| Error::ParsingError)?;
 
-            // Check the root CA has signed the intermediate, return error if not
-            parsed_intermediate
-                .verify_signature(Some(&root_ca.tbs_certificate.public_key()))
-                .map_err(|_| Error::InvalidSignature)?;
+            if let Some(pem) = root_pem {
+                verify_intermediate(&parsed_intermediate, pem)?;
+            } else if verify_intermediate(&parsed_intermediate, YUBICO_FIDO_ROOT_CA_450203556).is_err() {
+                // YUBICO_FIDO_ROOT_CA_450203556 was added later in 2025
+                // We support both by default to ensure backward compatibility
+                verify_intermediate(&parsed_intermediate, YUBICO_U2F_ROOT_CA_457200631)?;
+            }
 
             // Extract public key from verified intermediate certificate
             let key_bytes = parsed_intermediate
