@@ -246,25 +246,25 @@ fn extract_certificate_extension_data(
 /// Verify that the intermediates are chained to the root CA.
 fn verify_intermediates(
     parsed_intermediate: &X509Certificate<'_>,
-    ca_pems_chain: Vec<&str>,
+    ca_pems: Vec<&str>,
 ) -> Result<(), Error> {
-    // There has to be at the root CA
-    if ca_pems_chain.is_empty() {
+    // There has to be at least the root CA
+    if ca_pems.is_empty() {
         return Err(Error::InvalidSignature);
     }
 
     let mut ca_parsed_pems = vec![];
 
     // Parse all the pems
-    for pem in ca_pems_chain {
+    for pem in ca_pems {
         let (_, parsed_pem) = parse_x509_pem(pem.as_bytes())
             .map_err(|_| Error::ParsingError)?;
         ca_parsed_pems.push(parsed_pem);
     }
 
     // Parse the root CA
-    // This is a safe unwrap as we made sure the list is not empty
-    let mut parent_ca = Pem::parse_x509(&ca_parsed_pems.first().unwrap())
+    let root_ca = ca_parsed_pems.first().ok_or(Error::ParsingError)?;
+    let mut parent_ca = Pem::parse_x509(&root_ca)
         .map_err(|_| Error::ParsingError)?;
 
     // Iteratively verify the chain
@@ -287,6 +287,34 @@ fn verify_intermediates(
     Ok(())
 }
 
+/// Verify that the intermediate chains to some Yubico root CA for FIDO attestation
+/// We try all known Yubico Root CAs for backward compatibility
+fn verify_yubico_intermediate(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
+    if verify_intermediates(
+        &parsed_intermediate,
+        vec![
+            YUBICO_ATTESTATION_ROOT_1,
+            YUBICO_ATTESTATION_INTERMEDIATE_A_1,
+            YUBICO_FIDO_ATTESTATION_A_1
+        ]
+    ).is_ok() {
+        return Ok(());
+    }
+
+    if verify_intermediates(
+        &parsed_intermediate,
+        vec![
+            YUBICO_ATTESTATION_ROOT_1,
+            YUBICO_ATTESTATION_INTERMEDIATE_B_1,
+            YUBICO_FIDO_ATTESTATION_B_1,
+        ]
+    ).is_ok() {
+        return Ok(());
+    }
+
+    verify_intermediates(&parsed_intermediate, vec![YUBICO_U2F_ROOT_CA_457200631])
+}
+
 /// Verify a provided U2F attestation, signature, and certificate are valid
 /// against the root. If no root is given, the Yubico U2F Root and FIDO root are used.
 pub fn verify_auth_data(
@@ -303,13 +331,12 @@ pub fn verify_auth_data(
             let (_, parsed_intermediate) =
                 X509Certificate::from_der(intermediate).map_err(|_| Error::ParsingError)?;
 
+            // If a custom root CA is provided, we use that for verification.
+            // If not, we will try all the known Yubico Root CAs for backward compatibility
             if let Some(pem) = root_pem {
                 verify_intermediates(&parsed_intermediate, vec![pem])?;
-            } else if verify_intermediates(&parsed_intermediate, vec![YUBICO_ATTESTATION_ROOT_1, YUBICO_ATTESTATION_INTERMEDIATE_A_1, YUBICO_FIDO_ATTESTATION_A_1]).is_err()
-                && verify_intermediates(&parsed_intermediate, vec![YUBICO_ATTESTATION_ROOT_1, YUBICO_ATTESTATION_INTERMEDIATE_B_1, YUBICO_FIDO_ATTESTATION_B_1]).is_err() {
-                // YUBICO_FIDO_ROOT_CA_450203556 was added later in 2025
-                // We support both by default to ensure backward compatibility
-                verify_intermediates(&parsed_intermediate, vec![YUBICO_U2F_ROOT_CA_457200631])?;
+            } else {
+                verify_yubico_intermediate(&parsed_intermediate)?;
             }
 
             // Extract public key from verified intermediate certificate
