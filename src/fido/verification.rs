@@ -257,15 +257,13 @@ fn verify_intermediates(
 
     // Parse all the pems
     for pem in ca_pems {
-        let (_, parsed_pem) = parse_x509_pem(pem.as_bytes())
-            .map_err(|_| Error::ParsingError)?;
+        let (_, parsed_pem) = parse_x509_pem(pem.as_bytes()).map_err(|_| Error::ParsingError)?;
         ca_parsed_pems.push(parsed_pem);
     }
 
     // Parse the root CA
     let root_ca = ca_parsed_pems.first().ok_or(Error::ParsingError)?;
-    let mut parent_ca = Pem::parse_x509(&root_ca)
-        .map_err(|_| Error::ParsingError)?;
+    let mut parent_ca = Pem::parse_x509(&root_ca).map_err(|_| Error::ParsingError)?;
 
     // Iteratively verify the chain
     for intermediate_ca in ca_parsed_pems.iter().skip(1) {
@@ -295,9 +293,11 @@ fn verify_yubico_intermediate(parsed_intermediate: &X509Certificate<'_>) -> Resu
         vec![
             YUBICO_ATTESTATION_ROOT_1,
             YUBICO_ATTESTATION_INTERMEDIATE_A_1,
-            YUBICO_FIDO_ATTESTATION_A_1
-        ]
-    ).is_ok() {
+            YUBICO_FIDO_ATTESTATION_A_1,
+        ],
+    )
+    .is_ok()
+    {
         return Ok(());
     }
 
@@ -307,8 +307,10 @@ fn verify_yubico_intermediate(parsed_intermediate: &X509Certificate<'_>) -> Resu
             YUBICO_ATTESTATION_ROOT_1,
             YUBICO_ATTESTATION_INTERMEDIATE_B_1,
             YUBICO_FIDO_ATTESTATION_B_1,
-        ]
-    ).is_ok() {
+        ],
+    )
+    .is_ok()
+    {
         return Ok(());
     }
 
