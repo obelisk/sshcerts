@@ -29,22 +29,16 @@ fn provision_new_key(
 
     let mut yk = Yubikey::new().unwrap();
     yk.unlock(pin.as_bytes(), mgm_key).unwrap();
-    match alg {
-        "p256" => match yk.provision::<p256::NistP256>(&slot, subject, policy, PinPolicy::Never) {
-            Ok(pk) => {
-                println!("New hardware backed SSH Public Key: {}", pk);
-            }
-            Err(e) => panic!("Could not provision device with new key: {:?}", e),
-        },
+    let result = match alg {
+        "p256" => yk.provision::<p256::NistP256>(&slot, subject, policy, PinPolicy::Never),
         _ => {
             println!("Using P384");
-            match yk.provision::<p384::NistP384>(&slot, subject, policy, PinPolicy::Never) {
-                Ok(pk) => {
-                    println!("New hardware backed SSH Public Key: {}", pk);
-                }
-                Err(e) => panic!("Could not provision device with new key: {:?}", e),
-            }
+            yk.provision::<p384::NistP384>(&slot, subject, policy, PinPolicy::Never)
         }
+    };
+    match result {
+        Ok(pk) => println!("New hardware backed SSH Public Key: {}", pk),
+        Err(e) => panic!("Could not provision device with new key: {:?}", e),
     }
 }
 
