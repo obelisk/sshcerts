@@ -287,7 +287,7 @@ fn verify_intermediates(
 
 /// Verify that the intermediate chains to some Yubico root CA for FIDO attestation
 /// We try all known Yubico Root CAs for backward compatibility
-fn verify_yubico_intermediate(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
+fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
     if verify_intermediates(
         &parsed_intermediate,
         vec![
@@ -338,7 +338,7 @@ pub fn verify_auth_data(
             if let Some(pem) = root_pem {
                 verify_intermediates(&parsed_intermediate, vec![pem])?;
             } else {
-                verify_yubico_intermediate(&parsed_intermediate)?;
+                verify_yubico_intermediates(&parsed_intermediate)?;
             }
 
             // Extract public key from verified intermediate certificate
