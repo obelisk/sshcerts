@@ -1,6 +1,5 @@
 use crate::PublicKey;
 
-use der::oid::ObjectIdentifier;
 use ring::digest;
 
 use yubikey::certificate::Certificate;
@@ -10,14 +9,15 @@ use yubikey::{PinPolicy, TouchPolicy};
 
 use super::{Error, Result};
 
-use der::Encode;
-use x509_cert::name::Name;
-use x509_cert::{serial_number::SerialNumber, time::Validity};
+use x509_cert::{
+    der::{oid::ObjectIdentifier, Encode},
+    name::Name,
+    serial_number::SerialNumber,
+    time::Validity,
+};
 
 use std::str::FromStr;
 use yubikey::certificate::yubikey_signer;
-
-use x509_parser::der_parser::asn1_rs::ToDer;
 
 #[derive(Debug)]
 /// A struct that allows the generation of CSRs via the rcgen library. This is
@@ -45,14 +45,22 @@ impl CSRSigner {
             NISTP256_OID => {
                 // This is the OID for ECDSA with SHA256
                 (
-                    pki.subject_public_key.raw_bytes().to_der_vec().unwrap(),
+                    pki.subject_public_key
+                        .raw_bytes()
+                        .to_vec()
+                        .to_der()
+                        .unwrap(),
                     AlgorithmId::EccP256,
                 )
             }
             SECP384_OID => {
                 // This is the OID for ECDSA with SHA384
                 (
-                    pki.subject_public_key.raw_bytes().to_der_vec().unwrap(),
+                    pki.subject_public_key
+                        .raw_bytes()
+                        .to_vec()
+                        .to_der()
+                        .unwrap(),
                     AlgorithmId::EccP384,
                 )
             }
