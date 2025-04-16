@@ -79,7 +79,7 @@ ctr = { version = "0.8", optional = true }
 minicbor = { version = "0.13", optional = true }
 
 # Dependencies for fido-support-mozilla
-authenticator = { version = "0.4.0-alpha.24", default-features = false, features = [
+authenticator = { version = "0.4.1", default-features = false, features = [
     "crypto_openssl",
 ], optional = true }
 # authenticator = { path = "../authenticator-rs", default-features = false, features = [
