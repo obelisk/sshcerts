@@ -30,7 +30,7 @@ pub struct CSRSigner {
 }
 
 const NISTP256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.3.1.7");
-const SECG384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
+const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
 
 impl CSRSigner {
     /// Create a new certificate signer based on a Yubikey serial
@@ -39,7 +39,9 @@ impl CSRSigner {
         let mut yk = super::Yubikey::open(serial).unwrap();
         let cert = yk.configured(&slot).unwrap();
         let pki = cert.subject_pki();
-        let (public_key, algorithm) = match pki.algorithm.oid {
+        let oid_alg = pki.algorithm.parameters_oid().unwrap();
+
+        let (public_key, algorithm) = match oid_alg {
             NISTP256_OID => {
                 // This is the OID for ECDSA with SHA256
                 (
@@ -47,7 +49,7 @@ impl CSRSigner {
                     AlgorithmId::EccP256,
                 )
             }
-            SECG384_OID => {
+            SECP384_OID => {
                 // This is the OID for ECDSA with SHA384
                 (
                     pki.subject_public_key.raw_bytes().to_der_vec().unwrap(),
@@ -173,9 +175,14 @@ impl super::Yubikey {
         let mut params = rcgen::CertificateParams::new(vec![]);
         let cert = self.configured(&slot).unwrap();
         let pki = cert.subject_pki();
-        params.alg = match pki.algorithm.oid {
+        let oid_alg = pki
+            .algorithm
+            .parameters_oid()
+            .map_err(|_| Error::Unsupported)?;
+
+        params.alg = match oid_alg {
             NISTP256_OID => &rcgen::PKCS_ECDSA_P256_SHA256,
-            SECG384_OID => &rcgen::PKCS_ECDSA_P384_SHA384,
+            SECP384_OID => &rcgen::PKCS_ECDSA_P384_SHA384,
             _ => return Err(Error::Unsupported),
         };
         params
@@ -212,7 +219,7 @@ impl super::Yubikey {
         Certificate::generate_self_signed::<_, KT>(
             &mut self.yk,
             *slot,
-            SerialNumber::new(&[0; 8]).unwrap(),
+            SerialNumber::new(&[0; 20]).unwrap(),
             Validity::from_now(std::time::Duration::new(3600 * 24 * 3650, 0)).unwrap(),
             Name::from_str(&format!("CN={}", common_name)).unwrap(),
             key_info,
@@ -229,9 +236,14 @@ impl super::Yubikey {
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>> {
         let cert = self.configured(&slot).unwrap();
         let pki = cert.subject_pki();
-        let (slot_alg, hash_alg) = match pki.algorithm.oid {
+        let oid_alg = pki
+            .algorithm
+            .parameters_oid()
+            .map_err(|_| Error::Unprovisioned)?;
+
+        let (slot_alg, hash_alg) = match oid_alg {
             NISTP256_OID => (AlgorithmId::EccP256, &digest::SHA256),
-            SECG384_OID => (AlgorithmId::EccP384, &digest::SHA384),
+            SECP384_OID => (AlgorithmId::EccP384, &digest::SHA384),
             _ => return Err(Error::Unprovisioned),
         };
 
