@@ -3,7 +3,7 @@ use std::env;
 use clap::{Arg, Command};
 
 use sshcerts::yubikey::piv::Yubikey;
-use sshcerts::yubikey::piv::{AlgorithmId, PinPolicy, RetiredSlotId, SlotId, TouchPolicy};
+use sshcerts::yubikey::piv::{PinPolicy, RetiredSlotId, SlotId, TouchPolicy};
 
 use std::convert::TryFrom;
 

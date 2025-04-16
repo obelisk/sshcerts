@@ -85,8 +85,7 @@ authenticator = { version = "0.4.0-alpha.24", default-features = false, features
 # authenticator = { path = "../authenticator-rs", default-features = false, features = [
 #     "crypto_openssl",
 # ], optional = true }
-p256 = "*"
-p384 = "*"
+
 # Dependencies for fido-support
 ctap-hid-fido2 = { version = "3", optional = true }
 #ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch="master", optional = true}
@@ -98,6 +97,8 @@ env_logger = "0.8.2"
 hex = "0.4.2"
 clap = "3.0.5"
 criterion = "0.3"
+p256 = "*"
+p384 = "*"
 
 [[bench]]
 name = "certs_per_second"
