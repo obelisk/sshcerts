@@ -4,7 +4,7 @@ use ring::digest;
 
 use yubikey::certificate::Certificate;
 use yubikey::piv::{attest, sign_data as yk_sign_data, AlgorithmId, SlotId};
-use yubikey::{MgmKey, YubiKey};
+use yubikey::{MgmKey, Serial, YubiKey};
 use yubikey::{PinPolicy, TouchPolicy};
 
 use super::{Error, Result};
@@ -144,6 +144,12 @@ impl super::Yubikey {
         Ok(())
     }
 
+    /// Fetch the serial nummbere of the Yubikey
+    pub fn serial(&mut self) -> Result<Serial> {
+        let serial = self.yk.serial();
+        Ok(serial)
+    }
+
     /// Check to see that a provided Yubikey and slot is configured for signing
     pub fn configured(&mut self, slot: &SlotId) -> Result<Certificate> {
         let cert = Certificate::read(&mut self.yk, *slot)?;
@@ -247,7 +253,7 @@ impl super::Yubikey {
         touch_policy: TouchPolicy,
         pin_policy: PinPolicy,
     ) -> Result<PublicKey> {
-        self.provision::<p256::NistP256>(slot, common_name, touch_policy, pin_policy)
+        self.provision::<p384::NistP384>(slot, common_name, touch_policy, pin_policy)
     }
 
     /// Provisions the YubiKey with a new certificate generated on the device.

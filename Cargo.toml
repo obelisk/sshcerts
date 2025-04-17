@@ -113,6 +113,10 @@ name = "yk-provision"
 required-features = ["yubikey-support"]
 
 [[example]]
+name = "yk-generate-csr"
+required-features = ["yubikey-support"]
+
+[[example]]
 name = "sign-cert-with-yubikey"
 required-features = ["yubikey-support"]
 
