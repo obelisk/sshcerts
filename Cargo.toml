@@ -11,7 +11,7 @@ keywords = ["ssh", "yubikey", "certs", "certificates"]
 categories = ["authentication"]
 
 [features]
-default = ["all"]
+default = ["all-gebo"]
 
 all = [
     "encrypted-keys",
@@ -19,6 +19,14 @@ all = [
     "x509-support",
     "yubikey-support",
     "fido-support-mozilla",
+]
+
+all-gebo = [
+    "encrypted-keys",
+    "rsa-signing",
+    "x509-support",
+    "yubikey-support",
+    "fido-support",
 ]
 
 all-but-fido = [
@@ -86,8 +94,8 @@ authenticator = { version = "0.4.0-alpha.24", default-features = false, features
 
 
 # Dependencies for fido-support
-ctap-hid-fido2 = { version = "3", optional = true }
-#ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch="master", optional = true}
+#ctap-hid-fido2 = { version = "3", optional = true }
+ctap-hid-fido2 = { git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch = "develop", optional = true }
 #ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="device_by_path", optional = true}
 #ctap-hid-fido2 = {path = "../ctap-hid-fido2", optional = true}
 
@@ -124,7 +132,7 @@ required-features = ["x509-support"]
 
 [[example]]
 name = "new-fido-sshkey"
-required-features = ["fido-support-mozilla"]
+required-features = ["fido-support"]
 
 [[test]]
 name = "privkey-encrypted"
