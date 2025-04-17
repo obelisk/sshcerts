@@ -1,12 +1,10 @@
-use crate::{error::Error, x509::{self, extract_ssh_pubkey_from_x509_certificate}, PublicKey};
+use crate::{error::Error, x509::extract_ssh_pubkey_from_x509_certificate, PublicKey};
 
-use x509_cert::{der::{self, Decode, DecodePem, ObjectIdentifier}, Certificate};
+use x509_parser::der_parser::ber::BerObjectContent;
+use x509_parser::der_parser::der::parse_der_integer;
+use x509_parser::prelude::*;
 
 use std::convert::TryInto;
-
-const FIRMWARE_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.6.1.4.1.41482.3.3");
-const SERIAL_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.6.1.4.1.41482.3.7");
-const POLICY_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.6.1.4.1.41482.3.8");
 
 /// From https://developers.yubico.com/PKI/yubico-ca-certs.txt
 const YUBICO_PIV_ROOT_CA_263751: &str = "-----BEGIN CERTIFICATE-----
@@ -158,44 +156,43 @@ pub struct ValidPIVKey {
 
 fn extract_certificate_extension_data(
     public_key: PublicKey,
-    certificate: x509_cert::Certificate,
+    certificate: &X509Certificate<'_>,
 ) -> Result<ValidPIVKey, Error> {
     let mut firmware: Option<String> = None;
     let mut serial: Option<u64> = None;
     let mut policies: Option<[u8; 2]> = None;
 
-    let extensions = certificate.tbs_certificate.extensions
-        .ok_or_else(|| Error::ParsingError)?;
-
+    let extensions = certificate.extensions();
     for ext in extensions.iter() {
-        match ext.extn_id {
-            FIRMWARE_OID => {
-                if ext.extn_value.len().into() != 3 {
+        match ext.oid.to_id_string().as_str() {
+            // Firmware
+            "1.3.6.1.4.1.41482.3.3" => {
+                if ext.value.len() != 3 {
                     continue;
                 }
-                let value = ext.extn_value.as_bytes();
                 firmware = Some(format!(
                     "{}.{}.{}",
-                    value[0], value[1], value[2]
+                    ext.value[0], ext.value[1], ext.value[2]
                 ));
             }
             // Serial
-            SERIAL_OID => {
-                let value = der::asn1::Int::from_der(ext.extn_value.as_bytes())
-                    .map_err(|_| Error::ParsingError)?;
-                if value.len().into() > 8 {
-                    continue;
+            "1.3.6.1.4.1.41482.3.7" => {
+                let (_, obj) = parse_der_integer(ext.value).map_err(|_| Error::ParsingError)?;
+                if let BerObjectContent::Integer(s) = obj.content {
+                    if s.len() > 8 {
+                        continue;
+                    }
+
+                    let mut padded_serial = vec![0; 8 - s.len()];
+                    padded_serial.extend_from_slice(s);
+                    serial = Some(u64::from_be_bytes(
+                        padded_serial.try_into().map_err(|_| Error::ParsingError)?,
+                    ));
                 }
-                let mut padded_serial = vec![0; 8 - value.len().into()];
-                padded_serial.extend_from_slice(s);
-                serial = Some(u64::from_be_bytes(
-                    padded_serial.try_into().map_err(|_| Error::ParsingError)?,
-                ));
             }
             // Policy
-            POLICY_OID => {
-                let value = ext.extn_value.as_bytes();
-                policies = Some([value[0], value[1]]);
+            "1.3.6.1.4.1.41482.3.8" => {
+                policies = Some([ext.value[0], ext.value[1]]);
             }
             _ => (),
         }
@@ -318,11 +315,15 @@ pub fn verify_certificate_chain(
         .verify_signature(Some(&parsed_intermediate.tbs_certificate.subject_pki))
         .map_err(|_| Error::InvalidSignature)?;
 
+    println!("Extract public key from client cert");
+
     // Extract the certificate public key and convert to an sshcerts PublicKey
     let public_key = match extract_ssh_pubkey_from_x509_certificate(client) {
         Ok(ssh) => ssh,
         Err(_) => return Err(Error::ParsingError),
     };
 
-    extract_certificate_extension_data(public_key, parsed_client)
+    println!("Extract extensions from client cert");
+
+    extract_certificate_extension_data(public_key, &parsed_client)
 }
