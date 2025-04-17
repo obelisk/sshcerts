@@ -44,11 +44,11 @@ wasm_experimental = ["ring/wasm32_unknown_unknown_js"]
 # if you need to work with fido data, without needing to generate it.
 fido-support = ["ctap-hid-fido2", "fido-lite"]
 fido-support-mozilla = ["authenticator", "fido-lite"]
-fido-lite = ["minicbor", "x509-parser"]
+fido-lite = ["minicbor", "x509-cert"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
 yubikey-support = ["rcgen", "yubikey", "yubikey-lite"]
-yubikey-lite = ["x509-support", "der", "x509-cert"]
+yubikey-lite = ["x509-support", "x509-cert", "p256", "p384"]
 
 [dependencies]
 base64 = "0.13"
@@ -67,8 +67,9 @@ rcgen = { version = "0.11", optional = true }
 x509 = { version = "0.2", optional = true }
 x509-parser = { version = "0.15", features = ["verify"], optional = true }
 der-parser = { version = "5", optional = true }
-der = { version = "0.7", optional = true }
 x509-cert = { version = "0.2", optional = true }
+p256 = { version = "0.13.2", optional = true }
+p384 = { version = "0.13.1", optional = true }
 
 # Dependencies for encrypted-keys
 aes = { version = "0.7", features = ["ctr"], optional = true }
@@ -97,8 +98,6 @@ env_logger = "0.8.2"
 hex = "0.4.2"
 clap = "3.0.5"
 criterion = "0.3"
-p256 = "*"
-p384 = "*"
 
 [[bench]]
 name = "certs_per_second"
@@ -111,6 +110,10 @@ required-features = ["yubikey-support"]
 
 [[example]]
 name = "yk-provision"
+required-features = ["yubikey-support"]
+
+[[example]]
+name = "yk-generate-csr"
 required-features = ["yubikey-support"]
 
 [[example]]
