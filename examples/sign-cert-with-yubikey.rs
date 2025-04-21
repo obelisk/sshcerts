@@ -36,14 +36,22 @@ fn slot_validator(slot: &str) -> Result<(), String> {
 
 struct YubikeySigner {
     slot: SlotId,
+    pin: String,
+    mgm_key: Vec<u8>,
 }
 
 impl SSHCertificateSigner for YubikeySigner {
     fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
         let mut yk = Yubikey::new().unwrap();
+        yk.unlock(self.pin.as_bytes(), &self.mgm_key).unwrap();
+        println!("Unlocking Successful");
+
         match yk.ssh_cert_signer(buffer, &self.slot) {
             Ok(sig) => Some(sig),
-            Err(_) => None,
+            Err(e) => {
+                println!("Error signing: {:?}", e);
+                None
+            }
         }
     }
 }
@@ -79,14 +87,37 @@ fn main() {
                 .required(true)
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("pin")
+                .help("Provision this slot with a new private key. The pin number must be passed as parameter here")
+                .default_value("123456")
+                .long("pin")
+                .short('p')
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("management-key")
+                .help("Provision this slot with a new private key. The pin number must be passed as parameter here")
+                .default_value("010203040506070801020304050607080102030405060708")
+                .long("mgmkey")
+                .short('m')
+                .takes_value(true),
+        )
         .get_matches();
 
     let slot = slot_parser(matches.value_of("slot").unwrap()).unwrap();
     let mut yk = Yubikey::new().unwrap();
-    let yk_pubkey = yk.ssh_cert_fetch_pubkey(&slot).unwrap();
-    let ssh_pubkey = PublicKey::from_path(matches.value_of("key").unwrap()).unwrap();
 
-    let yk_signer = YubikeySigner { slot };
+    let yk_pubkey = yk.ssh_cert_fetch_pubkey(&slot).unwrap();
+
+    let ssh_pubkey = PublicKey::from_path(matches.value_of("key").unwrap()).unwrap();
+    println!("Signing {ssh_pubkey} with {yk_pubkey}");
+
+    let yk_signer = YubikeySigner {
+        slot,
+        pin: matches.value_of("pin").unwrap().to_string(),
+        mgm_key: hex::decode(matches.value_of("management-key").unwrap()).unwrap(),
+    };
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &yk_pubkey)
         .unwrap()

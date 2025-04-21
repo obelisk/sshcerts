@@ -3,7 +3,7 @@ use std::env;
 use clap::{Arg, Command};
 
 use sshcerts::yubikey::piv::Yubikey;
-use sshcerts::yubikey::piv::{AlgorithmId, PinPolicy, RetiredSlotId, SlotId, TouchPolicy};
+use sshcerts::yubikey::piv::{PinPolicy, RetiredSlotId, SlotId, TouchPolicy};
 
 use std::convert::TryFrom;
 
@@ -15,11 +15,6 @@ fn provision_new_key(
     alg: &str,
     secure: bool,
 ) {
-    let alg = match alg {
-        "p256" => AlgorithmId::EccP256,
-        _ => AlgorithmId::EccP384,
-    };
-
     println!(
         "Provisioning new {:?} key called [{}] in slot: {:?}",
         alg, subject, slot
@@ -34,10 +29,15 @@ fn provision_new_key(
 
     let mut yk = Yubikey::new().unwrap();
     yk.unlock(pin.as_bytes(), mgm_key).unwrap();
-    match yk.provision(&slot, subject, alg, policy, PinPolicy::Never) {
-        Ok(pk) => {
-            println!("New hardware backed SSH Public Key: {}", pk);
+    let result = match alg {
+        "p256" => yk.provision::<p256::NistP256>(&slot, subject, policy, PinPolicy::Never),
+        _ => {
+            println!("Using P384");
+            yk.provision::<p384::NistP384>(&slot, subject, policy, PinPolicy::Never)
         }
+    };
+    match result {
+        Ok(pk) => println!("New hardware backed SSH Public Key: {}", pk),
         Err(e) => panic!("Could not provision device with new key: {:?}", e),
     }
 }
