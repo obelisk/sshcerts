@@ -82,6 +82,53 @@ pub struct VerifiedSshSignature {
     pub message: Vec<u8>,
 }
 
+/// Metadata about a signature. This is generally only available for SK
+/// signatures.
+#[derive(Debug)]
+pub enum SignatureMetadata {
+    /// Metadata for an SK signature
+    SkMetadata {
+        /// Key application.
+        application: String,
+        /// Raw flags as part of the signature
+        flags: u8,
+        /// The signature counter
+        signature_counter: u32,
+    },
+}
+
+impl SignatureMetadata {
+    /// Returns the application as an Option<String>
+    pub fn application(&self) -> Option<String> {
+        match self {
+            SignatureMetadata::SkMetadata { application, .. } => Some(application.clone()),
+        }
+    }
+
+    /// Returns true if the signature had user presence when created
+    pub fn user_presence(&self) -> Option<bool> {
+        match self {
+            SignatureMetadata::SkMetadata { flags, .. } => Some(flags & 0x1 > 0x00),
+        }
+    }
+
+    /// Returns true if the signature had user verification when created
+    pub fn user_verification(&self) -> Option<bool> {
+        match self {
+            SignatureMetadata::SkMetadata { flags, .. } => Some(flags & 0x4 > 0x0),
+        }
+    }
+
+    /// Returns how many signatures the authenticator has made
+    pub fn signature_counter(&self) -> Option<u32> {
+        match self {
+            SignatureMetadata::SkMetadata {
+                signature_counter, ..
+            } => Some(*signature_counter),
+        }
+    }
+}
+
 impl std::fmt::Display for VerifiedSshSignature {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", &self.signature)
@@ -117,9 +164,53 @@ impl SshSignature {
         let decoded = base64::decode(encoded_signature)?;
         let mut reader = Reader::new(&decoded);
         // Construct a new `SshSignature`
-        let k = Self::from_reader(&mut reader)?;
+        Ok(Self::from_reader(&mut reader)?)
+    }
 
-        Ok(k)
+    /// Return signature metadata. This is generally only available
+    /// for SK signatures.
+    pub fn metadata(&self) -> Result<Option<SignatureMetadata>> {
+        let mut reader = Reader::new(&self.signature);
+        reader.read_string().and_then(|v| KeyType::from_name(&v))?; // Skip the key type
+
+        match &self.pubkey.kind {
+            PublicKeyKind::Ecdsa(key) => {
+                if let Some(application) = key.sk_application.clone() {
+                    // Skip the mpints which make up the signature itself
+                    reader.read_positive_mpint()?;
+                    reader.read_positive_mpint()?;
+
+                    let flags = reader.read_raw_bytes(1)?[0];
+                    let signature_counter = reader.read_u32()?;
+
+                    Ok(Some(SignatureMetadata::SkMetadata {
+                        application,
+                        flags,
+                        signature_counter,
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
+            PublicKeyKind::Ed25519(key) => {
+                if let Some(application) = key.sk_application.clone() {
+                    // Skip bytes which make up the signature
+                    reader.read_bytes()?;
+
+                    let flags = reader.read_raw_bytes(1)?[0];
+                    let signature_counter = reader.read_u32()?;
+
+                    Ok(Some(SignatureMetadata::SkMetadata {
+                        application,
+                        flags,
+                        signature_counter,
+                    }))
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => Ok(None),
+        }
     }
 
     pub(crate) fn from_reader(reader: &mut Reader<'_>) -> Result<Self> {
@@ -377,6 +468,7 @@ pub(crate) fn verify_signature(
 
             if let Some(sk_application) = &key.sk_application {
                 let flags = reader.read_raw_bytes(1)?[0];
+
                 let signature_counter = reader.read_u32()?;
 
                 let mut app_hash = digest::digest(&digest::SHA256, sk_application.as_bytes())
