@@ -49,16 +49,16 @@ pub fn generate_new_ssh_key(
         .map_err(|e| Error::FidoError(FidoError::Unknown(e.to_string())))?;
 
     let mut ret = 0x0;
-    if att.flags_user_present_result {
+    if att.flags.user_present_result {
         ret = ret | 0x01;
     }
-    if att.flags_user_verified_result {
+    if att.flags.user_verified_result {
         ret = ret | 0x04;
     }
-    if att.flags_attested_credential_data_included {
+    if att.flags.attested_credential_data_included {
         ret = ret | 0x40;
     }
-    if att.flags_extension_data_included {
+    if att.flags.extension_data_included {
         ret = ret | 0x80;
     }
 
