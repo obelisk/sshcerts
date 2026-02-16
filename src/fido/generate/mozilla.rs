@@ -8,8 +8,8 @@ use crate::{
     PrivateKey,
 };
 
-use ring::rand::SecureRandom;
-use ring::rand::SystemRandom;
+use ring::digest;
+use ring::rand::{SecureRandom, SystemRandom};
 
 use crate::fido::Error as FidoError;
 
@@ -47,12 +47,20 @@ pub fn generate_new_ssh_key(
     };
     manager.add_u2f_usb_hid_platform_transports();
 
-    let mut chall_bytes = [0u8; 32];
-    SystemRandom::new().fill(&mut chall_bytes).unwrap();
+    // This forms the challenge
+    let mut client_data = [0u8; 32];
+    // Fill it with random data because we don't support taking in
+    // challenge data at this point.
+    SystemRandom::new().fill(&mut client_data).unwrap();
+
+    // Hash the data because that is what will actually be signed
+    let client_data_digest = digest::digest(&digest::SHA256, &client_data);
+    let mut client_data_hash = [0u8; 32];
+    client_data_hash.copy_from_slice(client_data_digest.as_ref());
 
     let origin = application.to_string();
     let ctap_args = RegisterArgs {
-        client_data_hash: chall_bytes,
+        client_data_hash,
         relying_party: RelyingParty {
             id: origin.clone(),
             name: None,
@@ -170,7 +178,7 @@ pub fn generate_new_ssh_key(
         auth_data: raw_auth_data,
         auth_data_sig,
         intermediate,
-        challenge: chall_bytes.to_vec(),
+        challenge: client_data_hash.into(),
         alg,
     };
 
