@@ -72,40 +72,44 @@ impl DynSignatureAlgorithmIdentifier for EcdsaKey {
     }
 }
 
-macro_rules! impl_ecdsa_keytype {
-    ($name:ident, $alg:expr, $digest:expr, $doc:expr) => {
-        #[derive(Debug)]
-        #[doc = $doc]
-        pub struct $name;
+/// P-256 (secp256r1) key type
+#[derive(Debug)]
+pub struct NistP256;
 
-        impl KeyType for $name {
-            type Error = SignatureError;
-            type Signature = EcdsaSignature;
-            type VerifyingKey = EcdsaKey;
-            type PublicKey = EcdsaKey;
+impl KeyType for NistP256 {
+    type Error = SignatureError;
+    type Signature = EcdsaSignature;
+    type VerifyingKey = EcdsaKey;
+    type PublicKey = EcdsaKey;
 
-            const ALGORITHM: AlgorithmId = $alg;
+    const ALGORITHM: AlgorithmId = AlgorithmId::EccP256;
 
-            fn prepare(input: &[u8]) -> Result<Vec<u8>, SignatureError> {
-                Ok(digest::digest($digest, input).as_ref().to_vec())
-            }
+    fn prepare(input: &[u8]) -> Result<Vec<u8>, SignatureError> {
+        Ok(digest::digest(&digest::SHA256, input).as_ref().to_vec())
+    }
 
-            fn read_signature(input: &[u8]) -> Result<Self::Signature, SignatureError> {
-                EcdsaSignature::try_from(input)
-            }
-        }
-    };
+    fn read_signature(input: &[u8]) -> Result<Self::Signature, SignatureError> {
+        EcdsaSignature::try_from(input)
+    }
 }
 
-impl_ecdsa_keytype!(
-    NistP256,
-    AlgorithmId::EccP256,
-    &digest::SHA256,
-    "P-256 (secp256r1) key type"
-);
-impl_ecdsa_keytype!(
-    NistP384,
-    AlgorithmId::EccP384,
-    &digest::SHA384,
-    "P-384 (secp384r1) key type"
-);
+/// P-384 (secp384r1) key type
+#[derive(Debug)]
+pub struct NistP384;
+
+impl KeyType for NistP384 {
+    type Error = SignatureError;
+    type Signature = EcdsaSignature;
+    type VerifyingKey = EcdsaKey;
+    type PublicKey = EcdsaKey;
+
+    const ALGORITHM: AlgorithmId = AlgorithmId::EccP384;
+
+    fn prepare(input: &[u8]) -> Result<Vec<u8>, SignatureError> {
+        Ok(digest::digest(&digest::SHA384, input).as_ref().to_vec())
+    }
+
+    fn read_signature(input: &[u8]) -> Result<Self::Signature, SignatureError> {
+        EcdsaSignature::try_from(input)
+    }
+}
