@@ -222,7 +222,7 @@ impl super::Yubikey {
 
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
-    pub fn provision<KT: yubikey_signer::KeyType>(
+    fn provision<KT: yubikey_signer::KeyType>(
         &mut self,
         slot: &SlotId,
         common_name: &str,
