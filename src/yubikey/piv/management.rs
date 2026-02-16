@@ -45,30 +45,12 @@ impl CSRSigner {
 
         let (public_key, algorithm) = match oid_alg {
             NISTP256_OID => {
-                // This is the OID for ECDSA with SHA256
-                (
-                    pki.subject_public_key
-                        .raw_bytes()
-                        .to_vec()
-                        .to_der()
-                        .unwrap(),
-                    AlgorithmId::EccP256,
-                )
+                (pki.subject_public_key.raw_bytes().to_vec(), AlgorithmId::EccP256)
             }
             SECP384_OID => {
-                // This is the OID for ECDSA with SHA384
-                (
-                    pki.subject_public_key
-                        .raw_bytes()
-                        .to_vec()
-                        .to_der()
-                        .unwrap(),
-                    AlgorithmId::EccP384,
-                )
+                (pki.subject_public_key.raw_bytes().to_vec(), AlgorithmId::EccP384)
             }
-            _ => {
-                panic!("Unsupported algorithm");
-            }
+            _ => panic!("Unsupported algorithm"),
         };
 
         Self {
