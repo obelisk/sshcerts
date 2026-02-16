@@ -2136,6 +2136,7 @@ dependencies = [
  "num-bigint",
  "rcgen",
  "ring 0.17.14",
+ "signature",
  "simple_asn1",
  "x509",
  "x509-cert",

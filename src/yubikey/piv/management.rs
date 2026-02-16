@@ -29,8 +29,10 @@ pub struct CSRSigner {
     algorithm: AlgorithmId,
 }
 
-const NISTP256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.3.1.7");
-const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
+/// OID for secp256r1 / prime256v1 (NIST P-256)
+pub const NISTP256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.3.1.7");
+/// OID for secp384r1 (NIST P-384)
+pub const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
 
 impl CSRSigner {
     /// Create a new certificate signer based on a Yubikey serial
@@ -253,7 +255,7 @@ impl super::Yubikey {
         touch_policy: TouchPolicy,
         pin_policy: PinPolicy,
     ) -> Result<PublicKey> {
-        self.provision::<p384::NistP384>(slot, common_name, touch_policy, pin_policy)
+        self.provision::<super::keytype::NistP384>(slot, common_name, touch_policy, pin_policy)
     }
 
     /// Provisions the YubiKey with a new certificate generated on the device.
@@ -266,7 +268,7 @@ impl super::Yubikey {
         touch_policy: TouchPolicy,
         pin_policy: PinPolicy,
     ) -> Result<PublicKey> {
-        self.provision::<p256::NistP256>(slot, common_name, touch_policy, pin_policy)
+        self.provision::<super::keytype::NistP256>(slot, common_name, touch_policy, pin_policy)
     }
 
     /// Take data, an algorithm, and a slot and attempt to sign the data field
