@@ -2126,6 +2126,7 @@ dependencies = [
  "clap 3.2.25",
  "criterion",
  "ctap-hid-fido2",
+ "ctr",
  "der 0.8.0",
  "der-parser 5.1.2",
  "env_logger",
