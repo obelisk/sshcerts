@@ -144,7 +144,7 @@ impl super::Yubikey {
         Ok(())
     }
 
-    /// Fetch the serial nummbere of the Yubikey
+    /// Fetch the serial number of the Yubikey
     pub fn serial(&mut self) -> Result<Serial> {
         let serial = self.yk.serial();
         Ok(serial)
@@ -220,7 +220,7 @@ impl super::Yubikey {
 
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
-    pub fn provision<KT: yubikey_signer::KeyType>(
+    fn provision<KT: yubikey_signer::KeyType>(
         &mut self,
         slot: &SlotId,
         common_name: &str,
@@ -246,28 +246,28 @@ impl super::Yubikey {
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
     /// This is a nongeneric version to generate a p384 key
-    // pub fn provision_p384(
-    //     &mut self,
-    //     slot: &SlotId,
-    //     common_name: &str,
-    //     touch_policy: TouchPolicy,
-    //     pin_policy: PinPolicy,
-    // ) -> Result<PublicKey> {
-    //     self.provision::<p384::NistP384>(slot, common_name, touch_policy, pin_policy)
-    // }
+    pub fn provision_p384(
+        &mut self,
+        slot: &SlotId,
+        common_name: &str,
+        touch_policy: TouchPolicy,
+        pin_policy: PinPolicy,
+    ) -> Result<PublicKey> {
+        self.provision::<p384::NistP384>(slot, common_name, touch_policy, pin_policy)
+    }
 
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
     /// This is a nongeneric version to generate a p256 key
-    // pub fn provision_p256(
-    //     &mut self,
-    //     slot: &SlotId,
-    //     common_name: &str,
-    //     touch_policy: TouchPolicy,
-    //     pin_policy: PinPolicy,
-    // ) -> Result<PublicKey> {
-    //     self.provision::<p256::NistP256>(slot, common_name, touch_policy, pin_policy)
-    // }
+    pub fn provision_p256(
+        &mut self,
+        slot: &SlotId,
+        common_name: &str,
+        touch_policy: TouchPolicy,
+        pin_policy: PinPolicy,
+    ) -> Result<PublicKey> {
+        self.provision::<p256::NistP256>(slot, common_name, touch_policy, pin_policy)
+    }
 
     /// Take data, an algorithm, and a slot and attempt to sign the data field
     ///
