@@ -315,15 +315,11 @@ pub fn verify_certificate_chain(
         .verify_signature(Some(&parsed_intermediate.tbs_certificate.subject_pki))
         .map_err(|_| Error::InvalidSignature)?;
 
-    println!("Extract public key from client cert");
-
     // Extract the certificate public key and convert to an sshcerts PublicKey
     let public_key = match extract_ssh_pubkey_from_x509_certificate(client) {
         Ok(ssh) => ssh,
         Err(_) => return Err(Error::ParsingError),
     };
-
-    println!("Extract extensions from client cert");
 
     extract_certificate_extension_data(public_key, &parsed_client)
 }
