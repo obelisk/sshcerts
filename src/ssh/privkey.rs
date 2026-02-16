@@ -290,7 +290,6 @@ impl super::SSHCertificateSigner for PrivateKey {
         }
     }
 }
-
 impl PrivateKey {
     fn read_private_key(reader: &mut Reader<'_>) -> Result<Self> {
         let key_type = reader.read_string()?;
