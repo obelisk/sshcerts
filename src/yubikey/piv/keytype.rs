@@ -1,3 +1,4 @@
+use crate::yubikey::piv::management::{NISTP256_OID, SECP384_OID};
 use ring::digest;
 use signature::Error as SignatureError;
 use x509_cert::der::{asn1::BitString, Decode, Encode};
@@ -8,7 +9,6 @@ use x509_cert::spki::{
 };
 use yubikey::certificate::yubikey_signer::KeyType;
 use yubikey::piv::AlgorithmId;
-use crate::yubikey::piv::management::{NISTP256_OID, SECP384_OID};
 
 /// DER-encoded signature as returned by the YubiKey
 #[derive(Clone, Debug)]
@@ -27,7 +27,7 @@ impl SignatureBitStringEncoding for EcdsaSignature {
     }
 }
 
-/// ECDSA public key, serving as both PublicKey and VerifyingKey for KeyType.
+/// This serves as both PublicKey and VerifyingKey for KeyType.
 #[derive(Clone, Debug)]
 pub struct EcdsaKey {
     der: Vec<u8>,
@@ -49,18 +49,26 @@ impl EncodePublicKey for EcdsaKey {
 
 impl DynSignatureAlgorithmIdentifier for EcdsaKey {
     fn signature_algorithm_identifier(&self) -> spki::Result<AlgorithmIdentifierOwned> {
-        const ECDSA_SHA256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.4.3.2");
-        const ECDSA_SHA384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.4.3.3");
+        const ECDSA_SHA256_OID: ObjectIdentifier =
+            ObjectIdentifier::new_unwrap("1.2.840.10045.4.3.2");
+        const ECDSA_SHA384_OID: ObjectIdentifier =
+            ObjectIdentifier::new_unwrap("1.2.840.10045.4.3.3");
 
-        let spki_ref = SubjectPublicKeyInfoRef::from_der(self.der.as_slice())
-            .map_err(spki::Error::Asn1)?;
-        let curve_oid = spki_ref.algorithm.parameters_oid().map_err(|_| spki::Error::AlgorithmParametersMissing)?;
+        let spki_ref =
+            SubjectPublicKeyInfoRef::from_der(self.der.as_slice()).map_err(spki::Error::Asn1)?;
+        let curve_oid = spki_ref
+            .algorithm
+            .parameters_oid()
+            .map_err(|_| spki::Error::AlgorithmParametersMissing)?;
         let sig_oid = match curve_oid {
             oid if oid == NISTP256_OID => ECDSA_SHA256_OID,
             oid if oid == SECP384_OID => ECDSA_SHA384_OID,
             _ => return Err(spki::Error::OidUnknown { oid: curve_oid }),
         };
-        Ok(AlgorithmIdentifier { oid: sig_oid, parameters: None })
+        Ok(AlgorithmIdentifier {
+            oid: sig_oid,
+            parameters: None,
+        })
     }
 }
 
@@ -89,5 +97,15 @@ macro_rules! impl_ecdsa_keytype {
     };
 }
 
-impl_ecdsa_keytype!(NistP256, AlgorithmId::EccP256, &digest::SHA256, "P-256 (secp256r1) key type");
-impl_ecdsa_keytype!(NistP384, AlgorithmId::EccP384, &digest::SHA384, "P-384 (secp384r1) key type");
+impl_ecdsa_keytype!(
+    NistP256,
+    AlgorithmId::EccP256,
+    &digest::SHA256,
+    "P-256 (secp256r1) key type"
+);
+impl_ecdsa_keytype!(
+    NistP384,
+    AlgorithmId::EccP384,
+    &digest::SHA384,
+    "P-384 (secp384r1) key type"
+);
