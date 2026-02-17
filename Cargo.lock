@@ -3079,7 +3079,7 @@ dependencies = [
 [[package]]
 name = "yubikey"
 version = "0.8.0"
-source = "git+https://github.com/timweri/yubikey.rs?branch=sshcerts-aes#7248c9034022847c901a5d4747e95f5d5261faaa"
+source = "git+https://github.com/timweri/yubikey.rs?branch=sshcerts-aes#2054d95e842c7abf0326481e1bc10591efd7c158"
 dependencies = [
  "aes 0.9.0-rc.4",
  "base16ct 0.2.0",

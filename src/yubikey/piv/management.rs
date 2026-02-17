@@ -124,6 +124,17 @@ impl Into<MgmAlgorithmId> for ManagementKeyAlgorithm {
     }
 }
 
+impl From<MgmAlgorithmId> for ManagementKeyAlgorithm {
+    fn from(alg: MgmAlgorithmId) -> Self {
+        match alg {
+            MgmAlgorithmId::ThreeDes => ManagementKeyAlgorithm::ThreeDes,
+            MgmAlgorithmId::Aes128 => ManagementKeyAlgorithm::Aes128,
+            MgmAlgorithmId::Aes192 => ManagementKeyAlgorithm::Aes192,
+            MgmAlgorithmId::Aes256 => ManagementKeyAlgorithm::Aes256,
+        }
+    }
+}
+
 impl super::Yubikey {
     /// Create a new YubiKey. Assumes there is only one Yubikey connected
     pub fn new() -> Result<Self> {
@@ -154,11 +165,21 @@ impl super::Yubikey {
         }
     }
 
+    /// Get the management key algorithm of the Yubikey
+    pub fn get_management_key_algorithm(&mut self) -> Result<ManagementKeyAlgorithm> {
+        Ok(self.yk.management_key_algorithm()?.into())
+    }
+
     /// Unlock the yubikey for signing or provisioning operations
     pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8], alg: Option<ManagementKeyAlgorithm>) -> Result<()> {
         self.yk.verify_pin(pin)?;
 
-        match MgmKey::from_bytes(mgm_key, alg.map(|alg| alg.into())) {
+        let alg = match alg {
+            Some(alg) => alg.into(),
+            None => self.get_management_key_algorithm()?,
+        };
+
+        match MgmKey::from_bytes(mgm_key, Some(alg.into())) {
             Ok(mgm) => self.yk.authenticate(&mgm)?,
             Err(_) => return Err(Error::InvalidManagementKey),
         };
