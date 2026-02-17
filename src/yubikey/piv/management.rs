@@ -4,7 +4,7 @@ use ring::digest;
 
 use yubikey::certificate::Certificate;
 use yubikey::piv::{attest, sign_data as yk_sign_data, AlgorithmId, SlotId};
-use yubikey::{MgmKey, Serial, YubiKey};
+use yubikey::{MgmAlgorithmId, MgmKey, Serial, YubiKey};
 use yubikey::{PinPolicy, TouchPolicy};
 
 use super::{Error, Result};
@@ -27,6 +27,19 @@ pub struct CSRSigner {
     serial: u32,
     public_key: Vec<u8>,
     algorithm: AlgorithmId,
+}
+
+#[derive(Debug)]
+/// Management key algorithm
+pub enum ManagementKeyAlgorithm {
+    /// 3DES
+    ThreeDes,
+    /// AES-128
+    Aes128,
+    /// AES-192
+    Aes192,
+    /// AES-256
+    Aes256,
 }
 
 /// OID for secp256r1 / prime256v1 (NIST P-256)
@@ -87,6 +100,30 @@ impl rcgen::RemoteKeyPair for CSRSigner {
     }
 }
 
+impl FromStr for ManagementKeyAlgorithm {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "3des" => Ok(ManagementKeyAlgorithm::ThreeDes),
+            "aes128" => Ok(ManagementKeyAlgorithm::Aes128),
+            "aes192" => Ok(ManagementKeyAlgorithm::Aes192),
+            "aes256" => Ok(ManagementKeyAlgorithm::Aes256),
+            _ => Err(Error::InvalidManagementKeyAlgorithm),
+        }
+    }
+}
+
+impl Into<MgmAlgorithmId> for ManagementKeyAlgorithm {
+    fn into(self) -> MgmAlgorithmId {
+        match self {
+            ManagementKeyAlgorithm::ThreeDes => MgmAlgorithmId::ThreeDes,
+            ManagementKeyAlgorithm::Aes128 => MgmAlgorithmId::Aes128,
+            ManagementKeyAlgorithm::Aes192 => MgmAlgorithmId::Aes192,
+            ManagementKeyAlgorithm::Aes256 => MgmAlgorithmId::Aes256,
+        }
+    }
+}
+
 impl super::Yubikey {
     /// Create a new YubiKey. Assumes there is only one Yubikey connected
     pub fn new() -> Result<Self> {
@@ -118,13 +155,14 @@ impl super::Yubikey {
     }
 
     /// Unlock the yubikey for signing or provisioning operations
-    pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8]) -> Result<()> {
+    pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8], alg: Option<ManagementKeyAlgorithm>) -> Result<()> {
         self.yk.verify_pin(pin)?;
 
-        match MgmKey::from_bytes(mgm_key) {
-            Ok(mgm) => self.yk.authenticate(mgm)?,
+        match MgmKey::from_bytes(mgm_key, alg.map(|alg| alg.into())) {
+            Ok(mgm) => self.yk.authenticate(&mgm)?,
             Err(_) => return Err(Error::InvalidManagementKey),
         };
+
         Ok(())
     }
 

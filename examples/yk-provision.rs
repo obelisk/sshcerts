@@ -3,7 +3,7 @@ use std::env;
 use clap::{Arg, Command};
 
 use sshcerts::yubikey::piv::{
-    PinPolicy, RetiredSlotId, SlotId, TouchPolicy, Yubikey,
+    ManagementKeyAlgorithm, PinPolicy, RetiredSlotId, SlotId, TouchPolicy, Yubikey,
 };
 
 use std::convert::TryFrom;
@@ -13,6 +13,7 @@ fn provision_new_key(
     subject: &str,
     pin: &str,
     mgm_key: &[u8],
+    mgm_key_alg: Option<ManagementKeyAlgorithm>,
     alg: &str,
     secure: bool,
 ) {
@@ -29,7 +30,7 @@ fn provision_new_key(
     };
 
     let mut yk = Yubikey::new().unwrap();
-    yk.unlock(pin.as_bytes(), mgm_key).unwrap();
+    yk.unlock(pin.as_bytes(), mgm_key, mgm_key_alg).unwrap();
     let result = match alg {
         "p256" => yk.provision_p256(&slot, subject, policy, PinPolicy::Never),
         _ => {
@@ -109,6 +110,17 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("management-key-algorithm")
+                .help("Specify the algorithm of the management key")
+                .long("mgmkey-alg")
+                .short('a')
+                .possible_value("3des")
+                .possible_value("aes128")
+                .possible_value("aes192")
+                .possible_value("aes256")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("type")
                 .help("Specify the type of key you want to provision (p256, p384)")
                 .long("type")
@@ -138,6 +150,7 @@ fn main() {
         matches.value_of("subject").unwrap(),
         matches.value_of("pin").unwrap(),
         &hex::decode(matches.value_of("management-key").unwrap()).unwrap(),
+        matches.value_of("management-key-algorithm").map(|alg| alg.parse::<ManagementKeyAlgorithm>().unwrap()),
         matches.value_of("type").unwrap_or("p384"),
         secure,
     );

@@ -1,7 +1,7 @@
 use crate::yubikey::piv::management::{NISTP256_OID, SECP384_OID};
 use ring::digest;
 use signature::Error as SignatureError;
-use x509_cert::der::{asn1::BitString, Decode, Encode};
+use x509_cert::der::{self, asn1::BitString, Decode, Encode};
 use x509_cert::spki;
 use x509_cert::spki::{
     AlgorithmIdentifier, AlgorithmIdentifierOwned, DynSignatureAlgorithmIdentifier,
@@ -22,7 +22,7 @@ impl TryFrom<&[u8]> for EcdsaSignature {
 }
 
 impl SignatureBitStringEncoding for EcdsaSignature {
-    fn to_bitstring(&self) -> x509_cert::der::Result<BitString> {
+    fn to_bitstring(&self) -> der::Result<BitString> {
         BitString::from_bytes(&self.0)
     }
 }

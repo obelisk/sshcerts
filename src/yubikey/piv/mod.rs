@@ -34,6 +34,8 @@ pub enum Error {
     /// If the Yubikey throws an error we don't recognize, it's encapsulated
     /// and returned
     InternalYubiKeyError(String),
+    /// If the management key algorithm is invalid
+    InvalidManagementKeyAlgorithm,
 }
 
 impl std::error::Error for Error {}
@@ -43,6 +45,7 @@ type Result<T> = std::result::Result<T, Error>;
 // Re-export because it's used as a parameter in `sign_data`
 pub use keytype::{NistP256, NistP384};
 pub use yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId};
+pub use management::ManagementKeyAlgorithm;
 pub use yubikey::{PinPolicy, TouchPolicy};
 
 /// Structure to wrap a yubikey and abstract actions
@@ -81,6 +84,7 @@ impl std::fmt::Display for Error {
             Error::ParsingError => write!(f, "Could not parse data"),
             Error::NoSuchYubikey => write!(f, "Could not find the requested Yubikey"),
             Error::InternalYubiKeyError(ref err) => write!(f, "Yubikey error: {}", err),
+            Error::InvalidManagementKeyAlgorithm => write!(f, "Invalid management key algorithm"),
         }
     }
 }
