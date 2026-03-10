@@ -4,7 +4,7 @@ use ring::digest;
 
 use yubikey::certificate::Certificate;
 use yubikey::piv::{attest, sign_data as yk_sign_data, AlgorithmId, SlotId};
-use yubikey::{MgmKey, YubiKey};
+use yubikey::{MgmAlgorithmId, MgmKey, Serial, YubiKey};
 use yubikey::{PinPolicy, TouchPolicy};
 
 use super::{Error, Result};
@@ -29,8 +29,23 @@ pub struct CSRSigner {
     algorithm: AlgorithmId,
 }
 
-const NISTP256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.3.1.7");
-const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
+#[derive(Debug)]
+/// Management key algorithm
+pub enum ManagementKeyAlgorithm {
+    /// 3DES
+    ThreeDes,
+    /// AES-128
+    Aes128,
+    /// AES-192
+    Aes192,
+    /// AES-256
+    Aes256,
+}
+
+/// OID for secp256r1 / prime256v1 (NIST P-256)
+pub const NISTP256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.3.1.7");
+/// OID for secp384r1 (NIST P-384)
+pub const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
 
 impl CSRSigner {
     /// Create a new certificate signer based on a Yubikey serial
@@ -42,31 +57,15 @@ impl CSRSigner {
         let oid_alg = pki.algorithm.parameters_oid().unwrap();
 
         let (public_key, algorithm) = match oid_alg {
-            NISTP256_OID => {
-                // This is the OID for ECDSA with SHA256
-                (
-                    pki.subject_public_key
-                        .raw_bytes()
-                        .to_vec()
-                        .to_der()
-                        .unwrap(),
-                    AlgorithmId::EccP256,
-                )
-            }
-            SECP384_OID => {
-                // This is the OID for ECDSA with SHA384
-                (
-                    pki.subject_public_key
-                        .raw_bytes()
-                        .to_vec()
-                        .to_der()
-                        .unwrap(),
-                    AlgorithmId::EccP384,
-                )
-            }
-            _ => {
-                panic!("Unsupported algorithm");
-            }
+            NISTP256_OID => (
+                pki.subject_public_key.raw_bytes().to_vec(),
+                AlgorithmId::EccP256,
+            ),
+            SECP384_OID => (
+                pki.subject_public_key.raw_bytes().to_vec(),
+                AlgorithmId::EccP384,
+            ),
+            _ => panic!("Unsupported algorithm"),
         };
 
         Self {
@@ -103,6 +102,41 @@ impl rcgen::RemoteKeyPair for CSRSigner {
     }
 }
 
+impl FromStr for ManagementKeyAlgorithm {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "3des" => Ok(ManagementKeyAlgorithm::ThreeDes),
+            "aes128" => Ok(ManagementKeyAlgorithm::Aes128),
+            "aes192" => Ok(ManagementKeyAlgorithm::Aes192),
+            "aes256" => Ok(ManagementKeyAlgorithm::Aes256),
+            _ => Err(Error::InvalidManagementKeyAlgorithm),
+        }
+    }
+}
+
+impl Into<MgmAlgorithmId> for ManagementKeyAlgorithm {
+    fn into(self) -> MgmAlgorithmId {
+        match self {
+            ManagementKeyAlgorithm::ThreeDes => MgmAlgorithmId::ThreeDes,
+            ManagementKeyAlgorithm::Aes128 => MgmAlgorithmId::Aes128,
+            ManagementKeyAlgorithm::Aes192 => MgmAlgorithmId::Aes192,
+            ManagementKeyAlgorithm::Aes256 => MgmAlgorithmId::Aes256,
+        }
+    }
+}
+
+impl From<MgmAlgorithmId> for ManagementKeyAlgorithm {
+    fn from(alg: MgmAlgorithmId) -> Self {
+        match alg {
+            MgmAlgorithmId::ThreeDes => ManagementKeyAlgorithm::ThreeDes,
+            MgmAlgorithmId::Aes128 => ManagementKeyAlgorithm::Aes128,
+            MgmAlgorithmId::Aes192 => ManagementKeyAlgorithm::Aes192,
+            MgmAlgorithmId::Aes256 => ManagementKeyAlgorithm::Aes256,
+        }
+    }
+}
+
 impl super::Yubikey {
     /// Create a new YubiKey. Assumes there is only one Yubikey connected
     pub fn new() -> Result<Self> {
@@ -133,15 +167,29 @@ impl super::Yubikey {
         }
     }
 
+    /// Get the management key algorithm of the Yubikey
+    pub fn get_management_key_algorithm(&mut self) -> Result<ManagementKeyAlgorithm> {
+        Ok(self.yk.management_key_algorithm()?.into())
+    }
+
     /// Unlock the yubikey for signing or provisioning operations
     pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8]) -> Result<()> {
         self.yk.verify_pin(pin)?;
 
-        match MgmKey::from_bytes(mgm_key) {
-            Ok(mgm) => self.yk.authenticate(mgm)?,
+        let alg = self.get_management_key_algorithm()?;
+
+        match MgmKey::from_bytes(mgm_key, Some(alg.into())) {
+            Ok(mgm) => self.yk.authenticate(&mgm)?,
             Err(_) => return Err(Error::InvalidManagementKey),
         };
+
         Ok(())
+    }
+
+    /// Fetch the serial number of the Yubikey
+    pub fn serial(&mut self) -> Result<Serial> {
+        let serial = self.yk.serial();
+        Ok(serial)
     }
 
     /// Check to see that a provided Yubikey and slot is configured for signing
@@ -214,7 +262,7 @@ impl super::Yubikey {
 
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
-    pub fn provision<KT: yubikey_signer::KeyType>(
+    fn provision<KT: yubikey_signer::KeyType>(
         &mut self,
         slot: &SlotId,
         common_name: &str,
@@ -235,6 +283,32 @@ impl super::Yubikey {
         )?;
 
         self.ssh_cert_fetch_pubkey(slot)
+    }
+
+    /// Provisions the YubiKey with a new certificate generated on the device.
+    /// Only keys that are generated this way can use the attestation functionality.
+    /// This is a nongeneric version to generate a p384 key
+    pub fn provision_p384(
+        &mut self,
+        slot: &SlotId,
+        common_name: &str,
+        touch_policy: TouchPolicy,
+        pin_policy: PinPolicy,
+    ) -> Result<PublicKey> {
+        self.provision::<super::keytype::NistP384>(slot, common_name, touch_policy, pin_policy)
+    }
+
+    /// Provisions the YubiKey with a new certificate generated on the device.
+    /// Only keys that are generated this way can use the attestation functionality.
+    /// This is a nongeneric version to generate a p256 key
+    pub fn provision_p256(
+        &mut self,
+        slot: &SlotId,
+        common_name: &str,
+        touch_policy: TouchPolicy,
+        pin_policy: PinPolicy,
+    ) -> Result<PublicKey> {
+        self.provision::<super::keytype::NistP256>(slot, common_name, touch_policy, pin_policy)
     }
 
     /// Take data, an algorithm, and a slot and attempt to sign the data field

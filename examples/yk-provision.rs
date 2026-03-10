@@ -2,8 +2,9 @@ use std::env;
 
 use clap::{Arg, Command};
 
-use sshcerts::yubikey::piv::Yubikey;
-use sshcerts::yubikey::piv::{PinPolicy, RetiredSlotId, SlotId, TouchPolicy};
+use sshcerts::yubikey::piv::{
+    PinPolicy, RetiredSlotId, SlotId, TouchPolicy, Yubikey,
+};
 
 use std::convert::TryFrom;
 
@@ -30,10 +31,10 @@ fn provision_new_key(
     let mut yk = Yubikey::new().unwrap();
     yk.unlock(pin.as_bytes(), mgm_key).unwrap();
     let result = match alg {
-        "p256" => yk.provision::<p256::NistP256>(&slot, subject, policy, PinPolicy::Never),
+        "p256" => yk.provision_p256(&slot, subject, policy, PinPolicy::Never),
         _ => {
             println!("Using P384");
-            yk.provision::<p384::NistP384>(&slot, subject, policy, PinPolicy::Never)
+            yk.provision_p384(&slot, subject, policy, PinPolicy::Never)
         }
     };
     match result {

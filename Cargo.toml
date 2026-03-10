@@ -47,7 +47,7 @@ fido-support-mozilla = ["authenticator", "fido-lite"]
 fido-lite = ["minicbor", "x509-parser"]
 rsa-signing = ["simple_asn1", "num-bigint"]
 x509-support = ["der-parser", "x509", "x509-parser"]
-yubikey-support = ["rcgen", "yubikey", "yubikey-lite"]
+yubikey-support = ["rcgen", "signature", "yubikey", "yubikey-lite"]
 yubikey-lite = ["x509-support", "der", "x509-cert"]
 
 [dependencies]
@@ -61,18 +61,20 @@ simple_asn1 = { version = "0.5", optional = true }
 num-bigint = { version = "0.4", optional = true }
 
 # Dependencies for yubikey-support
-yubikey = { version = "0.8", features = ["untested"], optional = true }
+signature = { version = "3.0.0-rc.10", optional = true }
+yubikey = { git = "https://github.com/timweri/yubikey.rs", branch = "sshcerts-aes", features = ["untested"], optional = true }
+# yubikey = { git = "https://github.com/iqlusioninc/yubikey.rs", branch = "main", features = ["untested"], optional = true }
 lexical-core = { version = ">0.7.4", optional = true }
 rcgen = { version = "0.11", optional = true }
 x509 = { version = "0.2", optional = true }
 x509-parser = { version = "0.15", features = ["verify"], optional = true }
 der-parser = { version = "5", optional = true }
-der = { version = "0.7", optional = true }
-x509-cert = { version = "0.2", optional = true }
+der = { version = "0.8", optional = true }
+x509-cert = { version = "0.3.0-rc.4", optional = true }
 
 # Dependencies for encrypted-keys
 aes = { version = "0.7", features = ["ctr"], optional = true }
-bcrypt-pbkdf = { version = "0.6", optional = true }
+bcrypt-pbkdf = { version = "0.10", optional = true }
 ctr = { version = "0.8", optional = true }
 
 # Dependencies for fido-support-*
@@ -97,8 +99,6 @@ env_logger = "0.8.2"
 hex = "0.4.2"
 clap = "3.0.5"
 criterion = "0.3"
-p256 = "*"
-p384 = "*"
 
 [[bench]]
 name = "certs_per_second"
@@ -111,6 +111,10 @@ required-features = ["yubikey-support"]
 
 [[example]]
 name = "yk-provision"
+required-features = ["yubikey-support"]
+
+[[example]]
+name = "yk-generate-csr"
 required-features = ["yubikey-support"]
 
 [[example]]
