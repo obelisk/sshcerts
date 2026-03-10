@@ -291,7 +291,8 @@ impl super::SSHCertificateSigner for PrivateKey {
     }
 }
 impl PrivateKey {
-    fn read_private_key(reader: &mut Reader<'_>) -> Result<Self> {
+    /// Create a private key from an existing reader of decrypted private bytes
+    pub fn read_private_key(reader: &mut Reader<'_>) -> Result<Self> {
         let key_type = reader.read_string()?;
         let kt = KeyType::from_name(&key_type)?;
 
@@ -531,11 +532,6 @@ impl PrivateKey {
     pub fn from_bytes<T: ?Sized + AsRef<[u8]>>(buffer: &T) -> Result<PrivateKey> {
         let mut reader = Reader::new(buffer);
         PrivateKey::read_private_key(&mut reader)
-    }
-
-    /// Create a private key from an existing reader of decrypted private bytes
-    pub fn from_reader_raw(reader: &mut Reader<'_>) -> Result<PrivateKey> {
-        PrivateKey::read_private_key(reader)
     }
 
     /// This function is used for extracting a private key from an existing reader.
