@@ -29,7 +29,7 @@ fn provision_new_key(
     };
 
     let mut yk = Yubikey::new().unwrap();
-    yk.unlock(pin.as_bytes(), mgm_key, None).unwrap();
+    yk.unlock(pin.as_bytes(), mgm_key).unwrap();
     let result = match alg {
         "p256" => yk.provision_p256(&slot, subject, policy, PinPolicy::Never),
         _ => {
