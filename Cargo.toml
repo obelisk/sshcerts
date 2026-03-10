@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.14.0"
+version = "0.14.1"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2021"
 license-file = "LICENSE"
