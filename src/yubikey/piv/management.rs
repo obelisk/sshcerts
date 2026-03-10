@@ -57,12 +57,14 @@ impl CSRSigner {
         let oid_alg = pki.algorithm.parameters_oid().unwrap();
 
         let (public_key, algorithm) = match oid_alg {
-            NISTP256_OID => {
-                (pki.subject_public_key.raw_bytes().to_vec(), AlgorithmId::EccP256)
-            }
-            SECP384_OID => {
-                (pki.subject_public_key.raw_bytes().to_vec(), AlgorithmId::EccP384)
-            }
+            NISTP256_OID => (
+                pki.subject_public_key.raw_bytes().to_vec(),
+                AlgorithmId::EccP256,
+            ),
+            SECP384_OID => (
+                pki.subject_public_key.raw_bytes().to_vec(),
+                AlgorithmId::EccP384,
+            ),
             _ => panic!("Unsupported algorithm"),
         };
 
@@ -171,13 +173,10 @@ impl super::Yubikey {
     }
 
     /// Unlock the yubikey for signing or provisioning operations
-    pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8], alg: Option<ManagementKeyAlgorithm>) -> Result<()> {
+    pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8]) -> Result<()> {
         self.yk.verify_pin(pin)?;
 
-        let alg = match alg {
-            Some(alg) => alg.into(),
-            None => self.get_management_key_algorithm()?,
-        };
+        let alg = self.get_management_key_algorithm()?;
 
         match MgmKey::from_bytes(mgm_key, Some(alg.into())) {
             Ok(mgm) => self.yk.authenticate(&mgm)?,
