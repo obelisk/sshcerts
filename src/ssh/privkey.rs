@@ -291,7 +291,8 @@ impl super::SSHCertificateSigner for PrivateKey {
     }
 }
 impl PrivateKey {
-    fn read_private_key(reader: &mut Reader<'_>) -> Result<Self> {
+    /// Create a private key from an existing reader of decrypted private bytes
+    pub fn read_private_key(reader: &mut Reader<'_>) -> Result<Self> {
         let key_type = reader.read_string()?;
         let kt = KeyType::from_name(&key_type)?;
 
