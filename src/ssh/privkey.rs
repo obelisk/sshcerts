@@ -533,6 +533,11 @@ impl PrivateKey {
         PrivateKey::read_private_key(&mut reader)
     }
 
+    /// Create a private key from an existing reader of decrypted private bytes
+    pub fn from_reader_raw(reader: &mut Reader<'_>) -> Result<PrivateKey> {
+        PrivateKey::read_private_key(reader)
+    }
+
     /// This function is used for extracting a private key from an existing reader.
     pub(crate) fn from_reader(
         reader: &mut Reader<'_>,
