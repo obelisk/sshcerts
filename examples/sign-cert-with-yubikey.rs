@@ -43,7 +43,7 @@ struct YubikeySigner {
 impl SSHCertificateSigner for YubikeySigner {
     fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
         let mut yk = Yubikey::new().unwrap();
-        yk.unlock(self.pin.as_bytes(), &self.mgm_key).unwrap();
+        yk.unlock(self.pin.as_bytes(), &self.mgm_key, None).unwrap();
         println!("Unlocking Successful");
 
         match yk.ssh_cert_signer(buffer, &self.slot) {

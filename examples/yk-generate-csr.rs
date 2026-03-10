@@ -79,7 +79,7 @@ fn main() {
     let mgm_key = &hex::decode(matches.value_of("management-key").unwrap()).unwrap();
 
     let mut yk = Yubikey::new().unwrap();
-    yk.unlock(pin.as_bytes(), mgm_key).unwrap();
+    yk.unlock(pin.as_bytes(), mgm_key, None).unwrap();
 
     let csr = yk.generate_csr(&slot, "TestCSR").unwrap();
 
