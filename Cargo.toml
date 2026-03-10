@@ -1,6 +1,6 @@
 [package]
 name = "sshcerts"
-version = "0.14.1"
+version = "0.15.0"
 authors = ["Mitchell Grenier <mitchell@confurious.io>"]
 edition = "2021"
 license-file = "LICENSE"
@@ -62,8 +62,7 @@ num-bigint = { version = "0.4", optional = true }
 
 # Dependencies for yubikey-support
 signature = { version = "3.0.0-rc.10", optional = true }
-yubikey = { git = "https://github.com/timweri/yubikey.rs", branch = "sshcerts-aes", features = ["untested"], optional = true }
-# yubikey = { git = "https://github.com/iqlusioninc/yubikey.rs", branch = "main", features = ["untested"], optional = true }
+yubikey = { version = "0.8", features = ["untested"], optional = true }
 lexical-core = { version = ">0.7.4", optional = true }
 rcgen = { version = "0.11", optional = true }
 x509 = { version = "0.2", optional = true }
@@ -93,6 +92,9 @@ ctap-hid-fido2 = { version = "3", optional = true }
 #ctap-hid-fido2 = {git = "https://github.com/gebogebogebo/ctap-hid-fido2", branch="master", optional = true}
 #ctap-hid-fido2 = {git = "https://github.com/obelisk/ctap-hid-fido2", branch="device_by_path", optional = true}
 #ctap-hid-fido2 = {path = "../ctap-hid-fido2", optional = true}
+
+[patch.crates-io]
+yubikey = { git = "https://github.com/timweri/yubikey.rs", rev = "2054d95e842c7abf0326481e1bc10591efd7c158" }
 
 [dev-dependencies]
 env_logger = "0.8.2"
