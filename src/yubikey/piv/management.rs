@@ -50,11 +50,14 @@ pub const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.
 impl CSRSigner {
     /// Create a new certificate signer based on a Yubikey serial
     /// and slot
-    pub fn new(serial: u32, slot: SlotId) -> Self {
-        let mut yk = super::Yubikey::open(serial).unwrap();
-        let cert = yk.configured(&slot).unwrap();
+    pub fn new(serial: u32, slot: SlotId) -> Result<Self> {
+        let mut yk = super::Yubikey::open(serial)
+            .map_err(|e| Error::InternalYubiKeyError(e.to_string()))?;
+        let cert = yk.configured(&slot)
+            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
         let pki = cert.subject_pki();
-        let oid_alg = pki.algorithm.parameters_oid().unwrap();
+        let oid_alg = pki.algorithm.parameters_oid()
+            .map_err(|_| Error::OIDError)?;
 
         let (public_key, algorithm) = match oid_alg {
             NISTP256_OID => (
@@ -65,15 +68,15 @@ impl CSRSigner {
                 pki.subject_public_key.raw_bytes().to_vec(),
                 AlgorithmId::EccP384,
             ),
-            _ => panic!("Unsupported algorithm"),
+            _ => return Err(Error::UnsupportedAlgorithm),
         };
 
-        Self {
+        Ok(Self {
             slot,
             serial,
             public_key,
             algorithm,
-        }
+        })
     }
 }
 
@@ -258,7 +261,7 @@ impl super::Yubikey {
             .distinguished_name
             .push(rcgen::DnType::CommonName, common_name.to_string());
 
-        let csr_signer = CSRSigner::new(self.yk.serial().into(), *slot);
+        let csr_signer = CSRSigner::new(self.yk.serial().into(), *slot)?;
         params.key_pair = Some(
             rcgen::KeyPair::from_remote(Box::new(csr_signer))
                 .map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?,

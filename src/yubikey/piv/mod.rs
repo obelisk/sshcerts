@@ -20,8 +20,11 @@ pub enum Error {
     WrongKeyType,
     /// This occurs when you try to use a feature that should technically work
     /// but is currently unimplemented or unsupported on the hardware connected.
-    /// For example, RSA signing will currently throw this error.
     Unsupported,
+    /// This occurs when you try to use an algorithm that should technically work
+    /// but is currently unimplemented or unsupported on the hardware connected.
+    /// For example, RSA signing will currently throw this error.
+    UnsupportedAlgorithm,
     /// If you pass a management key into the provision function that does not
     /// deserialize from bytes, you will get this error.
     InvalidManagementKey,
@@ -36,6 +39,8 @@ pub enum Error {
     InternalYubiKeyError(String),
     /// If the management key algorithm is invalid
     InvalidManagementKeyAlgorithm,
+    /// If the OID is invalid or absent
+    OIDError,
 }
 
 impl std::error::Error for Error {}
@@ -78,6 +83,9 @@ impl std::fmt::Display for Error {
             Error::Unsupported => {
                 write!(f, "This key is not supported the way you tried to use it")
             }
+            Error::UnsupportedAlgorithm => {
+                write!(f, "Unsupported key algorithm")
+            }
             Error::InvalidManagementKey => {
                 write!(f, "Could not use the management key as provided")
             }
@@ -85,6 +93,7 @@ impl std::fmt::Display for Error {
             Error::NoSuchYubikey => write!(f, "Could not find the requested Yubikey"),
             Error::InternalYubiKeyError(ref err) => write!(f, "Yubikey error: {}", err),
             Error::InvalidManagementKeyAlgorithm => write!(f, "Invalid management key algorithm"),
+            Error::OIDError => write!(f, "Invalid or absent OID"),
         }
     }
 }
