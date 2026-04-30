@@ -12,7 +12,7 @@ use crate::{error::Error, ssh::Writer, PrivateKey, PublicKey, Result};
 use super::{KeyType, PublicKeyKind, Reader, SSHCertificateSigner};
 
 /// The hash algorithm used to sign the data in the SshSignature
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum HashAlgorithm {
     /// SHA256
     Sha256,
@@ -32,7 +32,7 @@ impl HashAlgorithm {
 
 /// An SSH signature object from signing arbitrary data. This object
 /// has not been verified against a message so it is untrusted.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SshSignature {
     /// The public key used to sign the data
     pub pubkey: PublicKey,
