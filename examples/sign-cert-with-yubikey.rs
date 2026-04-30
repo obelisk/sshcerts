@@ -3,7 +3,7 @@ use std::env;
 use clap::{Arg, Command};
 
 use sshcerts::ssh::SSHCertificateSigner;
-use sshcerts::yubikey::piv::{SlotId, Yubikey};
+use sshcerts::yubikey::piv::{ManagementKeyAlgorithm, SlotId, Yubikey};
 use sshcerts::*;
 
 use std::convert::TryFrom;
@@ -38,12 +38,18 @@ struct YubikeySigner {
     slot: SlotId,
     pin: String,
     mgm_key: Vec<u8>,
+    mgm_key_algorithm: Option<ManagementKeyAlgorithm>,
 }
 
 impl SSHCertificateSigner for YubikeySigner {
     fn sign(&self, buffer: &[u8]) -> Option<Vec<u8>> {
         let mut yk = Yubikey::new().unwrap();
-        yk.unlock(self.pin.as_bytes(), &self.mgm_key).unwrap();
+        match self.mgm_key_algorithm {
+            Some(alg) => yk
+                .unlock_with_management_key_algorithm(self.pin.as_bytes(), &self.mgm_key, alg)
+                .unwrap(),
+            None => yk.unlock(self.pin.as_bytes(), &self.mgm_key).unwrap(),
+        }
         println!("Unlocking Successful");
 
         match yk.ssh_cert_signer(buffer, &self.slot) {
@@ -103,6 +109,16 @@ fn main() {
                 .short('m')
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("management-key-algorithm")
+                .help("Management key algorithm for custom keys")
+                .long("mgmkey-alg")
+                .possible_value("3des")
+                .possible_value("aes128")
+                .possible_value("aes192")
+                .possible_value("aes256")
+                .takes_value(true),
+        )
         .get_matches();
 
     let slot = slot_parser(matches.value_of("slot").unwrap()).unwrap();
@@ -117,6 +133,11 @@ fn main() {
         slot,
         pin: matches.value_of("pin").unwrap().to_string(),
         mgm_key: hex::decode(matches.value_of("management-key").unwrap()).unwrap(),
+        mgm_key_algorithm: matches
+            .value_of("management-key-algorithm")
+            .map(str::parse)
+            .transpose()
+            .unwrap(),
     };
 
     let user_cert = Certificate::builder(&ssh_pubkey, CertType::User, &yk_pubkey)

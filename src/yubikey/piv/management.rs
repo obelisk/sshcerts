@@ -29,7 +29,7 @@ pub struct CSRSigner {
     algorithm: AlgorithmId,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 /// Management key algorithm
 pub enum ManagementKeyAlgorithm {
     /// 3DES
@@ -167,23 +167,40 @@ impl super::Yubikey {
         }
     }
 
-    /// Get the management key algorithm of the Yubikey
+    /// Get the default management key algorithm of the Yubikey.
     pub fn get_management_key_algorithm(&mut self) -> Result<ManagementKeyAlgorithm> {
-        Ok(self.yk.management_key_algorithm()?.into())
+        Ok(MgmKey::get_default(&self.yk)?.algorithm_id().into())
     }
 
     /// Unlock the yubikey for signing or provisioning operations
     pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8]) -> Result<()> {
         self.yk.verify_pin(pin)?;
 
-        let alg = self.get_management_key_algorithm()?;
-
-        match MgmKey::from_bytes(mgm_key, Some(alg.into())) {
-            Ok(mgm) => self.yk.authenticate(&mgm)?,
-            Err(_) => return Err(Error::InvalidManagementKey),
-        };
+        let mgm = self.management_key_from_bytes(mgm_key)?;
+        self.yk.authenticate(&mgm)?;
 
         Ok(())
+    }
+
+    /// Unlock the yubikey with an explicit management key algorithm.
+    pub fn unlock_with_management_key_algorithm(
+        &mut self,
+        pin: &[u8],
+        mgm_key: &[u8],
+        alg: ManagementKeyAlgorithm,
+    ) -> Result<()> {
+        self.yk.verify_pin(pin)?;
+
+        let mgm = MgmKey::from_bytes(mgm_key, Some(alg.into()))
+            .map_err(|_| Error::InvalidManagementKey)?;
+        self.yk.authenticate(&mgm)?;
+
+        Ok(())
+    }
+
+    fn management_key_from_bytes(&self, mgm_key: &[u8]) -> Result<MgmKey> {
+        let alg = MgmKey::get_default(&self.yk)?.algorithm_id();
+        MgmKey::from_bytes(mgm_key, Some(alg)).map_err(|_| Error::InvalidManagementKey)
     }
 
     /// Fetch the serial number of the Yubikey

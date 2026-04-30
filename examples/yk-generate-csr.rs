@@ -2,7 +2,7 @@ use std::env;
 
 use clap::{Arg, Command};
 
-use sshcerts::yubikey::piv::Yubikey;
+use sshcerts::yubikey::piv::{ManagementKeyAlgorithm, Yubikey};
 use sshcerts::yubikey::piv::{RetiredSlotId, SlotId};
 
 use x509_parser::prelude::*;
@@ -61,6 +61,16 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("management-key-algorithm")
+                .help("Management key algorithm for custom keys")
+                .long("mgmkey-alg")
+                .possible_value("3des")
+                .possible_value("aes128")
+                .possible_value("aes192")
+                .possible_value("aes256")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("pin")
                 .help("Provision this slot with a new private key. The pin number must be passed as parameter here")
                 .default_value("123456")
@@ -77,9 +87,19 @@ fn main() {
     };
     let pin = matches.value_of("pin").unwrap();
     let mgm_key = &hex::decode(matches.value_of("management-key").unwrap()).unwrap();
+    let mgm_key_algorithm = matches
+        .value_of("management-key-algorithm")
+        .map(str::parse::<ManagementKeyAlgorithm>)
+        .transpose()
+        .unwrap();
 
     let mut yk = Yubikey::new().unwrap();
-    yk.unlock(pin.as_bytes(), mgm_key).unwrap();
+    match mgm_key_algorithm {
+        Some(alg) => yk
+            .unlock_with_management_key_algorithm(pin.as_bytes(), mgm_key, alg)
+            .unwrap(),
+        None => yk.unlock(pin.as_bytes(), mgm_key).unwrap(),
+    }
 
     let csr = yk.generate_csr(&slot, "TestCSR").unwrap();
 
