@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-
-use sshcerts::yubikey::{RetiredSlotId, SlotId, Yubikey};
+use sshcerts::yubikey::piv::Yubikey;
+use yubikey::piv::{RetiredSlotId, SlotId};
 
 fn generate_certs(n: u64) -> () {
     let data = [0; 32];

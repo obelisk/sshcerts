@@ -2,8 +2,9 @@ use std::env;
 
 use clap::{Arg, Command};
 
-use sshcerts::yubikey::piv::Yubikey;
-use sshcerts::yubikey::piv::{AlgorithmId, PinPolicy, RetiredSlotId, SlotId, TouchPolicy};
+use sshcerts::yubikey::piv::{
+    ManagementKeyAlgorithm, PinPolicy, RetiredSlotId, SlotId, TouchPolicy, Yubikey,
+};
 
 use std::convert::TryFrom;
 
@@ -12,14 +13,10 @@ fn provision_new_key(
     subject: &str,
     pin: &str,
     mgm_key: &[u8],
+    mgm_key_algorithm: Option<ManagementKeyAlgorithm>,
     alg: &str,
     secure: bool,
 ) {
-    let alg = match alg {
-        "p256" => AlgorithmId::EccP256,
-        _ => AlgorithmId::EccP384,
-    };
-
     println!(
         "Provisioning new {:?} key called [{}] in slot: {:?}",
         alg, subject, slot
@@ -33,11 +30,21 @@ fn provision_new_key(
     };
 
     let mut yk = Yubikey::new().unwrap();
-    yk.unlock(pin.as_bytes(), mgm_key).unwrap();
-    match yk.provision(&slot, subject, alg, policy, PinPolicy::Never) {
-        Ok(pk) => {
-            println!("New hardware backed SSH Public Key: {}", pk);
+    match mgm_key_algorithm {
+        Some(alg) => yk
+            .unlock_with_management_key_algorithm(pin.as_bytes(), mgm_key, alg)
+            .unwrap(),
+        None => yk.unlock(pin.as_bytes(), mgm_key).unwrap(),
+    }
+    let result = match alg {
+        "p256" => yk.provision_p256(&slot, subject, policy, PinPolicy::Never),
+        _ => {
+            println!("Using P384");
+            yk.provision_p384(&slot, subject, policy, PinPolicy::Never)
         }
+    };
+    match result {
+        Ok(pk) => println!("New hardware backed SSH Public Key: {}", pk),
         Err(e) => panic!("Could not provision device with new key: {:?}", e),
     }
 }
@@ -108,6 +115,16 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("management-key-algorithm")
+                .help("Management key algorithm for custom keys")
+                .long("mgmkey-alg")
+                .possible_value("3des")
+                .possible_value("aes128")
+                .possible_value("aes192")
+                .possible_value("aes256")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("type")
                 .help("Specify the type of key you want to provision (p256, p384)")
                 .long("type")
@@ -137,6 +154,11 @@ fn main() {
         matches.value_of("subject").unwrap(),
         matches.value_of("pin").unwrap(),
         &hex::decode(matches.value_of("management-key").unwrap()).unwrap(),
+        matches
+            .value_of("management-key-algorithm")
+            .map(str::parse)
+            .transpose()
+            .unwrap(),
         matches.value_of("type").unwrap_or("p384"),
         secure,
     );

@@ -2,14 +2,22 @@ use crate::PublicKey;
 
 use ring::digest;
 
-use yubikey::certificate::{Certificate, PublicKeyInfo};
+use yubikey::certificate::Certificate;
 use yubikey::piv::{attest, sign_data as yk_sign_data, AlgorithmId, SlotId};
-use yubikey::{MgmKey, YubiKey};
+use yubikey::{MgmAlgorithmId, MgmKey, Serial, YubiKey};
 use yubikey::{PinPolicy, TouchPolicy};
 
-use x509::RelativeDistinguishedName;
-
 use super::{Error, Result};
+
+use x509_cert::{
+    der::{oid::ObjectIdentifier, Encode},
+    name::Name,
+    serial_number::SerialNumber,
+    time::Validity,
+};
+
+use std::str::FromStr;
+use yubikey::certificate::yubikey_signer;
 
 #[derive(Debug)]
 /// A struct that allows the generation of CSRs via the rcgen library. This is
@@ -21,24 +29,54 @@ pub struct CSRSigner {
     algorithm: AlgorithmId,
 }
 
+#[derive(Clone, Copy, Debug)]
+/// Management key algorithm
+pub enum ManagementKeyAlgorithm {
+    /// 3DES
+    ThreeDes,
+    /// AES-128
+    Aes128,
+    /// AES-192
+    Aes192,
+    /// AES-256
+    Aes256,
+}
+
+/// OID for secp256r1 / prime256v1 (NIST P-256)
+pub const NISTP256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.10045.3.1.7");
+/// OID for secp384r1 (NIST P-384)
+pub const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
+
 impl CSRSigner {
     /// Create a new certificate signer based on a Yubikey serial
     /// and slot
-    pub fn new(serial: u32, slot: SlotId) -> Self {
-        let mut yk = super::Yubikey::open(serial).unwrap();
-        let pki = yk.configured(&slot).unwrap();
-        let (public_key, algorithm) = match pki {
-            PublicKeyInfo::Rsa { pubkey: _, .. } => panic!("RSA keys not supported"),
-            PublicKeyInfo::EcP256(pubkey) => (pubkey.as_bytes().to_vec(), AlgorithmId::EccP256),
-            PublicKeyInfo::EcP384(pubkey) => (pubkey.as_bytes().to_vec(), AlgorithmId::EccP384),
+    pub fn new(serial: u32, slot: SlotId) -> Result<Self> {
+        let mut yk = super::Yubikey::open(serial)
+            .map_err(|e| Error::InternalYubiKeyError(e.to_string()))?;
+        let cert = yk.configured(&slot)
+            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
+        let pki = cert.subject_pki();
+        let oid_alg = pki.algorithm.parameters_oid()
+            .map_err(|_| Error::OIDError)?;
+
+        let (public_key, algorithm) = match oid_alg {
+            NISTP256_OID => (
+                pki.subject_public_key.raw_bytes().to_vec(),
+                AlgorithmId::EccP256,
+            ),
+            SECP384_OID => (
+                pki.subject_public_key.raw_bytes().to_vec(),
+                AlgorithmId::EccP384,
+            ),
+            _ => return Err(Error::UnsupportedAlgorithm),
         };
 
-        Self {
+        Ok(Self {
             slot,
             serial,
             public_key,
             algorithm,
-        }
+        })
     }
 }
 
@@ -54,7 +92,8 @@ impl rcgen::RemoteKeyPair for CSRSigner {
             return Err(rcgen::RcgenError::RemoteKeyError);
         };
 
-        yk.sign_data(message, self.algorithm, &self.slot).map_err(|_| rcgen::RcgenError::RemoteKeyError)
+        yk.sign_data(message, self.algorithm, &self.slot)
+            .map_err(|_| rcgen::RcgenError::RemoteKeyError)
     }
 
     fn algorithm(&self) -> &'static rcgen::SignatureAlgorithm {
@@ -62,6 +101,41 @@ impl rcgen::RemoteKeyPair for CSRSigner {
             AlgorithmId::EccP256 => &rcgen::PKCS_ECDSA_P256_SHA256,
             AlgorithmId::EccP384 => &rcgen::PKCS_ECDSA_P384_SHA384,
             _ => panic!("Unimplemented"),
+        }
+    }
+}
+
+impl FromStr for ManagementKeyAlgorithm {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "3des" => Ok(ManagementKeyAlgorithm::ThreeDes),
+            "aes128" => Ok(ManagementKeyAlgorithm::Aes128),
+            "aes192" => Ok(ManagementKeyAlgorithm::Aes192),
+            "aes256" => Ok(ManagementKeyAlgorithm::Aes256),
+            _ => Err(Error::InvalidManagementKeyAlgorithm),
+        }
+    }
+}
+
+impl Into<MgmAlgorithmId> for ManagementKeyAlgorithm {
+    fn into(self) -> MgmAlgorithmId {
+        match self {
+            ManagementKeyAlgorithm::ThreeDes => MgmAlgorithmId::ThreeDes,
+            ManagementKeyAlgorithm::Aes128 => MgmAlgorithmId::Aes128,
+            ManagementKeyAlgorithm::Aes192 => MgmAlgorithmId::Aes192,
+            ManagementKeyAlgorithm::Aes256 => MgmAlgorithmId::Aes256,
+        }
+    }
+}
+
+impl From<MgmAlgorithmId> for ManagementKeyAlgorithm {
+    fn from(alg: MgmAlgorithmId) -> Self {
+        match alg {
+            MgmAlgorithmId::ThreeDes => ManagementKeyAlgorithm::ThreeDes,
+            MgmAlgorithmId::Aes128 => ManagementKeyAlgorithm::Aes128,
+            MgmAlgorithmId::Aes192 => ManagementKeyAlgorithm::Aes192,
+            MgmAlgorithmId::Aes256 => ManagementKeyAlgorithm::Aes256,
         }
     }
 }
@@ -100,17 +174,43 @@ impl super::Yubikey {
     pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8]) -> Result<()> {
         self.yk.verify_pin(pin)?;
 
-        match MgmKey::from_bytes(mgm_key) {
-            Ok(mgm) => self.yk.authenticate(mgm)?,
-            Err(_) => return Err(Error::InvalidManagementKey),
-        };
+        let mgm = self.management_key_from_bytes(mgm_key)?;
+        self.yk.authenticate(&mgm)?;
+
         Ok(())
     }
 
+    /// Unlock the yubikey with an explicit management key algorithm.
+    pub fn unlock_with_management_key_algorithm(
+        &mut self,
+        pin: &[u8],
+        mgm_key: &[u8],
+        alg: ManagementKeyAlgorithm,
+    ) -> Result<()> {
+        self.yk.verify_pin(pin)?;
+
+        let mgm = MgmKey::from_bytes(mgm_key, Some(alg.into()))
+            .map_err(|_| Error::InvalidManagementKey)?;
+        self.yk.authenticate(&mgm)?;
+
+        Ok(())
+    }
+
+    fn management_key_from_bytes(&self, mgm_key: &[u8]) -> Result<MgmKey> {
+        let alg = MgmKey::get_default(&self.yk)?.algorithm_id();
+        MgmKey::from_bytes(mgm_key, Some(alg)).map_err(|_| Error::InvalidManagementKey)
+    }
+
+    /// Fetch the serial number of the Yubikey
+    pub fn serial(&mut self) -> Result<Serial> {
+        let serial = self.yk.serial();
+        Ok(serial)
+    }
+
     /// Check to see that a provided Yubikey and slot is configured for signing
-    pub fn configured(&mut self, slot: &SlotId) -> Result<PublicKeyInfo> {
+    pub fn configured(&mut self, slot: &SlotId) -> Result<Certificate> {
         let cert = Certificate::read(&mut self.yk, *slot)?;
-        Ok(cert.subject_pki().clone())
+        Ok(cert)
     }
 
     /// Check to see that a provided Yubikey and slot is configured for signing
@@ -122,7 +222,9 @@ impl super::Yubikey {
     /// Fetch the certificate from a given Yubikey slot.
     pub fn fetch_certificate(&mut self, slot: &SlotId) -> Result<Vec<u8>> {
         let cert = Certificate::read(&mut self.yk, *slot)?;
-        Ok(cert.as_ref().to_vec())
+        Ok(cert.cert.to_der().map_err(|e| {
+            Error::InternalYubiKeyError(format!("Failed to encode certificate: {}", e))
+        })?)
     }
 
     /// Write the certificate from a given Yubikey slot.
@@ -142,48 +244,87 @@ impl super::Yubikey {
     /// Generate CSR for slot
     pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str) -> Result<Vec<u8>> {
         let mut params = rcgen::CertificateParams::new(vec![]);
-        params.alg = match self.configured(slot)? {
-            PublicKeyInfo::EcP256(_) => &rcgen::PKCS_ECDSA_P256_SHA256,
-            PublicKeyInfo::EcP384(_) => &rcgen::PKCS_ECDSA_P384_SHA384,
+        let cert = self.configured(&slot)
+            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
+        let pki = cert.subject_pki();
+        let oid_alg = pki
+            .algorithm
+            .parameters_oid()
+            .map_err(|_| Error::Unsupported)?;
+
+        params.alg = match oid_alg {
+            NISTP256_OID => &rcgen::PKCS_ECDSA_P256_SHA256,
+            SECP384_OID => &rcgen::PKCS_ECDSA_P384_SHA384,
             _ => return Err(Error::Unsupported),
         };
         params
             .distinguished_name
             .push(rcgen::DnType::CommonName, common_name.to_string());
 
-        let csr_signer = CSRSigner::new(self.yk.serial().into(), *slot);
-        params.key_pair = Some(rcgen::KeyPair::from_remote(Box::new(csr_signer)).map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?);
+        let csr_signer = CSRSigner::new(self.yk.serial().into(), *slot)?;
+        params.key_pair = Some(
+            rcgen::KeyPair::from_remote(Box::new(csr_signer))
+                .map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?,
+        );
 
-        let csr = rcgen::Certificate::from_params(params).map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?;
-        let csr = csr.serialize_request_der().map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?;
+        let csr = rcgen::Certificate::from_params(params)
+            .map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?;
+        let csr = csr
+            .serialize_request_der()
+            .map_err(|e| Error::InternalYubiKeyError(format!("{}", e)))?;
 
         Ok(csr)
     }
 
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
-    pub fn provision(
+    fn provision<KT: yubikey_signer::KeyType>(
         &mut self,
         slot: &SlotId,
         common_name: &str,
-        alg: AlgorithmId,
         touch_policy: TouchPolicy,
         pin_policy: PinPolicy,
     ) -> Result<PublicKey> {
-        let key_info = yubikey::piv::generate(&mut self.yk, *slot, alg, pin_policy, touch_policy)?;
-        let extensions: &[x509::Extension<'_, &[u64]>] = &[];
+        let key_info =
+            yubikey::piv::generate(&mut self.yk, *slot, KT::ALGORITHM, pin_policy, touch_policy)?;
         // Generate a self-signed certificate for the new key.
-        Certificate::generate_self_signed(
+        Certificate::generate_self_signed::<_, KT>(
             &mut self.yk,
             *slot,
-            [0u8; 20],
-            None,
-            &[RelativeDistinguishedName::common_name(common_name)],
+            SerialNumber::new(&[0; 20]).unwrap(),
+            Validity::from_now(std::time::Duration::new(3600 * 24 * 3650, 0)).unwrap(),
+            Name::from_str(&format!("CN={}", common_name)).unwrap(),
             key_info,
-            extensions,
+            |_builder| Ok(()),
         )?;
 
         self.ssh_cert_fetch_pubkey(slot)
+    }
+
+    /// Provisions the YubiKey with a new certificate generated on the device.
+    /// Only keys that are generated this way can use the attestation functionality.
+    /// This is a nongeneric version to generate a p384 key
+    pub fn provision_p384(
+        &mut self,
+        slot: &SlotId,
+        common_name: &str,
+        touch_policy: TouchPolicy,
+        pin_policy: PinPolicy,
+    ) -> Result<PublicKey> {
+        self.provision::<super::keytype::NistP384>(slot, common_name, touch_policy, pin_policy)
+    }
+
+    /// Provisions the YubiKey with a new certificate generated on the device.
+    /// Only keys that are generated this way can use the attestation functionality.
+    /// This is a nongeneric version to generate a p256 key
+    pub fn provision_p256(
+        &mut self,
+        slot: &SlotId,
+        common_name: &str,
+        touch_policy: TouchPolicy,
+        pin_policy: PinPolicy,
+    ) -> Result<PublicKey> {
+        self.provision::<super::keytype::NistP256>(slot, common_name, touch_policy, pin_policy)
     }
 
     /// Take data, an algorithm, and a slot and attempt to sign the data field
@@ -191,11 +332,18 @@ impl super::Yubikey {
     /// If the requested algorithm doesn't match the key in the slot (or the slot
     /// is empty) this will error.
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>> {
-        let (slot_alg, hash_alg) = match self.configured(slot) {
-            Ok(PublicKeyInfo::EcP256(_)) => (AlgorithmId::EccP256, &digest::SHA256),
-            Ok(PublicKeyInfo::EcP384(_)) => (AlgorithmId::EccP384, &digest::SHA384),
-            Ok(_) => (AlgorithmId::Rsa2048, &digest::SHA256), // RSAish
-            Err(_) => return Err(Error::Unprovisioned),
+        let cert = self.configured(&slot)
+            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
+        let pki = cert.subject_pki();
+        let oid_alg = pki
+            .algorithm
+            .parameters_oid()
+            .map_err(|_| Error::Unprovisioned)?;
+
+        let (slot_alg, hash_alg) = match oid_alg {
+            NISTP256_OID => (AlgorithmId::EccP256, &digest::SHA256),
+            SECP384_OID => (AlgorithmId::EccP384, &digest::SHA384),
+            _ => return Err(Error::Unprovisioned),
         };
 
         if slot_alg != alg {

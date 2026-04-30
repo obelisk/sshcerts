@@ -1,3 +1,6 @@
+/// Implements KeyType trait 
+pub mod keytype;
+
 /// Contains all the functions used for creating new keys, unlocking, and
 /// managing the yubikey
 pub mod management;
@@ -17,8 +20,11 @@ pub enum Error {
     WrongKeyType,
     /// This occurs when you try to use a feature that should technically work
     /// but is currently unimplemented or unsupported on the hardware connected.
-    /// For example, RSA signing will currently throw this error.
     Unsupported,
+    /// This occurs when you try to use an algorithm that should technically work
+    /// but is currently unimplemented or unsupported on the hardware connected.
+    /// For example, RSA signing will currently throw this error.
+    UnsupportedAlgorithm,
     /// If you pass a management key into the provision function that does not
     /// deserialize from bytes, you will get this error.
     InvalidManagementKey,
@@ -31,6 +37,10 @@ pub enum Error {
     /// If the Yubikey throws an error we don't recognize, it's encapsulated
     /// and returned
     InternalYubiKeyError(String),
+    /// If the management key algorithm is invalid
+    InvalidManagementKeyAlgorithm,
+    /// If the OID is invalid or absent
+    OIDError,
 }
 
 impl std::error::Error for Error {}
@@ -38,7 +48,9 @@ impl std::error::Error for Error {}
 type Result<T> = std::result::Result<T, Error>;
 
 // Re-export because it's used as a parameter in `sign_data`
+pub use keytype::{NistP256, NistP384};
 pub use yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId};
+pub use management::ManagementKeyAlgorithm;
 pub use yubikey::{PinPolicy, TouchPolicy};
 
 /// Structure to wrap a yubikey and abstract actions
@@ -71,12 +83,17 @@ impl std::fmt::Display for Error {
             Error::Unsupported => {
                 write!(f, "This key is not supported the way you tried to use it")
             }
+            Error::UnsupportedAlgorithm => {
+                write!(f, "Unsupported key algorithm")
+            }
             Error::InvalidManagementKey => {
                 write!(f, "Could not use the management key as provided")
             }
             Error::ParsingError => write!(f, "Could not parse data"),
             Error::NoSuchYubikey => write!(f, "Could not find the requested Yubikey"),
             Error::InternalYubiKeyError(ref err) => write!(f, "Yubikey error: {}", err),
+            Error::InvalidManagementKeyAlgorithm => write!(f, "Invalid management key algorithm"),
+            Error::OIDError => write!(f, "Invalid or absent OID"),
         }
     }
 }
