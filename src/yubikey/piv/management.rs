@@ -167,11 +167,6 @@ impl super::Yubikey {
         }
     }
 
-    /// Get the default management key algorithm of the Yubikey.
-    pub fn get_management_key_algorithm(&mut self) -> Result<ManagementKeyAlgorithm> {
-        Ok(MgmKey::get_default(&self.yk)?.algorithm_id().into())
-    }
-
     /// Unlock the yubikey for signing or provisioning operations
     pub fn unlock(&mut self, pin: &[u8], mgm_key: &[u8]) -> Result<()> {
         self.yk.verify_pin(pin)?;
