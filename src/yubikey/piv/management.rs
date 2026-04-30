@@ -51,8 +51,7 @@ impl CSRSigner {
     /// Create a new certificate signer based on a Yubikey serial
     /// and slot
     pub fn new(serial: u32, slot: SlotId) -> Result<Self> {
-        let mut yk = super::Yubikey::open(serial)
-            .map_err(|e| Error::InternalYubiKeyError(e.to_string()))?;
+        let mut yk = super::Yubikey::open(serial)?;
         let cert = yk.configured(&slot)
             .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
         let pki = cert.subject_pki();
@@ -333,7 +332,7 @@ impl super::Yubikey {
     /// is empty) this will error.
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>> {
         let cert = self.configured(&slot)
-            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
+            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read slot for signing: {}", e)))?;
         let pki = cert.subject_pki();
         let oid_alg = pki
             .algorithm
