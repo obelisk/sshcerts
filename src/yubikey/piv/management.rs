@@ -241,7 +241,8 @@ impl super::Yubikey {
     /// Generate CSR for slot
     pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str) -> Result<Vec<u8>> {
         let mut params = rcgen::CertificateParams::new(vec![]);
-        let cert = self.configured(&slot).unwrap();
+        let cert = self.configured(&slot)
+            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
         let pki = cert.subject_pki();
         let oid_alg = pki
             .algorithm
@@ -328,7 +329,8 @@ impl super::Yubikey {
     /// If the requested algorithm doesn't match the key in the slot (or the slot
     /// is empty) this will error.
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>> {
-        let cert = self.configured(&slot).unwrap();
+        let cert = self.configured(&slot)
+            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
         let pki = cert.subject_pki();
         let oid_alg = pki
             .algorithm
