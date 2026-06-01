@@ -38,6 +38,36 @@ use bcrypt_pbkdf::bcrypt_pbkdf;
 
 const SSH_SK_USER_PRESENCE_REQD: u8 = 0x01;
 
+/// Whether a hardware-backed key requires a user touch for signing.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum TouchRequirement {
+    /// Signing requires a user touch.
+    Required,
+
+    /// Signing does not require a user touch.
+    NotRequired,
+
+    /// The touch requirement could not be determined.
+    Unknown,
+}
+
+impl TouchRequirement {
+    /// Returns whether signing is known to require touch.
+    pub fn is_required(self) -> bool {
+        matches!(self, TouchRequirement::Required)
+    }
+}
+
+impl From<bool> for TouchRequirement {
+    fn from(required: bool) -> Self {
+        if required {
+            TouchRequirement::Required
+        } else {
+            TouchRequirement::NotRequired
+        }
+    }
+}
+
 /// RSA private key.
 #[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct RsaPrivateKey {
@@ -129,16 +159,15 @@ pub struct Ed25519SkPrivateKey {
 
 impl EcdsaSkPrivateKey {
     /// Returns whether this hardware-backed key requests user presence for signing.
-    pub fn requires_touch(&self) -> bool {
-        (self.flags & SSH_SK_USER_PRESENCE_REQD) != 0
+    pub fn touch_requirement(&self) -> TouchRequirement {
+        TouchRequirement::from((self.flags & SSH_SK_USER_PRESENCE_REQD) != 0)
     }
-}
 }
 
 impl Ed25519SkPrivateKey {
     /// Returns whether this hardware-backed key requests user presence for signing.
-    pub fn requires_touch(&self) -> bool {
-        (self.flags & SSH_SK_USER_PRESENCE_REQD) != 0
+    pub fn touch_requirement(&self) -> TouchRequirement {
+        TouchRequirement::from((self.flags & SSH_SK_USER_PRESENCE_REQD) != 0)
     }
 }
 
@@ -665,12 +694,12 @@ impl PrivateKey {
 
     /// Returns whether this private key requires touch for signing.
     ///
-    /// Non-hardware-backed keys return false.
-    pub fn requires_touch(&self) -> bool {
+    /// Non-hardware-backed keys return `TouchRequirement::NotRequired`.
+    pub fn touch_requirement(&self) -> TouchRequirement {
         match &self.kind {
-            PrivateKeyKind::EcdsaSk(key) => key.requires_touch(),
-            PrivateKeyKind::Ed25519Sk(key) => key.requires_touch(),
-            _ => false,
+            PrivateKeyKind::EcdsaSk(key) => key.touch_requirement(),
+            PrivateKeyKind::Ed25519Sk(key) => key.touch_requirement(),
+            _ => TouchRequirement::NotRequired,
         }
     }
 

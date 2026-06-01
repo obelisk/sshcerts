@@ -1,4 +1,4 @@
-use crate::PublicKey;
+use crate::{PublicKey, TouchRequirement};
 
 use ring::digest;
 
@@ -47,11 +47,11 @@ pub const NISTP256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840
 /// OID for secp384r1 (NIST P-384)
 pub const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
 
-fn touch_policy_requires_touch(touch_policy: TouchPolicy) -> Option<bool> {
+fn touch_policy_requirement(touch_policy: TouchPolicy) -> TouchRequirement {
     match touch_policy {
-        TouchPolicy::Always | TouchPolicy::Cached => Some(true),
-        TouchPolicy::Never => Some(false),
-        TouchPolicy::Default => None,
+        TouchPolicy::Always | TouchPolicy::Cached => TouchRequirement::Required,
+        TouchPolicy::Never => TouchRequirement::NotRequired,
+        TouchPolicy::Default => TouchRequirement::Unknown,
     }
 }
 
@@ -267,12 +267,13 @@ impl super::Yubikey {
 
     /// Returns whether a YubiKey PIV slot requires touch for signing.
     ///
-    /// Returns `None` when the key uses the device default or the device does not
-    /// expose policy metadata.
-    pub fn requires_touch(&mut self, slot: &SlotId) -> Result<Option<bool>> {
+    /// Returns `TouchRequirement::Unknown` when the key uses the device default
+    /// or the device does not expose policy metadata.
+    pub fn touch_requirement(&mut self, slot: &SlotId) -> Result<TouchRequirement> {
         Ok(self
             .fetch_touch_policy(slot)?
-            .and_then(touch_policy_requires_touch))
+            .map(touch_policy_requirement)
+            .unwrap_or(TouchRequirement::Unknown))
     }
 
     /// Generate CSR for slot
@@ -403,10 +404,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn touch_policy_requires_touch_maps_known_policies() {
-        assert_eq!(touch_policy_requires_touch(TouchPolicy::Always), Some(true));
-        assert_eq!(touch_policy_requires_touch(TouchPolicy::Cached), Some(true));
-        assert_eq!(touch_policy_requires_touch(TouchPolicy::Never), Some(false));
-        assert_eq!(touch_policy_requires_touch(TouchPolicy::Default), None);
+    fn touch_policy_requirement_maps_known_policies() {
+        assert_eq!(
+            touch_policy_requirement(TouchPolicy::Always),
+            TouchRequirement::Required
+        );
+        assert_eq!(
+            touch_policy_requirement(TouchPolicy::Cached),
+            TouchRequirement::Required
+        );
+        assert_eq!(
+            touch_policy_requirement(TouchPolicy::Never),
+            TouchRequirement::NotRequired
+        );
+        assert_eq!(
+            touch_policy_requirement(TouchPolicy::Default),
+            TouchRequirement::Unknown
+        );
     }
 }

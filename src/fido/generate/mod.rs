@@ -1,4 +1,4 @@
-use crate::PrivateKey;
+use crate::{PrivateKey, TouchRequirement};
 
 #[cfg(any(feature = "fido-support"))]
 mod ctap2_hid;
@@ -53,7 +53,7 @@ impl U2FAttestation {
 
 impl FIDOSSHKey {
     /// Returns whether this generated FIDO key requires touch for signing.
-    pub fn requires_touch(&self) -> bool {
-        self.private_key.requires_touch()
+    pub fn touch_requirement(&self) -> TouchRequirement {
+        self.private_key.touch_requirement()
     }
 }
