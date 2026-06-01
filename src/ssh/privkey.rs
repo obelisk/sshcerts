@@ -137,7 +137,7 @@ impl EcdsaSkPrivateKey {
 impl Ed25519SkPrivateKey {
     /// Returns whether this hardware-backed key requests user presence for signing.
     pub fn requires_touch(&self) -> bool {
-        self.flags & SSH_SK_USER_PRESENCE_REQD > 0
+        (self.flags & SSH_SK_USER_PRESENCE_REQD) != 0
     }
 }
 
