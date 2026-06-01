@@ -50,8 +50,8 @@ pub const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.
 fn touch_policy_requirement(touch_policy: TouchPolicy) -> TouchRequirement {
     match touch_policy {
         TouchPolicy::Always | TouchPolicy::Cached => TouchRequirement::Required,
-        TouchPolicy::Never => TouchRequirement::NotRequired,
-        TouchPolicy::Default => TouchRequirement::Unknown,
+        // YubiKey PIV defaults to no touch; Unknown is only for missing metadata.
+        TouchPolicy::Never | TouchPolicy::Default => TouchRequirement::NotRequired,
     }
 }
 
@@ -419,7 +419,7 @@ mod tests {
         );
         assert_eq!(
             touch_policy_requirement(TouchPolicy::Default),
-            TouchRequirement::Unknown
+            TouchRequirement::NotRequired
         );
     }
 }
