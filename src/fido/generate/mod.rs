@@ -50,3 +50,10 @@ impl U2FAttestation {
         )
     }
 }
+
+impl FIDOSSHKey {
+    /// Returns whether this generated FIDO key requires touch for signing.
+    pub fn requires_touch(&self) -> bool {
+        self.private_key.requires_touch()
+    }
+}

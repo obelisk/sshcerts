@@ -36,6 +36,8 @@ use aes::{
 #[cfg(feature = "encrypted-keys")]
 use bcrypt_pbkdf::bcrypt_pbkdf;
 
+const SSH_SK_USER_PRESENCE_REQD: u8 = 0x01;
+
 /// RSA private key.
 #[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct RsaPrivateKey {
@@ -123,6 +125,20 @@ pub struct Ed25519SkPrivateKey {
     /// provided, the system will choose one (either randomly
     /// or by user selection)
     pub device_path: Option<String>,
+}
+
+impl EcdsaSkPrivateKey {
+    /// Returns whether this hardware-backed key requests user presence for signing.
+    pub fn requires_touch(&self) -> bool {
+        self.flags & SSH_SK_USER_PRESENCE_REQD > 0
+    }
+}
+
+impl Ed25519SkPrivateKey {
+    /// Returns whether this hardware-backed key requests user presence for signing.
+    pub fn requires_touch(&self) -> bool {
+        self.flags & SSH_SK_USER_PRESENCE_REQD > 0
+    }
 }
 
 /// A type which represents the different kinds a public key can be.
@@ -644,6 +660,17 @@ impl PrivateKey {
             }
             _ => (),
         };
+    }
+
+    /// Returns whether this private key requires touch for signing.
+    ///
+    /// Non-hardware-backed keys return false.
+    pub fn requires_touch(&self) -> bool {
+        match &self.kind {
+            PrivateKeyKind::EcdsaSk(key) => key.requires_touch(),
+            PrivateKeyKind::Ed25519Sk(key) => key.requires_touch(),
+            _ => false,
+        }
     }
 
     /// Encode the PrivateKey into a bytes representation
