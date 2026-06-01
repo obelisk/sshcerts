@@ -39,6 +39,7 @@ use bcrypt_pbkdf::bcrypt_pbkdf;
 const SSH_SK_USER_PRESENCE_REQD: u8 = 0x01;
 
 /// Whether a hardware-backed key requires a user touch for signing.
+#[non_exhaustive]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TouchRequirement {
     /// Signing requires a user touch.
@@ -52,19 +53,17 @@ pub enum TouchRequirement {
 }
 
 impl TouchRequirement {
-    /// Returns whether signing is known to require touch.
+    /// Returns true when signing is known to require touch.
     pub fn is_required(self) -> bool {
         matches!(self, TouchRequirement::Required)
     }
 }
 
-impl From<bool> for TouchRequirement {
-    fn from(required: bool) -> Self {
-        if required {
-            TouchRequirement::Required
-        } else {
-            TouchRequirement::NotRequired
-        }
+fn touch_requirement_from_flags(flags: u8) -> TouchRequirement {
+    if (flags & SSH_SK_USER_PRESENCE_REQD) != 0 {
+        TouchRequirement::Required
+    } else {
+        TouchRequirement::NotRequired
     }
 }
 
@@ -158,16 +157,16 @@ pub struct Ed25519SkPrivateKey {
 }
 
 impl EcdsaSkPrivateKey {
-    /// Returns whether this hardware-backed key requests user presence for signing.
+    /// Returns the touch requirement for this hardware-backed key.
     pub fn touch_requirement(&self) -> TouchRequirement {
-        TouchRequirement::from((self.flags & SSH_SK_USER_PRESENCE_REQD) != 0)
+        touch_requirement_from_flags(self.flags)
     }
 }
 
 impl Ed25519SkPrivateKey {
-    /// Returns whether this hardware-backed key requests user presence for signing.
+    /// Returns the touch requirement for this hardware-backed key.
     pub fn touch_requirement(&self) -> TouchRequirement {
-        TouchRequirement::from((self.flags & SSH_SK_USER_PRESENCE_REQD) != 0)
+        touch_requirement_from_flags(self.flags)
     }
 }
 
@@ -692,7 +691,7 @@ impl PrivateKey {
         };
     }
 
-    /// Returns whether this private key requires touch for signing.
+    /// Returns the touch requirement for this private key.
     ///
     /// Non-hardware-backed keys return `TouchRequirement::NotRequired`.
     pub fn touch_requirement(&self) -> TouchRequirement {

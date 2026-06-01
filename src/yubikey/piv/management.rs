@@ -265,7 +265,7 @@ impl super::Yubikey {
         Ok(metadata.policy.map(|(_, touch_policy)| touch_policy))
     }
 
-    /// Returns whether a YubiKey PIV slot requires touch for signing.
+    /// Returns the touch requirement for a YubiKey PIV slot.
     ///
     /// Returns `TouchRequirement::Unknown` when the key uses the device default
     /// or the device does not expose policy metadata.
