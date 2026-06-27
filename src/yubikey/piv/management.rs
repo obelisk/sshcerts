@@ -267,8 +267,9 @@ impl super::Yubikey {
 
     /// Returns the touch requirement for a YubiKey PIV slot.
     ///
-    /// Returns `TouchRequirement::Unknown` when the key uses the device default
-    /// or the device does not expose policy metadata.
+    /// Returns `TouchRequirement::Unknown` only when the device does not expose
+    /// policy metadata. A slot's default touch policy is `Never`, so it resolves
+    /// to `NotRequired`.
     pub fn touch_requirement(&mut self, slot: &SlotId) -> Result<TouchRequirement> {
         Ok(self
             .fetch_touch_policy(slot)?
