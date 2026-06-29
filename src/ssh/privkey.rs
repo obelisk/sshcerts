@@ -36,6 +36,36 @@ use aes::{
 #[cfg(feature = "encrypted-keys")]
 use bcrypt_pbkdf::bcrypt_pbkdf;
 
+const SSH_SK_USER_PRESENCE_REQD: u8 = 0x01;
+
+/// Whether a hardware-backed key requires a user touch for signing.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum TouchRequirement {
+    /// Signing requires a user touch.
+    Required,
+
+    /// Signing does not require a user touch.
+    NotRequired,
+
+    /// The touch requirement could not be determined.
+    Unknown,
+}
+
+impl TouchRequirement {
+    /// Returns true when signing is known to require touch.
+    pub fn is_required(self) -> bool {
+        matches!(self, TouchRequirement::Required)
+    }
+}
+
+fn touch_requirement_from_flags(flags: u8) -> TouchRequirement {
+    if (flags & SSH_SK_USER_PRESENCE_REQD) != 0 {
+        TouchRequirement::Required
+    } else {
+        TouchRequirement::NotRequired
+    }
+}
+
 /// RSA private key.
 #[derive(Debug, PartialEq, Eq, Clone, Zeroize)]
 pub struct RsaPrivateKey {
@@ -123,6 +153,20 @@ pub struct Ed25519SkPrivateKey {
     /// provided, the system will choose one (either randomly
     /// or by user selection)
     pub device_path: Option<String>,
+}
+
+impl EcdsaSkPrivateKey {
+    /// Returns the touch requirement for this hardware-backed key.
+    pub fn touch_requirement(&self) -> TouchRequirement {
+        touch_requirement_from_flags(self.flags)
+    }
+}
+
+impl Ed25519SkPrivateKey {
+    /// Returns the touch requirement for this hardware-backed key.
+    pub fn touch_requirement(&self) -> TouchRequirement {
+        touch_requirement_from_flags(self.flags)
+    }
 }
 
 /// A type which represents the different kinds a public key can be.
@@ -644,6 +688,17 @@ impl PrivateKey {
             }
             _ => (),
         };
+    }
+
+    /// Returns the touch requirement for this private key.
+    ///
+    /// Non-hardware-backed keys return `TouchRequirement::NotRequired`.
+    pub fn touch_requirement(&self) -> TouchRequirement {
+        match &self.kind {
+            PrivateKeyKind::EcdsaSk(key) => key.touch_requirement(),
+            PrivateKeyKind::Ed25519Sk(key) => key.touch_requirement(),
+            _ => TouchRequirement::NotRequired,
+        }
     }
 
     /// Encode the PrivateKey into a bytes representation

@@ -1,4 +1,4 @@
-use crate::PublicKey;
+use crate::{PublicKey, TouchRequirement};
 
 use ring::digest;
 
@@ -47,15 +47,29 @@ pub const NISTP256_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840
 /// OID for secp384r1 (NIST P-384)
 pub const SECP384_OID: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.3.132.0.34");
 
+fn touch_policy_requirement(touch_policy: TouchPolicy) -> TouchRequirement {
+    match touch_policy {
+        TouchPolicy::Always | TouchPolicy::Cached => TouchRequirement::Required,
+        // YubiKey PIV defaults to no touch; Unknown is only for missing metadata.
+        TouchPolicy::Never | TouchPolicy::Default => TouchRequirement::NotRequired,
+    }
+}
+
 impl CSRSigner {
     /// Create a new certificate signer based on a Yubikey serial
     /// and slot
     pub fn new(serial: u32, slot: SlotId) -> Result<Self> {
         let mut yk = super::Yubikey::open(serial)?;
-        let cert = yk.configured(&slot)
-            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
+        let cert = yk.configured(&slot).map_err(|e| {
+            Error::InternalYubiKeyError(format!(
+                "failed to read certificate for CSR generation: {}",
+                e
+            ))
+        })?;
         let pki = cert.subject_pki();
-        let oid_alg = pki.algorithm.parameters_oid()
+        let oid_alg = pki
+            .algorithm
+            .parameters_oid()
             .map_err(|_| Error::OIDError)?;
 
         let (public_key, algorithm) = match oid_alg {
@@ -240,11 +254,38 @@ impl super::Yubikey {
         Ok(attest(&mut self.yk, *slot)?.to_vec())
     }
 
+    /// Fetch the touch policy configured for a YubiKey PIV slot.
+    pub fn fetch_touch_policy(&mut self, slot: &SlotId) -> Result<Option<TouchPolicy>> {
+        let metadata = match yubikey::piv::metadata(&mut self.yk, *slot) {
+            Ok(metadata) => metadata,
+            Err(yubikey::Error::NotFound) => return Err(Error::Unprovisioned),
+            Err(e) => return Err(e.into()),
+        };
+
+        Ok(metadata.policy.map(|(_, touch_policy)| touch_policy))
+    }
+
+    /// Returns the touch requirement for a YubiKey PIV slot.
+    ///
+    /// Returns `TouchRequirement::Unknown` only when the device does not expose
+    /// policy metadata. A slot's default touch policy is `Never`, so it resolves
+    /// to `NotRequired`.
+    pub fn touch_requirement(&mut self, slot: &SlotId) -> Result<TouchRequirement> {
+        Ok(self
+            .fetch_touch_policy(slot)?
+            .map(touch_policy_requirement)
+            .unwrap_or(TouchRequirement::Unknown))
+    }
+
     /// Generate CSR for slot
     pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str) -> Result<Vec<u8>> {
         let mut params = rcgen::CertificateParams::new(vec![]);
-        let cert = self.configured(&slot)
-            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read certificate for CSR generation: {}", e)))?;
+        let cert = self.configured(&slot).map_err(|e| {
+            Error::InternalYubiKeyError(format!(
+                "failed to read certificate for CSR generation: {}",
+                e
+            ))
+        })?;
         let pki = cert.subject_pki();
         let oid_alg = pki
             .algorithm
@@ -331,8 +372,9 @@ impl super::Yubikey {
     /// If the requested algorithm doesn't match the key in the slot (or the slot
     /// is empty) this will error.
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>> {
-        let cert = self.configured(&slot)
-            .map_err(|e| Error::InternalYubiKeyError(format!("failed to read slot for signing: {}", e)))?;
+        let cert = self.configured(&slot).map_err(|e| {
+            Error::InternalYubiKeyError(format!("failed to read slot for signing: {}", e))
+        })?;
         let pki = cert.subject_pki();
         let oid_alg = pki
             .algorithm
@@ -355,5 +397,30 @@ impl super::Yubikey {
             *slot,
         )?;
         Ok(signature.to_vec())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn touch_policy_requirement_maps_known_policies() {
+        assert_eq!(
+            touch_policy_requirement(TouchPolicy::Always),
+            TouchRequirement::Required
+        );
+        assert_eq!(
+            touch_policy_requirement(TouchPolicy::Cached),
+            TouchRequirement::Required
+        );
+        assert_eq!(
+            touch_policy_requirement(TouchPolicy::Never),
+            TouchRequirement::NotRequired
+        );
+        assert_eq!(
+            touch_policy_requirement(TouchPolicy::Default),
+            TouchRequirement::NotRequired
+        );
     }
 }

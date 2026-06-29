@@ -1,4 +1,4 @@
-/// Implements KeyType trait 
+/// Implements KeyType trait
 pub mod keytype;
 
 /// Contains all the functions used for creating new keys, unlocking, and
@@ -47,7 +47,7 @@ impl std::error::Error for Error {}
 
 type Result<T> = std::result::Result<T, Error>;
 
-// Re-export because it's used as a parameter in `sign_data`
+pub use crate::ssh::TouchRequirement;
 pub use keytype::{NistP256, NistP384};
 pub use yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId};
 pub use management::ManagementKeyAlgorithm;

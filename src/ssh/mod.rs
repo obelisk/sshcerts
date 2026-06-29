@@ -29,7 +29,7 @@ pub use self::cert::{CertType, Certificate};
 pub use self::keytype::{Curve, CurveKind, KeyType, KeyTypeKind};
 pub use self::privkey::{
     EcdsaPrivateKey, EcdsaSkPrivateKey, Ed25519PrivateKey, Ed25519SkPrivateKey, PrivateKey,
-    PrivateKeyKind, RsaPrivateKey,
+    PrivateKeyKind, RsaPrivateKey, TouchRequirement,
 };
 pub use self::pubkey::{
     EcdsaPublicKey, Ed25519PublicKey, Fingerprint, FingerprintKind, PublicKey, PublicKeyKind,
