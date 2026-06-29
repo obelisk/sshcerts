@@ -39,7 +39,6 @@ use bcrypt_pbkdf::bcrypt_pbkdf;
 const SSH_SK_USER_PRESENCE_REQD: u8 = 0x01;
 
 /// Whether a hardware-backed key requires a user touch for signing.
-#[non_exhaustive]
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TouchRequirement {
     /// Signing requires a user touch.
