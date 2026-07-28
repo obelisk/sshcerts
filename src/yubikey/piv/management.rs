@@ -216,7 +216,7 @@ impl super::Yubikey {
         // configured with, read from the card. Fall back to the firmware
         // default for devices that don't expose management-key metadata (those
         // only support 3DES, which the default already resolves to).
-        let alg = match self.management_key_algorithm() {
+        let alg = match self.management_key_algorithm()? {
             Some(alg) => alg,
             None => MgmKey::get_default(&self.yk)?.algorithm_id(),
         };
@@ -225,11 +225,13 @@ impl super::Yubikey {
 
     /// The algorithm the management key is currently set to, if the device
     /// exposes it via metadata.
-    fn management_key_algorithm(&mut self) -> Option<MgmAlgorithmId> {
+    fn management_key_algorithm(&mut self) -> Result<Option<MgmAlgorithmId>> {
         let slot = SlotId::Management(ManagementSlotId::Management);
         match yubikey::piv::metadata(&mut self.yk, slot).map(|m| m.algorithm) {
-            Ok(SlotAlgorithmId::Management(alg)) => Some(alg),
-            _ => None,
+            Ok(SlotAlgorithmId::Management(alg)) => Ok(Some(alg)),
+            Ok(_) => Ok(None),
+            Err(yubikey::Error::NotSupported) => Ok(None),
+            Err(e) => Err(e.into()),
         }
     }
 
