@@ -212,10 +212,8 @@ impl super::Yubikey {
     }
 
     fn management_key_from_bytes(&mut self, mgm_key: &[u8]) -> Result<MgmKey> {
-        // Authenticate with the algorithm the management key is actually
-        // configured with, read from the card. Fall back to the firmware
-        // default for devices that don't expose management-key metadata (those
-        // only support 3DES, which the default already resolves to).
+        // Use the configured algorithm when metadata is available. Older
+        // devices fall back to their default algorithm.
         let alg = match self.management_key_algorithm()? {
             Some(alg) => alg,
             None => MgmKey::get_default(&self.yk)?.algorithm_id(),
