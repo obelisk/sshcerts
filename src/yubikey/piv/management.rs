@@ -3,7 +3,9 @@ use crate::{PublicKey, TouchRequirement};
 use ring::digest;
 
 use yubikey::certificate::Certificate;
-use yubikey::piv::{attest, sign_data as yk_sign_data, AlgorithmId, SlotId};
+use yubikey::piv::{
+    attest, sign_data as yk_sign_data, AlgorithmId, ManagementSlotId, SlotAlgorithmId, SlotId,
+};
 use yubikey::{MgmAlgorithmId, MgmKey, Serial, YubiKey};
 use yubikey::{PinPolicy, TouchPolicy};
 
@@ -209,9 +211,26 @@ impl super::Yubikey {
         Ok(())
     }
 
-    fn management_key_from_bytes(&self, mgm_key: &[u8]) -> Result<MgmKey> {
-        let alg = MgmKey::get_default(&self.yk)?.algorithm_id();
+    fn management_key_from_bytes(&mut self, mgm_key: &[u8]) -> Result<MgmKey> {
+        // Use the configured algorithm when metadata is available. Older
+        // devices fall back to their default algorithm.
+        let alg = match self.management_key_algorithm()? {
+            Some(alg) => alg,
+            None => MgmKey::get_default(&self.yk)?.algorithm_id(),
+        };
         MgmKey::from_bytes(mgm_key, Some(alg)).map_err(|_| Error::InvalidManagementKey)
+    }
+
+    /// The algorithm the management key is currently set to, if the device
+    /// exposes it via metadata.
+    fn management_key_algorithm(&mut self) -> Result<Option<MgmAlgorithmId>> {
+        let slot = SlotId::Management(ManagementSlotId::Management);
+        match yubikey::piv::metadata(&mut self.yk, slot).map(|m| m.algorithm) {
+            Ok(SlotAlgorithmId::Management(alg)) => Ok(Some(alg)),
+            Ok(_) => Ok(None),
+            Err(yubikey::Error::NotSupported) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Fetch the serial number of the Yubikey
