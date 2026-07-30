@@ -2277,7 +2277,7 @@ dependencies = [
 
 [[package]]
 name = "sshcerts"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "aes 0.7.5",
  "authenticator",
