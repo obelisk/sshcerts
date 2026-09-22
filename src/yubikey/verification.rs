@@ -137,6 +137,28 @@ BxtU7k6kgkxZ0G384O59GFXqnwkbw2b5HhORvOsX7nhOUhePFufzi1vT1g8Tzbwr
 +TUfTwo2biKHHcI762KGtp8o6Bcv5y8WgExFuWY=
 -----END CERTIFICATE-----";
 
+/// From https://developers.yubico.com/PKI/yubico-intermediate.pem
+const YUBICO_PIV_ATTESTATION_B2_1: &str = "-----BEGIN CERTIFICATE-----
+MIIDRjCCAjCgAwIBAgIUM6Hs259YBTYRAMg98ZZlv/CDyO0wCwYJKoZIhvcNAQEL
+MC4xLDAqBgNVBAMMI1l1YmljbyBBdHRlc3RhdGlvbiBJbnRlcm1lZGlhdGUgQiAx
+MCAXDTI1MDgwMTAwMDAwMFoYDzk5OTkxMjMxMjM1OTU5WjAmMSQwIgYDVQQDDBtZ
+dWJpY28gUElWIEF0dGVzdGF0aW9uIEIyIDEwggEiMA0GCSqGSIb3DQEBAQUAA4IB
+DwAwggEKAoIBAQCxqNa82XHPD/QMqYffF8K4a9aoJIV7SU9NKXu3hBh+6nF0/HPP
+UtSu/ChTdPoCk1Li2Sz7gkWzijJVCCSo6uRgRT2sUoTb8xjKo80N5QxAC3TVNRpA
+lGh4Ba5KxamnXrf6s78tB73oTlTkMBUehVwvbQZGRpst00w58SxDP0nF7rO6qF+h
+8M+kV4ycd8zUssMq6yxWhDAUZ+gT4l0SwvBEvUiJ8q7phFGJPyMjrKy1bifC50GW
+xdLLJq7WRswaNxOsQ8hqJVRsoQ9pnZDCvo2WRkTzi3UrPPp5Soyy+aUOlNs0gwFu
+07H75Gnswet+wffpeDFXZM2ITH3SN0LrpairAgMBAAGjZjBkMB0GA1UdDgQWBBSe
+IRwEGD3d5SgceJxQn/ztOZHuVjAfBgNVHSMEGDAWgBTqt0KQngx7ZHrbVHwDunxO
+n9ihYTASBgNVHRMBAf8ECDAGAQH/AgEBMA4GA1UdDwEB/wQEAwIBhjALBgkqhkiG
+9w0BAQsDggEBAKK+IxeMsYsfqbLZ/Ld82tHWddLLlbXBaQojmRSDNHlBGbOvuQZg
+rnbafjIEyb+Uv1+TdJnn5cV1P/MBSfJLBPqBuhKZ3lk4460CWRmcIKsxVRe0V5+V
+bGCzLKpWtlrEBVkFTSbBQk4FQNVYw5pR4UzRIambsRyyGsyN0gppGyxyCqAR8/Od
+GI+sUWh+VxFSlSpvaDT9GBGBN6eG0WMAZlEdu9k/tphesazHeK6MvXP6tBnb4DCd
+09DUZeon7D8m1drYyw5kOjqgm1E3HPkNx4856iTdY7nAuVQ++i0hUhaJpc/5HZbw
+wdlqXnmZ+XRIGSDLn2KKoxSWziowEvlU+04=
+-----END CERTIFICATE-----";
+
 /// Represents the collection of data that has been validated from
 /// the client leaf certificate, all the way up to the root CA.
 #[derive(Debug)]
@@ -218,7 +240,7 @@ fn extract_certificate_extension_data(
 /// Verify that the intermediates are chained to the root CA.
 fn verify_intermediates(
     parsed_intermediate: &X509Certificate<'_>,
-    ca_pems: Vec<&str>,
+    ca_pems: &[&str],
 ) -> Result<(), Error> {
     // There has to be at least the root CA
     if ca_pems.is_empty() {
@@ -257,36 +279,40 @@ fn verify_intermediates(
     Ok(())
 }
 
-/// Verify a provided Yubikey attestation certification and intermediate
-/// certificate are valid against the Yubico Attestation Root CA.
+/// All known Yubico PIV attestation chains, tried in order. The first element
+/// is the root CA. The last is the certificate that device certificates chain to.
+const PIV_CHAINS: &[&[&str]] = &[
+    &[
+        YUBICO_ATTESTATION_ROOT_1,
+        YUBICO_ATTESTATION_INTERMEDIATE_A_1,
+        YUBICO_PIV_ATTESTATION_A_1,
+    ],
+    &[
+        YUBICO_ATTESTATION_ROOT_1,
+        YUBICO_ATTESTATION_INTERMEDIATE_B_1,
+        YUBICO_PIV_ATTESTATION_B_1,
+    ],
+    &[
+        YUBICO_ATTESTATION_ROOT_1,
+        YUBICO_ATTESTATION_INTERMEDIATE_B_1,
+        YUBICO_PIV_ATTESTATION_B2_1,
+    ],
+    &[YUBICO_PIV_ROOT_CA_263751],
+];
+
+/// Verify that the intermediate chains to some Yubico root CA for PIV attestation
+/// We try all known Yubico Root CAs for backward compatibility
 fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
-    if verify_intermediates(
-        &parsed_intermediate,
-        vec![
-            YUBICO_ATTESTATION_ROOT_1,
-            YUBICO_ATTESTATION_INTERMEDIATE_A_1,
-            YUBICO_PIV_ATTESTATION_A_1,
-        ],
-    )
-    .is_ok()
-    {
-        return Ok(());
+    // Return the last chain's error so callers still see ParsingError
+    let mut result = Err(Error::InvalidSignature);
+    for chain in PIV_CHAINS {
+        result = verify_intermediates(parsed_intermediate, chain);
+        if result.is_ok() {
+            return result;
+        }
     }
 
-    if verify_intermediates(
-        &parsed_intermediate,
-        vec![
-            YUBICO_ATTESTATION_ROOT_1,
-            YUBICO_ATTESTATION_INTERMEDIATE_B_1,
-            YUBICO_PIV_ATTESTATION_B_1,
-        ],
-    )
-    .is_ok()
-    {
-        return Ok(());
-    }
-
-    verify_intermediates(&parsed_intermediate, vec![YUBICO_PIV_ROOT_CA_263751])
+    result
 }
 
 /// Verify a provided yubikey attestation certification and intermediate
@@ -302,7 +328,7 @@ pub fn verify_certificate_chain(
     // If a custom root CA is provided, we use that for verification.
     // If not, we will try all the known Yubico Root CAs for backward compatibility
     if let Some(pem) = root_pem {
-        verify_intermediates(&parsed_intermediate, vec![pem])?;
+        verify_intermediates(&parsed_intermediate, &[pem])?;
     } else {
         verify_yubico_intermediates(&parsed_intermediate)?;
     }
@@ -322,4 +348,35 @@ pub fn verify_certificate_chain(
     };
 
     extract_certificate_extension_data(public_key, &parsed_client)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verify that every embedded certificate parses and is signed by its parent.
+    #[test]
+    fn embedded_chains_are_valid() {
+        for chain in PIV_CHAINS {
+            let pems: Vec<_> = chain
+                .iter()
+                .map(|pem| {
+                    parse_x509_pem(pem.as_bytes())
+                        .expect("embedded PEM must parse")
+                        .1
+                })
+                .collect();
+            let parsed: Vec<_> = pems
+                .iter()
+                .map(|pem| Pem::parse_x509(pem).expect("embedded certificate must parse"))
+                .collect();
+
+            for pair in parsed.windows(2) {
+                let (parent, child) = (&pair[0], &pair[1]);
+                child
+                    .verify_signature(Some(parent.tbs_certificate.public_key()))
+                    .expect("each certificate must be signed by its parent in the chain");
+            }
+        }
+    }
 }
