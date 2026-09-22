@@ -2230,7 +2230,7 @@ dependencies = [
 
 [[package]]
 name = "sshcerts"
-version = "0.15.3"
+version = "0.15.4"
 dependencies = [
  "aes 0.7.5",
  "authenticator",

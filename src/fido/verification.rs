@@ -31,6 +31,28 @@ sG/5xUb/Btwb2X2g4InpiB/yt/3CpQXpiWX/K4mBvUKiGn05ZsqeY1gx4g0xLBqc
 U9psmyPzK+Vsgw2jeRQ5JlKDyqE0hebfC1tvFu0CCrJFcw==
 -----END CERTIFICATE-----";
 
+/// From https://developers.yubico.com/PKI/yubico-fido-ca-2.pem
+const YUBICO_FIDO_ROOT_CA_450203556: &str = "-----BEGIN CERTIFICATE-----
+MIIDMzCCAhugAwIBAgIUSOEjTf//yqRfPW7Qq8qtIyCrAg8wDQYJKoZIhvcNAQEL
+BQAwLzEtMCsGA1UEAwwkWXViaWNvIEZJRE8gUm9vdCBDQSBTZXJpYWwgNDUwMjAz
+NTU2MCAXDTI0MDUwMTAwMDAwMFoYDzIwNjAwNDMwMDAwMDAwWjAvMS0wKwYDVQQD
+DCRZdWJpY28gRklETyBSb290IENBIFNlcmlhbCA0NTAyMDM1NTYwggEiMA0GCSqG
+SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCdvl27w2gu1fPXeEFbIdqx0BalvVDVWrQP
+J7HqviuEtZHlxSLxSFtcXpTolvLvof8f4tMerQTkVGzcmYzm1EBT4IJuMmoEqfkE
+EhWpsADMFrjZkqlZY9EqxQzLoVEEonE5oGxSdVCxCcLIackpyR/CCXvj1Bt/hTgE
+9hTlF4pRqxMkx3plF7y8dDZlRHWs7vbnhmBCGeI0ZPEQ6nl2mCg2r74adF2u6K9r
+rLfhBC3QLE8EPrgqUsI+hkuq2tK4M2SMOp8uUVVkqUeu3h0kr3WVI0W02pkgrOgi
+FKLFNkSrbYhdjMBDj5izmqfc9xJRKoDX612qd8ZGVHpT5AYFX+1hAgMBAAGjRTBD
+MB0GA1UdDgQWBBTZyU5DiQ/a2UEgE7qBK0zhIsRNRjASBgNVHRMBAf8ECDAGAQH/
+AgEAMA4GA1UdDwEB/wQEAwIBBjANBgkqhkiG9w0BAQsFAAOCAQEAXvnB4SLuUJfY
+MSVGAhssL/SmWli3FSccgxydvKlACcidIIWKQqa3q/QSUEQzC9DgEfMgr7iC1BkT
+ZbILboV6UZ5knNsvjEZWuMeogJ8tgZs1hVvKwZizwJ+mEcmsjhIrBYuoL1T6yrOJ
+vKFg1jv+Cy4ZwA9Bpk/V3UOir1VyK8dCtyHu6vfosotAdYx8FAuR243gRTMV6Jx8
+Jdig2JDIAQMlzVeDpSUHX/K2HXRHxHwfgjbgUjjBu/72r8OfehyhzHXI3K8CFFdf
+lO+8nEOJK3y8F1ivgS5uN/8SmcYw/STQYwhrxPuwz3nP8baMum4BB2nnYmpB60sX
+3bl5k8QUSw==
+-----END CERTIFICATE-----";
+
 /// From https://developers.yubico.com/PKI/yubico-ca-certs.txt
 const YUBICO_ATTESTATION_ROOT_1: &str = "-----BEGIN CERTIFICATE-----
 MIIDPjCCAiagAwIBAgIUXzeiEDJEOTt14F5n0o6Zf/bBwiUwDQYJKoZIhvcNAQEN
@@ -141,6 +163,28 @@ FXsDcG1SaYh7KpfuMmOixqzJZO2nIicPYRg1I2SuiUfYO70tmdHcbl+kSQmSYt7r
 q4viILg2Gx3j9rITuWTjbaUaSSQxgOmMSHuyzMAC
 -----END CERTIFICATE-----";
 
+/// From https://developers.yubico.com/PKI/yubico-intermediate.pem
+const YUBICO_FIDO_ATTESTATION_B2_1: &str = "-----BEGIN CERTIFICATE-----
+MIIDRzCCAjGgAwIBAgIUex9nT9vwZNXS483LdiYGfw2SjSowCwYJKoZIhvcNAQEL
+MC4xLDAqBgNVBAMMI1l1YmljbyBBdHRlc3RhdGlvbiBJbnRlcm1lZGlhdGUgQiAx
+MCAXDTI1MDgwMTAwMDAwMFoYDzk5OTkxMjMxMjM1OTU5WjAnMSUwIwYDVQQDDBxZ
+dWJpY28gRklETyBBdHRlc3RhdGlvbiBCMiAxMIIBIjANBgkqhkiG9w0BAQEFAAOC
+AQ8AMIIBCgKCAQEAu1Mevny9dyO9ZUC39SoMhLcR/DXrtF/ciM12tciy2EXAZ6Mk
+rivVtCfEVM9X6ISTEnBP6uSYYov6ppv6O6Jh2NHmYm4w+JnS4VnCPU7mHAMfVI2M
+GTTMVOew0xUsG7sISIkIDUBmuk8YK9c5zic9+vFQGLIksdXO5iVFIgNG53cGXD4Z
+LZoAPiu0PEozxAqYIaI4gxKhOA3S8/W8mIWsu6ofyj4GvkFG6Z7kyF3107P7mwFH
+LrI3ENaPWMOFcTaGa0dw+/vVRwjRcEZBVsuuT/87ckSs0a5pkt3vZBlaYeT8pzSr
+eV7mowcIM90L2iaATlP0nxmaE6nOyTbojFVl2wIDAQABo2YwZDAdBgNVHQ4EFgQU
+SXEh3sa3btDurm4MM/C7S1lRuuYwHwYDVR0jBBgwFoAU6rdCkJ4Me2R621R8A7p8
+Tp/YoWEwEgYDVR0TAQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAYYwCwYJKoZI
+hvcNAQELA4IBAQB5Gc3haftp7hKsEZso+i/Z5nRuqdmzG2WClUoRUqbaPyglnJDj
+KR/kfgOl6ibbF/zthm3KmXQ7HcDIP2xMdG7U2L2imbJQHqPf/h2Hqojb4rZgue+6
+W4ktSR5elR9L1rYqE/SGYM4iEKoVQSv7RT1rxIeWiKsw/Vxxi/QOnsx3F7x80CCY
+gB4E3yQx8VTW440hTEwTA1eMHOix32tPtyyHIa8PVVIfVpHQJBaMVvv508UEjwkb
+U2rnjfzoSTNS9A5jUQ8mBSve95rjB0do98EU+DxdBqX2+H6i5wlICFgzhdzcsne9
+hGKT6lzTX4cIdJsrY2+xleK0FFQy6lGEVLEe
+-----END CERTIFICATE-----";
+
 /// Defines the transports supported by the FIDO standard
 #[derive(Clone, Debug, PartialEq)]
 pub enum Transport {
@@ -246,7 +290,7 @@ fn extract_certificate_extension_data(
 /// Verify that the intermediates are chained to the root CA.
 fn verify_intermediates(
     parsed_intermediate: &X509Certificate<'_>,
-    ca_pems: Vec<&str>,
+    ca_pems: &[&str],
 ) -> Result<(), Error> {
     // There has to be at least the root CA
     if ca_pems.is_empty() {
@@ -285,36 +329,38 @@ fn verify_intermediates(
     Ok(())
 }
 
+/// All known Yubico FIDO attestation chains, newest first. The first element
+/// is the root CA, the last is the certificate device certificates chain to.
+const FIDO_CHAINS: &[&[&str]] = &[
+    &[
+        YUBICO_ATTESTATION_ROOT_1,
+        YUBICO_ATTESTATION_INTERMEDIATE_A_1,
+        YUBICO_FIDO_ATTESTATION_A_1,
+    ],
+    &[
+        YUBICO_ATTESTATION_ROOT_1,
+        YUBICO_ATTESTATION_INTERMEDIATE_B_1,
+        YUBICO_FIDO_ATTESTATION_B_1,
+    ],
+    &[
+        YUBICO_ATTESTATION_ROOT_1,
+        YUBICO_ATTESTATION_INTERMEDIATE_B_1,
+        YUBICO_FIDO_ATTESTATION_B2_1,
+    ],
+    &[YUBICO_FIDO_ROOT_CA_450203556],
+    &[YUBICO_U2F_ROOT_CA_457200631],
+];
+
 /// Verify that the intermediate chains to some Yubico root CA for FIDO attestation
 /// We try all known Yubico Root CAs for backward compatibility
 fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
-    if verify_intermediates(
-        &parsed_intermediate,
-        vec![
-            YUBICO_ATTESTATION_ROOT_1,
-            YUBICO_ATTESTATION_INTERMEDIATE_A_1,
-            YUBICO_FIDO_ATTESTATION_A_1,
-        ],
-    )
-    .is_ok()
-    {
-        return Ok(());
+    for chain in FIDO_CHAINS {
+        if verify_intermediates(&parsed_intermediate, chain).is_ok() {
+            return Ok(());
+        }
     }
 
-    if verify_intermediates(
-        &parsed_intermediate,
-        vec![
-            YUBICO_ATTESTATION_ROOT_1,
-            YUBICO_ATTESTATION_INTERMEDIATE_B_1,
-            YUBICO_FIDO_ATTESTATION_B_1,
-        ],
-    )
-    .is_ok()
-    {
-        return Ok(());
-    }
-
-    verify_intermediates(&parsed_intermediate, vec![YUBICO_U2F_ROOT_CA_457200631])
+    Err(Error::InvalidSignature)
 }
 
 /// Verify a provided U2F attestation, signature, and certificate are valid
@@ -336,7 +382,7 @@ pub fn verify_auth_data(
             // If a custom root CA is provided, we use that for verification.
             // If not, we will try all the known Yubico Root CAs for backward compatibility
             if let Some(pem) = root_pem {
-                verify_intermediates(&parsed_intermediate, vec![pem])?;
+                verify_intermediates(&parsed_intermediate, &[pem])?;
             } else {
                 verify_yubico_intermediates(&parsed_intermediate)?;
             }
@@ -365,5 +411,36 @@ pub fn verify_auth_data(
         // Verify using Ed25519
         -8 => return Err(Error::Unsupported),
         _ => return Err(Error::InvalidFormat),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verify every embedded chain parses and is cryptographically valid.
+    #[test]
+    fn embedded_chains_are_valid() {
+        for chain in FIDO_CHAINS {
+            let pems: Vec<_> = chain
+                .iter()
+                .map(|pem| {
+                    parse_x509_pem(pem.as_bytes())
+                        .expect("embedded PEM must parse")
+                        .1
+                })
+                .collect();
+            let parsed: Vec<_> = pems
+                .iter()
+                .map(|pem| Pem::parse_x509(pem).expect("embedded certificate must parse"))
+                .collect();
+
+            for pair in parsed.windows(2) {
+                let (parent, child) = (&pair[0], &pair[1]);
+                child
+                    .verify_signature(Some(&parent.tbs_certificate.public_key()))
+                    .expect("each certificate must be signed by its parent in the chain");
+            }
+        }
     }
 }
