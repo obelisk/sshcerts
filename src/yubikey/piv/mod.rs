@@ -3,6 +3,16 @@ pub mod keytype;
 
 /// Contains all the functions used for creating new keys, unlocking, and
 /// managing the yubikey
+///
+/// # Blocking
+///
+/// Operations that use a slot's private key (signing, provisioning with a
+/// self-signed certificate, CSR generation) block until the user touches the
+/// device when the slot is configured with [`TouchPolicy::Always`] or
+/// [`TouchPolicy::Once`]. The underlying PC/SC card transaction has no
+/// timeout and cannot be cancelled, so consumers needing timeouts should
+/// check [`Yubikey::touch_requirement`] first and run the operation on their
+/// own worker thread.
 pub mod management;
 /// The SSH submodule contains functions relevant to SSH uses that are backed
 /// by the Yubikey. This includes things like signing and SSH public key
@@ -49,8 +59,8 @@ type Result<T> = std::result::Result<T, Error>;
 
 pub use crate::ssh::TouchRequirement;
 pub use keytype::{NistP256, NistP384};
-pub use yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId};
 pub use management::ManagementKeyAlgorithm;
+pub use yubikey::piv::{AlgorithmId, RetiredSlotId, SlotId};
 pub use yubikey::{PinPolicy, TouchPolicy};
 
 /// Structure to wrap a yubikey and abstract actions

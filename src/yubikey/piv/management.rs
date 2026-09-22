@@ -296,7 +296,14 @@ impl super::Yubikey {
             .unwrap_or(TouchRequirement::Unknown))
     }
 
-    /// Generate CSR for slot
+    /// Generate a PKCS#10 certificate signing request for the slot, signed by
+    /// the key in the slot
+    ///
+    /// # Blocking
+    ///
+    /// Signing the CSR uses the slot's private key, so if the slot is
+    /// configured with [`TouchPolicy::Always`] or [`TouchPolicy::Once`], this
+    /// call blocks until the user touches the device; there is no timeout.
     pub fn generate_csr(&mut self, slot: &SlotId, common_name: &str) -> Result<Vec<u8>> {
         let mut params = rcgen::CertificateParams::new(vec![]);
         let cert = self.configured(&slot).map_err(|e| {
@@ -363,6 +370,13 @@ impl super::Yubikey {
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
     /// This is a nongeneric version to generate a p384 key
+    ///
+    /// # Blocking
+    ///
+    /// Generating the key itself never requires a touch, but creating the
+    /// self-signed certificate does. If `touch_policy` is
+    /// [`TouchPolicy::Always`] or [`TouchPolicy::Once`], this call blocks
+    /// until the user touches the device; there is no timeout.
     pub fn provision_p384(
         &mut self,
         slot: &SlotId,
@@ -376,6 +390,13 @@ impl super::Yubikey {
     /// Provisions the YubiKey with a new certificate generated on the device.
     /// Only keys that are generated this way can use the attestation functionality.
     /// This is a nongeneric version to generate a p256 key
+    ///
+    /// # Blocking
+    ///
+    /// Generating the key itself never requires a touch, but creating the
+    /// self-signed certificate does. If `touch_policy` is
+    /// [`TouchPolicy::Always`] or [`TouchPolicy::Once`], this call blocks
+    /// until the user touches the device; there is no timeout.
     pub fn provision_p256(
         &mut self,
         slot: &SlotId,
@@ -390,6 +411,15 @@ impl super::Yubikey {
     ///
     /// If the requested algorithm doesn't match the key in the slot (or the slot
     /// is empty) this will error.
+    ///
+    /// # Blocking
+    ///
+    /// If the slot is configured with [`TouchPolicy::Always`] or
+    /// [`TouchPolicy::Once`], this call blocks until the user touches the
+    /// device; there is no timeout and no way to cancel the pending card
+    /// transaction. Use [`Yubikey::touch_requirement`] to check whether a
+    /// touch is expected, and run this call on a worker thread if a timeout
+    /// is needed.
     pub fn sign_data(&mut self, data: &[u8], alg: AlgorithmId, slot: &SlotId) -> Result<Vec<u8>> {
         let cert = self.configured(&slot).map_err(|e| {
             Error::InternalYubiKeyError(format!("failed to read slot for signing: {}", e))
