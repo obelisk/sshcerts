@@ -67,7 +67,7 @@ lexical-core = { version = ">0.7.4", optional = true }
 rcgen = { version = "0.11", optional = true }
 x509 = { version = "0.2", optional = true }
 x509-parser = { version = "0.15", features = ["verify"], optional = true }
-der-parser = { version = "5", optional = true }
+der-parser = { version = "6", optional = true }
 der = { version = "0.8", optional = true }
 x509-cert = { version = "0.3.0-rc.4", optional = true }
 

@@ -1,0 +1,20 @@
+name: Dependency Freshness Check
+
+on:
+  pull_request:
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+jobs:
+  check-dependencies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check dependency freshness
+        uses: timweri/cargo-oxidate@036c0d1baf524f7e70c157724c8b6fbe405a6692 # v0.2.1
+        with:
+          cargo-lock-path: 'Cargo.lock'
+          min-age-days: '14'
