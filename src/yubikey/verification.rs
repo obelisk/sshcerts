@@ -279,7 +279,7 @@ fn verify_intermediates(
     Ok(())
 }
 
-/// All known Yubico PIV attestation chains, newest first. The first element
+/// All known Yubico PIV attestation chains, tried in order. The first element
 /// is the root CA, the last is the certificate device certificates chain to.
 const PIV_CHAINS: &[&[&str]] = &[
     &[
@@ -303,13 +303,16 @@ const PIV_CHAINS: &[&[&str]] = &[
 /// Verify that the intermediate chains to some Yubico root CA for PIV attestation
 /// We try all known Yubico Root CAs for backward compatibility
 fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
+    // Return the last chain's error, as before, so parsing failures stay visible
+    let mut result = Err(Error::InvalidSignature);
     for chain in PIV_CHAINS {
-        if verify_intermediates(&parsed_intermediate, chain).is_ok() {
-            return Ok(());
+        result = verify_intermediates(parsed_intermediate, chain);
+        if result.is_ok() {
+            return result;
         }
     }
 
-    Err(Error::InvalidSignature)
+    result
 }
 
 /// Verify a provided yubikey attestation certification and intermediate
@@ -371,7 +374,7 @@ mod tests {
             for pair in parsed.windows(2) {
                 let (parent, child) = (&pair[0], &pair[1]);
                 child
-                    .verify_signature(Some(&parent.tbs_certificate.public_key()))
+                    .verify_signature(Some(parent.tbs_certificate.public_key()))
                     .expect("each certificate must be signed by its parent in the chain");
             }
         }
