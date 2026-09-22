@@ -280,7 +280,7 @@ fn verify_intermediates(
 }
 
 /// All known Yubico PIV attestation chains, tried in order. The first element
-/// is the root CA, the last is the certificate device certificates chain to.
+/// is the root CA. The last is the certificate that device certificates chain to.
 const PIV_CHAINS: &[&[&str]] = &[
     &[
         YUBICO_ATTESTATION_ROOT_1,
@@ -303,7 +303,7 @@ const PIV_CHAINS: &[&[&str]] = &[
 /// Verify that the intermediate chains to some Yubico root CA for PIV attestation
 /// We try all known Yubico Root CAs for backward compatibility
 fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
-    // Return the last chain's error, as before, so parsing failures stay visible
+    // Return the last chain's error so callers still see ParsingError
     let mut result = Err(Error::InvalidSignature);
     for chain in PIV_CHAINS {
         result = verify_intermediates(parsed_intermediate, chain);
@@ -354,7 +354,7 @@ pub fn verify_certificate_chain(
 mod tests {
     use super::*;
 
-    /// Verify every embedded chain parses and is cryptographically valid.
+    /// Verify that every embedded certificate parses and is signed by its parent.
     #[test]
     fn embedded_chains_are_valid() {
         for chain in PIV_CHAINS {
