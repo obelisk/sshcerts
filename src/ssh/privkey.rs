@@ -655,9 +655,7 @@ impl PrivateKey {
         let mut private_key = PrivateKey::read_private_key(&mut reader)?;
         private_key.magic = m1;
 
-        if private_key.pubkey.key_type.plain != pubkey.key_type.plain
-            || private_key.pubkey.kind != pubkey.kind
-        {
+        if !private_key.pubkey.equal_public(&pubkey) {
             return Err(Error::InvalidFormat);
         }
 

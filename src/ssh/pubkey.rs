@@ -330,6 +330,21 @@ impl PublicKey {
         }
     }
 
+    /// Compares the key type and key data of two public keys, ignoring the comment.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use sshcerts::ssh::PublicKey;
+    /// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
+    /// let same = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@work").unwrap();
+    /// let other = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5 me@home").unwrap();
+    /// assert!(key.equal_public(&same));
+    /// assert!(!key.equal_public(&other));
+    /// ```
+    pub fn equal_public(&self, other: &PublicKey) -> bool {
+        self.key_type.plain == other.key_type.plain && self.kind == other.kind
+    }
+
     /// Encodes the public key in an OpenSSH compatible format.
     ///
     /// # Example
