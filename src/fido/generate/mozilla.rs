@@ -90,7 +90,7 @@ pub fn generate_new_ssh_key(
         let _ = register_tx.send(rv);
     }));
 
-    if let Err(e) = manager.register(15_000, ctap_args, status_tx.clone(), callback) {
+    if let Err(e) = manager.register(15_000, ctap_args, status_tx, callback) {
         return Err(Error::FidoError(FidoError::Unknown(e.to_string())));
     };
 
