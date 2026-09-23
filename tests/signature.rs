@@ -1,5 +1,5 @@
 use sshcerts::{
-    ssh::{SshSignature, VerifiedSshSignature},
+    ssh::{PublicKeyKind, SshSignature, VerifiedSshSignature},
     PrivateKey, PublicKey,
 };
 
@@ -285,6 +285,26 @@ fn check_verification_wrong_pubkey() {
         .unwrap()
         .pubkey
         .clone();
+
+    assert!(VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .is_err());
+}
+
+#[test]
+fn check_verification_sk_pubkey_missing_application() {
+    let signature =
+        SshSignature::from_armored_string(include_str!("signatures/sk_ed25519_Test.sig")).unwrap();
+
+    let message = include_bytes!("messages/Test").to_vec();
+    let mut public_key = PublicKey::from_string(include_str!("keys/sk/ed25519.pub")).unwrap();
+    if let PublicKeyKind::Ed25519(ref mut k) = public_key.kind {
+        k.sk_application = None;
+    }
 
     assert!(VerifiedSshSignature::from_ssh_signature(
         message.as_slice(),
