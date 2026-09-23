@@ -1,4 +1,4 @@
-use sshcerts::ssh::Certificate;
+use sshcerts::ssh::{CertType, Certificate, PrivateKey, PublicKey};
 
 #[test]
 fn parse_check_critical_options() {
@@ -39,4 +39,35 @@ fn parse_check_extensions() {
     assert_eq!(cert.extensions["permit-port-forwarding"], "");
     assert_eq!(cert.extensions["permit-X11-forwarding"], "");
     assert_eq!(cert.extensions["permit-pty"], "");
+}
+
+#[test]
+fn signed_cert_reparses_and_reverifies() {
+    let private_key = PrivateKey::from_string(concat!(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n",
+        "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n",
+        "QyNTUxOQAAACBBvD18M5xE6toNtTkIwVwl7xkJb9DBUSgHfKaKbeTW3gAAAKj3njlq9545\n",
+        "agAAAAtzc2gtZWQyNTUxOQAAACBBvD18M5xE6toNtTkIwVwl7xkJb9DBUSgHfKaKbeTW3g\n",
+        "AAAEBLyc6RR+xrjQFV9hhmW9z5TYEA4IMVG7+xBq0WHjdnNkG8PXwznETq2g21OQjBXCXv\n",
+        "GQlv0MFRKAd8popt5NbeAAAAIW9iZWxpc2tATWl0Y2hlbGxzLU1CUC5sb2NhbGRvbWFpbg\n",
+        "ECAwQ=\n",
+        "-----END OPENSSH PRIVATE KEY-----",
+    ))
+    .unwrap();
+    let ssh_pubkey = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHk1jR7i5Ao85pfz0X6xAWT3N+Wicm17v3UnYw3ZEGnH").unwrap();
+
+    let cert = Certificate::builder(&ssh_pubkey, CertType::User, &private_key.pubkey)
+        .unwrap()
+        .key_id("key_id")
+        .principal("obelisk")
+        .valid_after(0)
+        .valid_before(0xFFFFFFFFFFFFFFFF)
+        .critical_option("source-address", "127.0.0.1")
+        .critical_option("force-command", "/bin/true")
+        .set_extensions(Certificate::standard_extensions())
+        .sign(&private_key)
+        .unwrap();
+
+    let parsed = Certificate::from_string(&cert.to_string()).unwrap();
+    assert!(parsed.clone().add_signature(&parsed.signature).is_ok());
 }
