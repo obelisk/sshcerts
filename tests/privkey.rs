@@ -1,4 +1,6 @@
-use sshcerts::ssh::{PrivateKey, PrivateKeyKind};
+use sshcerts::ssh::{
+    KeyTypeKind, PrivateKey, PrivateKeyKind, PublicKeyKind, SshSignature, VerifiedSshSignature,
+};
 
 use std::io::BufWriter;
 
@@ -146,4 +148,42 @@ fn parse_rsa_2048_private_key() {
     privkey.write(&mut buf).unwrap();
     let serialized = String::from_utf8(buf.into_inner().unwrap()).unwrap();
     assert_eq!(include_str!("keys/unencrypted/rsa_2048_1"), serialized);
+}
+
+#[test]
+fn generate_ed25519_private_key() {
+    let privkey = PrivateKey::new(KeyTypeKind::Ed25519, "test").unwrap();
+
+    let key = match &privkey.kind {
+        PrivateKeyKind::Ed25519(key) => key,
+        _ => panic!("Wrong key type detected"),
+    };
+    let pubkey = match &privkey.pubkey.kind {
+        PublicKeyKind::Ed25519(key) => key,
+        _ => panic!("Wrong key type detected"),
+    };
+    assert_eq!(key.key.len(), 64);
+    assert_eq!(&key.key[32..], &pubkey.key[..]);
+
+    let mut buf = BufWriter::new(Vec::new());
+    privkey.write(&mut buf).unwrap();
+    let serialized = String::from_utf8(buf.into_inner().unwrap()).unwrap();
+    let parsed = PrivateKey::from_string(&serialized).unwrap();
+    assert_eq!(parsed.kind, privkey.kind);
+    assert_eq!(
+        parsed.pubkey.fingerprint().hash,
+        privkey.pubkey.fingerprint().hash
+    );
+
+    let message = b"Test".to_vec();
+    let public_key = privkey.pubkey.clone();
+    let vss = VerifiedSshSignature::new_with_private_key(&message, "file", privkey, None).unwrap();
+    let armored_signature = format!("{}", vss);
+    let verified = VerifiedSshSignature::from_ssh_signature(
+        &message,
+        SshSignature::from_armored_string(&armored_signature).unwrap(),
+        "file",
+        Some(public_key),
+    );
+    assert!(verified.is_ok());
 }
