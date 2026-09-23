@@ -75,9 +75,9 @@ pub struct PublicKey {
 }
 
 /// Two public keys are equal if they have the same key type and key data,
-/// matching OpenSSH's `sshkey_equal`. The comment is ignored, as are RSA
-/// signature algorithm names (`rsa-sha2-256`, `rsa-sha2-512`), which share
-/// the `ssh-rsa` key format (RFC 8332, section 3).
+/// matching OpenSSH's `sshkey_equal`. Equality ignores the comment. It also
+/// ignores the RSA signature algorithm names `rsa-sha2-256` and `rsa-sha2-512`,
+/// which use the `ssh-rsa` key format per RFC 8332 section 3.
 ///
 /// # Example
 /// ```rust
