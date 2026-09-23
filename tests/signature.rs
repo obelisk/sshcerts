@@ -1,6 +1,6 @@
 use sshcerts::{
     ssh::{SshSignature, VerifiedSshSignature},
-    PrivateKey,
+    PrivateKey, PublicKey,
 };
 
 #[test]
@@ -237,4 +237,60 @@ fn check_verification_rsa_sha2_512() {
         Some(public_key),
     )
     .expect("Failed to verify signature");
+}
+
+#[test]
+fn check_verification_rsa_sha2_512_pubkey_file() {
+    let signature =
+        SshSignature::from_armored_string(include_str!("signatures/rsa-sha2-512-4096_Test.sig"))
+            .unwrap();
+
+    let message = include_bytes!("messages/Test").to_vec();
+    let public_key =
+        PublicKey::from_string(include_str!("keys/public/rsa-sha2-512-4096.pub")).unwrap();
+
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
+}
+
+#[test]
+fn check_verification_sk_ed25519_pubkey_file() {
+    let signature =
+        SshSignature::from_armored_string(include_str!("signatures/sk_ed25519_Test.sig")).unwrap();
+
+    let message = include_bytes!("messages/Test").to_vec();
+    let public_key = PublicKey::from_string(include_str!("keys/sk/ed25519.pub")).unwrap();
+
+    let _verified_signature = VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .expect("Failed to verify signature");
+}
+
+#[test]
+fn check_verification_wrong_pubkey() {
+    let signature =
+        SshSignature::from_armored_string(include_str!("signatures/ed25519_1_Test.sig")).unwrap();
+
+    let message = include_bytes!("messages/Test").to_vec();
+    let public_key = PrivateKey::from_string(include_str!("keys/unencrypted/ed25519_2"))
+        .unwrap()
+        .pubkey
+        .clone();
+
+    assert!(VerifiedSshSignature::from_ssh_signature(
+        message.as_slice(),
+        signature,
+        "file",
+        Some(public_key),
+    )
+    .is_err());
 }

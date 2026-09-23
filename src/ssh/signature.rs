@@ -210,7 +210,7 @@ impl VerifiedSshSignature {
         // public key before verification. This is useful when you have a signature but additionally
         // need to check the signature is from it.
         if let Some(pub_key) = pub_key {
-            if ssh_signature.pubkey != pub_key {
+            if ssh_signature.pubkey.encode() != pub_key.encode() {
                 return Err(Error::InvalidSignature);
             }
         }
