@@ -1,5 +1,7 @@
 use sshcerts::ssh::Writer;
 
+use std::collections::HashMap;
+
 #[test]
 fn bad_data_one() {
     let test_vector = [0, 0, 3];
@@ -70,4 +72,29 @@ fn empty() {
     writer.write_mpint(&test_vector);
     let result = writer.as_bytes();
     assert_eq!(result, &vec![0, 0, 0, 0]);
+}
+
+#[test]
+fn string_map_is_sorted() {
+    let mut map = HashMap::new();
+    for key in ["permit-pty", "permit-X11-forwarding", "permit-user-rc", "permit-agent-forwarding"] {
+        map.insert(String::from(key), String::new());
+    }
+    map.insert(String::from("force-command"), String::from("/bin/true"));
+
+    let mut writer = Writer::new();
+    writer.write_string_map(&map);
+
+    let mut expected = Writer::new();
+    let mut inner = Writer::new();
+    inner.write_string("force-command");
+    inner.write_u32(13);
+    inner.write_string("/bin/true");
+    for key in ["permit-X11-forwarding", "permit-agent-forwarding", "permit-pty", "permit-user-rc"] {
+        inner.write_string(key);
+        inner.write_u32(0);
+    }
+    expected.write_bytes(inner.as_bytes());
+
+    assert_eq!(writer.as_bytes(), expected.as_bytes());
 }

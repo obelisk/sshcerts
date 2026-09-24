@@ -174,7 +174,8 @@ impl Writer {
         }
     }
 
-    /// Writes a `HashMap<String, String>` to the underlying byte sequence.
+    /// Writes a `HashMap<String, String>` to the underlying byte sequence,
+    /// sorted by key.
     ///
     /// # Example
     /// ```rust
@@ -196,7 +197,11 @@ impl Writer {
 
         self.write_u32(total_length);
 
-        for (k, v) in map {
+        // PROTOCOL.certkeys requires options to be lexically ordered by name
+        let mut entries: Vec<_> = map.iter().collect();
+        entries.sort();
+
+        for (k, v) in entries {
             self.write_string(k);
             if v.is_empty() {
                 self.write_u32(0x0);
