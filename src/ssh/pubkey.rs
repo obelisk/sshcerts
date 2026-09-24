@@ -62,7 +62,7 @@ pub struct Ed25519PublicKey {
 }
 
 /// A type which represents an OpenSSH public key.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Eq, Clone)]
 pub struct PublicKey {
     /// Key type.
     pub key_type: KeyType,
@@ -72,6 +72,28 @@ pub struct PublicKey {
 
     /// Associated comment, if any.
     pub comment: Option<String>,
+}
+
+/// Two public keys are equal if they have the same key type and key data,
+/// matching OpenSSH's `sshkey_equal`. Equality ignores the comment. It also
+/// ignores the RSA signature algorithm names `rsa-sha2-256` and `rsa-sha2-512`,
+/// which use the `ssh-rsa` key format per RFC 8332 section 3.
+///
+/// # Example
+/// ```rust
+/// # use sshcerts::ssh::PublicKey;
+/// let key = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@home").unwrap();
+/// let same = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHkbe7gwx7s0dlApEEzpUyOAPrzPLy4czEZw/sh8m8rd me@work").unwrap();
+/// let other = PublicKey::from_string("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5 me@home").unwrap();
+/// assert_eq!(key, same);
+/// assert_ne!(key, other);
+/// ```
+impl PartialEq for PublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.key_type.plain == other.key_type.plain
+            && self.key_type.is_cert == other.key_type.is_cert
+            && self.kind == other.kind
+    }
 }
 
 impl fmt::Display for PublicKey {
