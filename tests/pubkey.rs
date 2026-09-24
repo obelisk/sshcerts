@@ -1,4 +1,4 @@
-use sshcerts::ssh::PublicKey;
+use sshcerts::ssh::{KeyType, PublicKey};
 
 #[test]
 fn parse_ed25519_publickey() {
@@ -175,4 +175,43 @@ fn parse_rsa_sha2_256_4096_bit_publickey() {
 
     //let out_data = format!("{}", ssh_pubkey);
     //assert_eq!(in_data, out_data);
+}
+
+#[test]
+fn publickey_eq_ignores_comment() {
+    let key = PublicKey::from_string(include_str!("keys/public/rsa-sha2-512-4096.pub")).unwrap();
+    let mut other = key.clone();
+    other.comment = Some("someone@else".to_string());
+    assert_eq!(key, other);
+
+    other.comment = None;
+    assert_eq!(key, other);
+}
+
+#[test]
+fn publickey_eq_ignores_rsa_signature_algorithm_name() {
+    let key = PublicKey::from_string(include_str!("keys/public/rsa-sha2-512-4096.pub")).unwrap();
+    assert_eq!(key.key_type.name, "rsa-sha2-512");
+
+    let mut other = key.clone();
+    other.key_type = KeyType::from_name("ssh-rsa").unwrap();
+    assert_eq!(key, other);
+
+    other.key_type = KeyType::from_name("rsa-sha2-256").unwrap();
+    assert_eq!(key, other);
+}
+
+#[test]
+fn publickey_ne_cert_key_type() {
+    let key = PublicKey::from_string(include_str!("keys/public/rsa-sha2-512-4096.pub")).unwrap();
+    let mut other = key.clone();
+    other.key_type = KeyType::from_name("ssh-rsa-cert-v01@openssh.com").unwrap();
+    assert_ne!(key, other);
+}
+
+#[test]
+fn publickey_ne_different_key_data() {
+    let key = PublicKey::from_string(include_str!("keys/public/rsa-sha2-512-4096.pub")).unwrap();
+    let other = PublicKey::from_string(include_str!("keys/public/rsa-sha2-512-8192.pub")).unwrap();
+    assert_ne!(key, other);
 }
