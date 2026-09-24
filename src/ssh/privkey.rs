@@ -7,7 +7,7 @@ use std::path::Path;
 use ring::signature::Ed25519KeyPair;
 use ring::{rand, signature, signature::KeyPair};
 
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::{
     error::Error,
@@ -286,9 +286,9 @@ impl super::SSHCertificateSigner for PrivateKey {
             #[cfg(not(feature = "rsa-signing"))]
             PrivateKeyKind::Rsa(_) => return None,
             PrivateKeyKind::Ecdsa(key) => {
-                let alg = match key.curve.kind {
-                    CurveKind::Nistp256 => &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
-                    CurveKind::Nistp384 => &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                let (alg, scalar_len) = match key.curve.kind {
+                    CurveKind::Nistp256 => (&signature::ECDSA_P256_SHA256_ASN1_SIGNING, 32),
+                    CurveKind::Nistp384 => (&signature::ECDSA_P384_SHA384_ASN1_SIGNING, 48),
                     CurveKind::Nistp521 => return None,
                 };
 
@@ -297,13 +297,23 @@ impl super::SSHCertificateSigner for PrivateKey {
                     _ => return None,
                 };
 
-                let key = if key.key[0] == 0x0_u8 {
-                    &key.key[1..]
-                } else {
-                    &key.key
-                };
+                // OpenSSH stores the scalar as an mpint, so it can be shorter
+                // than the curve size or have a leading zero byte. ring needs
+                // it to be exactly the curve size.
+                let start = key
+                    .key
+                    .iter()
+                    .position(|&b| b != 0)
+                    .unwrap_or(key.key.len());
+                let scalar = &key.key[start..];
+                if scalar.len() > scalar_len {
+                    return None;
+                }
+                let mut key = Zeroizing::new(vec![0; scalar_len]);
+                key[scalar_len - scalar.len()..].copy_from_slice(scalar);
+
                 let key_pair = match signature::EcdsaKeyPair::from_private_key_and_public_key(
-                    alg, key, pubkey, &rng,
+                    alg, &key, pubkey, &rng,
                 ) {
                     Ok(kp) => kp,
                     Err(_) => return None,
