@@ -497,7 +497,10 @@ impl PrivateKey {
                     .public_key()
                     .as_ref()
                     .to_vec();
-                let key = Ed25519PrivateKey { key: seed.to_vec() };
+                // OpenSSH stores Ed25519 private keys as seed || public key
+                let key = Ed25519PrivateKey {
+                    key: [&seed[..], &public_key_bytes[..]].concat(),
+                };
 
                 let pubkey = PublicKey {
                     key_type: key_type.clone(),
