@@ -187,3 +187,15 @@ fn generate_ed25519_private_key() {
     );
     assert!(verified.is_ok());
 }
+
+#[test]
+fn parse_rsa_private_key_p_zero() {
+    let privkey = PrivateKey::from_string(include_str!("keys/unencrypted/rsa_2048_p_zero"));
+    assert!(matches!(privkey, Err(sshcerts::error::Error::InvalidFormat)));
+}
+
+#[test]
+fn parse_rsa_private_key_q_one() {
+    let privkey = PrivateKey::from_string(include_str!("keys/unencrypted/rsa_2048_q_one"));
+    assert!(matches!(privkey, Err(sshcerts::error::Error::InvalidFormat)));
+}
