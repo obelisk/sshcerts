@@ -299,14 +299,15 @@ impl super::SSHCertificateSigner for PrivateKey {
 
                 // OpenSSH stores the scalar as an mpint, so it can be shorter
                 // than the curve size or have a leading zero byte. ring needs
-                // it to be exactly the curve size.
+                // it to be exactly the curve size. Like OpenSSH, reject
+                // scalars with half the curve's bits or fewer.
                 let start = key
                     .key
                     .iter()
                     .position(|&b| b != 0)
                     .unwrap_or(key.key.len());
                 let scalar = &key.key[start..];
-                if scalar.len() > scalar_len {
+                if scalar.len() <= scalar_len / 2 || scalar.len() > scalar_len {
                     return None;
                 }
                 let mut key = Zeroizing::new(vec![0; scalar_len]);
