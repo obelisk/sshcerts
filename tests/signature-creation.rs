@@ -148,3 +148,15 @@ fn check_basic_creation_ecdsa_384_short_scalar_full_loop() {
 
     assert!(fl_vss.is_ok());
 }
+
+#[test]
+fn check_creation_ecdsa_256_small_scalar_fails() {
+    let private_key =
+        PrivateKey::from_string(include_str!("keys/unencrypted/ecdsa_256_small_scalar")).unwrap();
+
+    let message = include_bytes!("messages/Test").to_vec();
+
+    assert!(
+        VerifiedSshSignature::new_with_private_key(&message, "file", private_key, None).is_err()
+    );
+}
