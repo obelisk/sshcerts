@@ -31,6 +31,7 @@ pub use self::privkey::{
     EcdsaPrivateKey, EcdsaSkPrivateKey, Ed25519PrivateKey, Ed25519SkPrivateKey, PrivateKey,
     PrivateKeyKind, RsaPrivateKey, TouchRequirement,
 };
+pub(crate) use self::privkey::SSH_SK_USER_PRESENCE_REQD;
 pub use self::pubkey::{
     EcdsaPublicKey, Ed25519PublicKey, Fingerprint, FingerprintKind, PublicKey, PublicKeyKind,
     RsaPublicKey,

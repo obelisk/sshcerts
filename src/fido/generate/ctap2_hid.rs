@@ -10,7 +10,7 @@ use crate::{
         generate::{FIDOSSHKey, U2FAttestation},
         AuthData,
     },
-    ssh::{Ed25519SkPrivateKey, KeyType, PrivateKeyKind},
+    ssh::{Ed25519SkPrivateKey, KeyType, PrivateKeyKind, SSH_SK_USER_PRESENCE_REQD},
     PrivateKey,
 };
 
@@ -48,23 +48,9 @@ pub fn generate_new_ssh_key(
         .make_credential_with_args(&args.build())
         .map_err(|e| Error::FidoError(FidoError::Unknown(e.to_string())))?;
 
-    let mut ret = 0x0;
-    if att.flags.user_present_result {
-        ret = ret | 0x01;
-    }
-    if att.flags.user_verified_result {
-        ret = ret | 0x04;
-    }
-    if att.flags.attested_credential_data_included {
-        ret = ret | 0x40;
-    }
-    if att.flags.extension_data_included {
-        ret = ret | 0x80;
-    }
-
     let key_type = KeyType::from_name("sk-ssh-ed25519@openssh.com")?;
     let kind = PrivateKeyKind::Ed25519Sk(Ed25519SkPrivateKey {
-        flags: ret,
+        flags: SSH_SK_USER_PRESENCE_REQD,
         handle: att.credential_descriptor.id.clone(),
         reserved: vec![],
         pin,

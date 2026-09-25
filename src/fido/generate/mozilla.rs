@@ -4,7 +4,7 @@ use crate::{
         generate::{FIDOSSHKey, U2FAttestation},
         AuthData,
     },
-    ssh::{Ed25519SkPrivateKey, KeyType, PrivateKeyKind},
+    ssh::{Ed25519SkPrivateKey, KeyType, PrivateKeyKind, SSH_SK_USER_PRESENCE_REQD},
     PrivateKey,
 };
 
@@ -140,7 +140,7 @@ pub fn generate_new_ssh_key(
 
     let key_type = KeyType::from_name("sk-ssh-ed25519@openssh.com")?;
     let kind = PrivateKeyKind::Ed25519Sk(Ed25519SkPrivateKey {
-        flags: auth_data.flags,
+        flags: SSH_SK_USER_PRESENCE_REQD,
         handle: auth_data.credential_id.clone(),
         reserved: vec![],
         pin,
