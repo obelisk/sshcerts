@@ -1,3 +1,14 @@
+//! For signing data with FIDO-backed SSH keys
+//!
+//! # Blocking
+//!
+//! Signing requires user presence, so every backend blocks until the user
+//! touches the device. With the `fido-support-mozilla` backend the wait is
+//! bounded by a 15 second operation timeout; with the `fido-support` backend
+//! the wait is typically bounded by the device's own user-presence timeout
+//! (about 30 seconds). Run signing on a worker thread if a different timeout
+//! is needed.
+
 #[cfg(any(feature = "fido-support"))]
 mod ctap2_hid;
 #[cfg(any(feature = "fido-support"))]

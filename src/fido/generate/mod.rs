@@ -1,3 +1,14 @@
+//! For generating new SSH keys on FIDO devices
+//!
+//! # Blocking
+//!
+//! Key generation requires user presence, so every backend blocks until the
+//! user touches the device. With the `fido-support-mozilla` backend the wait
+//! is bounded by a 15 second operation timeout; with the `fido-support`
+//! backend the wait is typically bounded by the device's own user-presence
+//! timeout (about 30 seconds). Run generation on a worker thread if a
+//! different timeout is needed.
+
 use crate::{PrivateKey, TouchRequirement};
 
 #[cfg(any(feature = "fido-support"))]

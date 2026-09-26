@@ -12,7 +12,8 @@ use authenticator::{
     statecallback::StateCallback,
     Pin, StatusUpdate,
 };
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, Receiver};
+use std::thread;
 
 /// Sign data with a SK type private key
 pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Option<Vec<u8>> {
@@ -62,21 +63,26 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
 
     let (sign_tx, sign_rx) = channel();
     let callback = StateCallback::new(Box::new(move |rv| {
-        sign_tx.send(rv).unwrap();
+        let _ = sign_tx.send(rv);
     }));
 
-    let (status_tx, _status_rx) = channel::<StatusUpdate>();
-    if let Err(e) = manager.sign(
-        15_000,
-        ctap_args.clone().into(),
-        status_tx.clone(),
-        callback,
-    ) {
-        panic!("Couldn't sign: {:?}", e);
+    // Consume PIN-related status updates and drop their embedded PIN sender.
+    // If the sender were left unread, the authenticator crate's device thread
+    // would stay blocked waiting for a PIN that will never arrive, and its
+    // join during transaction cleanup would deadlock this function.
+    let (status_tx, status_rx) = channel::<StatusUpdate>();
+    thread::spawn(move || drain_pin_statuses(status_rx));
+
+    if manager
+        .sign(15_000, ctap_args.clone().into(), status_tx, callback)
+        .is_err()
+    {
+        return None;
     }
-    let sign_result = sign_rx
-        .recv()
-        .expect("Problem receiving, unable to continue");
+    let sign_result = match sign_rx.recv() {
+        Ok(result) => result,
+        Err(_) => return None,
+    };
 
     let assertion = match sign_result {
         Ok(assertion_object) => assertion_object.assertion,
@@ -93,4 +99,65 @@ pub fn sign_with_private_key(private_key: &PrivateKey, challenge: &[u8]) -> Opti
     format.push(assertion.auth_data.flags.bits());
     format.extend_from_slice(&assertion.auth_data.counter.to_be_bytes());
     Some(format)
+}
+
+/// Drain PIN-related status updates until the operation ends, dropping any
+/// embedded PIN sender so the authenticator crate's device thread is never
+/// left blocked waiting for a PIN that will not arrive
+fn drain_pin_statuses(status_rx: Receiver<StatusUpdate>) {
+    loop {
+        match status_rx.recv() {
+            Ok(StatusUpdate::PinUvError(_)) => return,
+            Ok(_) => (),
+            Err(_) => return,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use authenticator::StatusPinUv;
+
+    fn dropped_pin_sender_status() -> (Receiver<Pin>, StatusUpdate) {
+        let (pin_tx, pin_rx) = channel::<Pin>();
+        (
+            pin_rx,
+            StatusUpdate::PinUvError(StatusPinUv::PinRequired(pin_tx)),
+        )
+    }
+
+    #[test]
+    fn pin_required_status_drops_the_pin_sender() {
+        let (status_tx, status_rx) = channel::<StatusUpdate>();
+        let (pin_rx, status) = dropped_pin_sender_status();
+        status_tx.send(status).unwrap();
+        drain_pin_statuses(status_rx);
+        assert!(pin_rx
+            .recv_timeout(std::time::Duration::from_secs(1))
+            .is_err());
+    }
+
+    #[test]
+    fn invalid_pin_status_drops_the_pin_sender() {
+        let (status_tx, status_rx) = channel::<StatusUpdate>();
+        let (pin_tx, pin_rx) = channel::<Pin>();
+        status_tx
+            .send(StatusUpdate::PinUvError(StatusPinUv::InvalidPin(
+                pin_tx,
+                Some(3),
+            )))
+            .unwrap();
+        drain_pin_statuses(status_rx);
+        assert!(pin_rx
+            .recv_timeout(std::time::Duration::from_secs(1))
+            .is_err());
+    }
+
+    #[test]
+    fn drain_exits_when_the_status_channel_closes() {
+        let (_status_tx, status_rx) = channel::<StatusUpdate>();
+        drop(_status_tx);
+        drain_pin_statuses(status_rx);
+    }
 }
