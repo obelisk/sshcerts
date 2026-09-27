@@ -4,7 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use chrono::prelude::Local;
-use chrono::{Duration, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+use chrono::{DateTime, Duration, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 
 use super::pubkey::PublicKey;
 use crate::{error::Error, Result};
@@ -102,6 +102,9 @@ impl AllowedSigner {
         let principals = tokenizer.next(true)?
             .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingPrincipals))?;
         let principals = principals.trim_matches('"');
+        if principals.contains('"') {
+            return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
+        }
         let principals: Vec<String> = principals.split(',')
             .map(|s| s.to_string())
             .collect();
@@ -114,10 +117,18 @@ impl AllowedSigner {
         let mut valid_after = None;
         let mut valid_before = None;
 
-        let kt = loop {
-            let option = tokenizer.next(false)?
-                .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingKey))?;
+        let field = tokenizer.next(false)?
+            .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingKey))?;
 
+        // The options field is optional. Key types never contain '=' or ',', and the only option
+        // without either is cert-authority.
+        let options = if field.contains(['=', ',']) || field.eq_ignore_ascii_case("cert-authority") {
+            split_options(&field)
+        } else {
+            Vec::new()
+        };
+
+        for option in &options {
             let (option_key, option_value) = match option.split_once('=') {
                 Some(v) => v,
                 None => (option.as_str(), ""),
@@ -128,7 +139,14 @@ impl AllowedSigner {
             }
 
             match option_key.to_lowercase().as_str() {
-                "cert-authority" => cert_authority = true,
+                "cert-authority" => {
+                    if option.contains('=') {
+                        return Err(
+                            Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidOption("cert-authority".to_string()))
+                        );
+                    }
+                    cert_authority = true;
+                },
                 "namespaces" => {
                     if namespaces.is_some() {
                         return Err(
@@ -167,9 +185,25 @@ impl AllowedSigner {
                             |_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidOption("valid-before".to_string())))?
                         );
                 },
-                // If option_key does not match any valid option, we test if it's the key data
-                _ => break option,
+                // An empty option comes from a stray comma, so report the whole field
+                "" => {
+                    return Err(
+                        Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidOption(field.clone()))
+                    );
+                },
+                _ => {
+                    return Err(
+                        Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidOption(option_key.to_string()))
+                    );
+                },
             };
+        }
+
+        let kt = if options.is_empty() {
+            field
+        } else {
+            tokenizer.next(false)?
+                .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingKey))?
         };
 
         let key_data = tokenizer.next(false)?
@@ -209,22 +243,34 @@ impl fmt::Display for AllowedSigner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output = String::new();
 
-        output.push_str(&self.principals.join(","));
+        let principals = self.principals.join(",");
+        if principals.contains([' ', '\t', '#']) {
+            output.push_str(&format!("\"{}\"", principals));
+        } else {
+            output.push_str(&principals);
+        }
         
+        // OpenSSH requires comma-separated options with quoted values
+        let mut options = Vec::new();
+
         if self.cert_authority {
-            output.push_str(" cert-authority");
+            options.push("cert-authority".to_string());
         }
 
         if let Some(ref namespaces) = self.namespaces {
-            output.push_str(&format!(" namespaces={}", namespaces.join(",")));
+            options.push(format!("namespaces=\"{}\"", namespaces.join(",").replace('"', "\\\"")));
         }
 
-        if let Some(ref valid_after) = self.valid_after {
-            output.push_str(&format!(" valid-after={}", valid_after));
+        if let Some(valid_after) = self.valid_after {
+            options.push(format!("valid-after=\"{}\"", format_timestamp(valid_after)));
         }
 
-        if let Some(ref valid_before) = self.valid_before {
-            output.push_str(&format!(" valid-before={}", valid_before));
+        if let Some(valid_before) = self.valid_before {
+            options.push(format!("valid-before=\"{}\"", format_timestamp(valid_before)));
+        }
+
+        if !options.is_empty() {
+            output.push_str(&format!(" {}", options.join(",")));
         }
 
         output.push_str(&format!(" {}", self.key));
@@ -297,8 +343,8 @@ impl AllowedSigners {
 /// The splitter is highly aware of the allowed_signer format and will catch certain invalid
 /// formats.
 ///
-/// For example: "principals   option1=\"value1   value2\" option2 option3=value kt key_data" is split into
-/// ["principals", "option1=\"value1   value2\"", "option2", "option3=value", "kt", "key_data"]
+/// For example: "principals   option1=\"value1   value2\",option2,option3=value kt key_data" is split into
+/// ["principals", "option1=\"value1   value2\",option2,option3=value", "kt", "key_data"]
 struct AllowedSignerSplitter {
     /// A buffer of remaining tokens in reverse order.
     buffer: Vec<String>,
@@ -310,7 +356,7 @@ impl AllowedSignerSplitter {
         let mut buffer = Vec::new();
         let mut last = 0;
 
-        for (index, matched) in s.match_indices([' ', '"', '#']) {
+        for (index, matched) in s.match_indices([' ', '\t', '"', '#']) {
             // Push the new text before the delimiter
             if last != index {
                 buffer.push(s[last..index].to_owned());
@@ -336,7 +382,7 @@ impl AllowedSignerSplitter {
         return self.buffer.is_empty();
     }
 
-    /// Get the next part that is not an option (principals, key)
+    /// Get the next whitespace-separated field (principals, options, key type, key data)
     /// If opening_quotes_allowed is set to false, we reject the next token if it starts with ".
     fn next(&mut self, opening_quotes_allowed: bool) -> Result<Option<String>> {
         if self.is_empty_after_trim() {
@@ -353,32 +399,28 @@ impl AllowedSignerSplitter {
             }
         }
 
-        // If the next token doesn't start with a double quote, the token can represent an option.
-        // Only an option token can contain double quotes in the middle (e.g. a="b c").
-        // If we don't see any double quote in the token, we greedily parse the token until the
-        // next whitespace.
+        // If the next token doesn't start with a double quote, the token can represent the options.
+        // Only the options token can contain double quotes in the middle (e.g. a="b c",d="e").
+        // Otherwise, we greedily parse the token until the next whitespace.
         let mut s = String::new();
         while let Some(last) = self.buffer.pop() {
-            if [" ", "\"", "#"].contains(&last.as_str()) {
-                self.buffer.push(last);
-                break;
-            }
+            match last.as_str() {
+                " " | "\t" | "#" => {
+                    self.buffer.push(last);
+                    break;
+                },
+                "\"" => {
+                    self.buffer.push(last);
+                    s.push_str(self.split_quote()?.as_str());
 
-            s.push_str(&last);
-        }
-
-        // This should only apply to options
-        if let Some(last) = self.buffer.last() {
-            if last == "\"" {
-                s.push_str(self.split_quote()?.as_str());
-
-                // After the double quotes in the option token, there can only be nothing, a
-                // whitespace, or a pound
-                if let Some(last) = self.buffer.last() {
-                    if ![" ", "#"].contains(&last.as_str()) {
-                        return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
+                    // A closing double quote must end the token or the option
+                    if let Some(last) = self.buffer.last() {
+                        if ![" ", "\t", "#"].contains(&last.as_str()) && !last.starts_with(',') {
+                            return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
+                        }
                     }
-                }
+                },
+                _ => s.push_str(&last),
             }
         }
 
@@ -389,7 +431,7 @@ impl AllowedSignerSplitter {
     fn trim(&mut self) {
         while let Some(last) = self.buffer.last(){
             match last.as_str() {
-                " " => {
+                " " | "\t" => {
                     self.buffer.pop();
                 },
                 // Comment detected
@@ -427,18 +469,47 @@ impl AllowedSignerSplitter {
     }
 }
 
+/// Split the options field on commas that are not inside double quotes.
+fn split_options(field: &str) -> Vec<String> {
+    let mut options = Vec::new();
+    let mut option = String::new();
+    let mut in_quotes = false;
+
+    for c in field.chars() {
+        match c {
+            '"' => {
+                in_quotes = !in_quotes;
+                option.push(c);
+            },
+            ',' if !in_quotes => options.push(std::mem::take(&mut option)),
+            _ => option.push(c),
+        }
+    }
+    options.push(option);
+
+    options
+}
+
+/// Format a UNIX timestamp as YYYYMMDDHHMMSSZ.
+/// OpenSSH rejects timestamps at or before the epoch and needs a four-digit year, so this clamps
+/// the timestamp between 19700101000001Z and 99991231235959Z.
+fn format_timestamp(timestamp: i64) -> String {
+    let timestamp = timestamp.clamp(1, 253402300799);
+    DateTime::from_timestamp(timestamp, 0)
+        .expect("clamped timestamp should be in range")
+        .format("%Y%m%d%H%M%SZ")
+        .to_string()
+}
+
 /// Parse a string into a u64 representing a timestamp.
-/// The timestamp has format YYYYMMDD[HHMM[SS]][Z]
+/// The timestamp has format YYYYMMDD[HHMM[SS]][Z|UTC], with a case-insensitive suffix.
 /// The timestamp can be enclosed by quotation marks.
 fn parse_timestamp(s: &str) -> Result<i64> {
-    let mut s = s.trim_matches('"');
-    let is_utc = s.ends_with('Z');
-    if s.len() % 2 == 1 && !is_utc {
-        return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp));
-    }
-    if is_utc {
-        s = s.trim_end_matches('Z');
-    }
+    let s = s.trim_matches('"').to_ascii_lowercase();
+    let (s, is_utc) = match s.strip_suffix('z').or_else(|| s.strip_suffix("utc")) {
+        Some(s) => (s, true),
+        None => (s.as_str(), false),
+    };
     let datetime = match s.len() {
         8 => {
             let date = NaiveDate::parse_from_str(s, "%Y%m%d")
