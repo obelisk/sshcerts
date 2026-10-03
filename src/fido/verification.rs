@@ -5,6 +5,7 @@ use x509_parser::prelude::*;
 use crate::error::Error;
 
 use std::convert::TryFrom;
+use std::sync::OnceLock;
 
 use super::AuthData;
 
@@ -329,8 +330,8 @@ fn verify_intermediates(
     Ok(())
 }
 
-/// All known Yubico FIDO attestation chains, tried in order. The first element
-/// is the root CA. The last is the certificate that device certificates chain to.
+/// All known Yubico FIDO attestation chains. The first element is the root CA.
+/// The last is the certificate that device certificates chain to.
 const FIDO_CHAINS: &[&[&str]] = &[
     &[
         YUBICO_ATTESTATION_ROOT_1,
@@ -351,19 +352,46 @@ const FIDO_CHAINS: &[&[&str]] = &[
     &[YUBICO_U2F_ROOT_CA_457200631],
 ];
 
-/// Verify that the intermediate chains to some Yubico root CA for FIDO attestation
-/// We try all known Yubico Root CAs for backward compatibility
-fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
-    // Return the last chain's error so callers still see ParsingError
-    let mut result = Err(Error::InvalidSignature);
-    for chain in FIDO_CHAINS {
-        result = verify_intermediates(parsed_intermediate, chain);
-        if result.is_ok() {
-            return result;
-        }
-    }
+/// The last certificate of each FIDO chain, parsed once. The links above it are
+/// compiled in, so they are checked by embedded_chains_are_valid instead of at runtime.
+fn fido_signers() -> &'static [X509Certificate<'static>] {
+    static DERS: OnceLock<Vec<Vec<u8>>> = OnceLock::new();
+    static SIGNERS: OnceLock<Vec<X509Certificate<'static>>> = OnceLock::new();
 
-    result
+    SIGNERS.get_or_init(|| {
+        DERS.get_or_init(|| {
+            FIDO_CHAINS
+                .iter()
+                .map(|chain| {
+                    let pem = chain.last().expect("embedded chain must not be empty");
+                    parse_x509_pem(pem.as_bytes())
+                        .expect("embedded PEM must parse")
+                        .1
+                        .contents
+                })
+                .collect()
+        })
+        .iter()
+        .map(|der| {
+            X509Certificate::from_der(der)
+                .expect("embedded certificate must parse")
+                .1
+        })
+        .collect()
+    })
+}
+
+/// Verify that the intermediate chains to some Yubico root CA for FIDO attestation.
+/// The intermediate's issuer names the embedded certificate that signed it.
+fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
+    let signer = fido_signers()
+        .iter()
+        .find(|ca| ca.subject() == parsed_intermediate.issuer())
+        .ok_or(Error::InvalidSignature)?;
+
+    parsed_intermediate
+        .verify_signature(Some(signer.public_key()))
+        .map_err(|_| Error::InvalidSignature)
 }
 
 /// Verify a provided U2F attestation, signature, and certificate are valid
