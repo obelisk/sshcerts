@@ -4,7 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use chrono::prelude::Local;
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{Duration, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 
 use super::pubkey::PublicKey;
 use crate::{error::Error, Result};
@@ -460,9 +460,16 @@ fn parse_timestamp(s: &str) -> Result<i64> {
         datetime.and_utc()
             .timestamp()
     } else {
-        datetime.and_local_timezone(Local)
-            .unwrap()
-            .timestamp()
+        // Match OpenSSH, which lets mktime resolve DST edge cases.
+        match datetime.and_local_timezone(Local) {
+            LocalResult::Single(dt) => dt.timestamp(),
+            LocalResult::Ambiguous(a, b) => a.timestamp().min(b.timestamp()),
+            // The time falls in a DST gap. Like mktime, use the offset from before the gap.
+            LocalResult::None => {
+                let before = Local.offset_from_utc_datetime(&(datetime - Duration::days(1)));
+                datetime.and_utc().timestamp() - i64::from(before.local_minus_utc())
+            },
+        }
     };
 
     Ok(timestamp)
