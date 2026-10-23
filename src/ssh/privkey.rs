@@ -360,6 +360,11 @@ impl PrivateKey {
                 let p = reader.read_positive_mpint()?;
                 let q = reader.read_positive_mpint()?;
 
+                // p and q must be greater than 1, otherwise the CRT exponent math panics
+                if p.is_empty() || q.is_empty() || p == [1] || q == [1] {
+                    return Err(Error::InvalidFormat);
+                }
+
                 #[cfg(feature = "rsa-signing")]
                 let exp = Some(
                     BigUint::from_bytes_be(&d)
