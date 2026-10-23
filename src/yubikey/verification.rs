@@ -5,6 +5,7 @@ use x509_parser::der_parser::der::parse_der_integer;
 use x509_parser::prelude::*;
 
 use std::convert::TryInto;
+use std::sync::OnceLock;
 
 /// From https://developers.yubico.com/PKI/yubico-ca-certs.txt
 const YUBICO_PIV_ROOT_CA_263751: &str = "-----BEGIN CERTIFICATE-----
@@ -279,8 +280,8 @@ fn verify_intermediates(
     Ok(())
 }
 
-/// All known Yubico PIV attestation chains, tried in order. The first element
-/// is the root CA. The last is the certificate that device certificates chain to.
+/// All known Yubico PIV attestation chains. The first element is the root CA.
+/// The last is the certificate that device certificates chain to.
 const PIV_CHAINS: &[&[&str]] = &[
     &[
         YUBICO_ATTESTATION_ROOT_1,
@@ -300,19 +301,46 @@ const PIV_CHAINS: &[&[&str]] = &[
     &[YUBICO_PIV_ROOT_CA_263751],
 ];
 
-/// Verify that the intermediate chains to some Yubico root CA for PIV attestation
-/// We try all known Yubico Root CAs for backward compatibility
-fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
-    // Return the last chain's error so callers still see ParsingError
-    let mut result = Err(Error::InvalidSignature);
-    for chain in PIV_CHAINS {
-        result = verify_intermediates(parsed_intermediate, chain);
-        if result.is_ok() {
-            return result;
-        }
-    }
+/// The last certificate of each PIV chain, parsed once. The links above it are
+/// compiled in, so they are checked by embedded_chains_are_valid instead of at runtime.
+fn piv_signers() -> &'static [X509Certificate<'static>] {
+    static DERS: OnceLock<Vec<Vec<u8>>> = OnceLock::new();
+    static SIGNERS: OnceLock<Vec<X509Certificate<'static>>> = OnceLock::new();
 
-    result
+    SIGNERS.get_or_init(|| {
+        DERS.get_or_init(|| {
+            PIV_CHAINS
+                .iter()
+                .map(|chain| {
+                    let pem = chain.last().expect("embedded chain must not be empty");
+                    parse_x509_pem(pem.as_bytes())
+                        .expect("embedded PEM must parse")
+                        .1
+                        .contents
+                })
+                .collect()
+        })
+        .iter()
+        .map(|der| {
+            X509Certificate::from_der(der)
+                .expect("embedded certificate must parse")
+                .1
+        })
+        .collect()
+    })
+}
+
+/// Verify that the intermediate chains to some Yubico root CA for PIV attestation.
+/// The intermediate's issuer names the embedded certificate that signed it.
+fn verify_yubico_intermediates(parsed_intermediate: &X509Certificate<'_>) -> Result<(), Error> {
+    let signer = piv_signers()
+        .iter()
+        .find(|ca| ca.subject() == parsed_intermediate.issuer())
+        .ok_or(Error::InvalidSignature)?;
+
+    parsed_intermediate
+        .verify_signature(Some(signer.public_key()))
+        .map_err(|_| Error::InvalidSignature)
 }
 
 /// Verify a provided yubikey attestation certification and intermediate
