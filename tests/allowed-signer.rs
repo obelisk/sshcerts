@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use sshcerts::error::Error;
 use sshcerts::ssh::{AllowedSigner, AllowedSignerParsingError};
 
@@ -129,6 +131,50 @@ fn parse_good_allowed_signer_with_space_in_namespaces() {
 
 const KEY: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDO0VQD9TIdICZLWFWwtf7s8/aENve8twGTEmNV0myh5";
 
+// Each line parses, and Display writes it back in the canonical form, which parses to the same value
+#[test]
+fn parse_and_display_allowed_signer() {
+    for (line, canonical) in [
+        // All options, comma-separated with quoted values. Timestamps are written in full.
+        (
+            format!("mitchell@confurious.io cert-authority,namespaces=\"git,file\",valid-after=\"20240101Z\",valid-before=\"20240505123045Z\" {KEY}"),
+            format!("mitchell@confurious.io cert-authority,namespaces=\"git,file\",valid-after=\"20240101000000Z\",valid-before=\"20240505123045Z\" {KEY}"),
+        ),
+        // regress/sshsig.sh lines
+        (format!("user@example.com namespaces=\"test,whatever\" {KEY}"), format!("user@example.com namespaces=\"test,whatever\" {KEY}")),
+        (format!("*@example.com cert-authority {KEY}"), format!("*@example.com cert-authority {KEY}")),
+        // Display quotes principals containing a space or '#'
+        (format!("\"mitchell confurious\" {KEY}"), format!("\"mitchell confurious\" {KEY}")),
+        (format!("\"mitchell#confurious,thanh\" {KEY}"), format!("\"mitchell#confurious,thanh\" {KEY}")),
+        // strdelimw(): a quote inside the principals field starts a quoted section
+        (format!("a\"b\" {KEY}"), format!("ab {KEY}")),
+        // Display quotes a principal starting with whitespace, which AllowedSigners would trim
+        (format!("\"\u{a0}a\" {KEY}"), format!("\"\u{a0}a\" {KEY}")),
+        // A namespace can end in a backslash if an empty item follows it
+        (format!("a namespaces=\"x\\,\" {KEY}"), format!("a namespaces=\"x\\,\" {KEY}")),
+        // A carriage return is kept inside quotes
+        (format!("\"a\rb\" namespaces=\"n\rs\" {KEY}"), format!("\"a\rb\" namespaces=\"n\rs\" {KEY}")),
+        // Fields can be separated by tabs
+        (
+            format!("mitchell@confurious.io\tcert-authority,namespaces=\"git\"\t{}\t", KEY.replace(' ', "\t")),
+            format!("mitchell@confurious.io cert-authority,namespaces=\"git\" {KEY}"),
+        ),
+        // sshsigopt_parse() skips empty options between commas
+        (
+            format!("mitchell@confurious.io ,namespaces=\"git\",,cert-authority {KEY}"),
+            format!("mitchell@confurious.io cert-authority,namespaces=\"git\" {KEY}"),
+        ),
+        // sshkey_read() ignores anything after the key data, quotes included
+        (format!("mitchell@confurious.io {KEY} comment"), format!("mitchell@confurious.io {KEY}")),
+        (format!("mitchell@confurious.io {KEY} # \"quoted comment\""), format!("mitchell@confurious.io {KEY}")),
+        (format!("\"mitchell confurious\" {KEY} #\""), format!("\"mitchell confurious\" {KEY}")),
+    ] {
+        let allowed_signer = AllowedSigner::from_string(&line).unwrap();
+        assert_eq!(allowed_signer.to_string(), canonical, "{}", line);
+        assert_eq!(AllowedSigner::from_string(&canonical).unwrap(), allowed_signer, "{}", line);
+    }
+}
+
 #[test]
 fn parse_bad_allowed_signer() {
     use AllowedSignerParsingError::*;
@@ -227,4 +273,73 @@ fn parse_allowed_signer_timestamps_like_openssh() {
             "{}", timestamp,
         );
     }
+}
+
+#[test]
+fn display_allowed_signer_escapes_quotes_in_namespaces() {
+    let mut allowed_signer = AllowedSigner::from_string(&format!("mitchell@confurious.io {KEY}")).unwrap();
+    allowed_signer.namespaces = Some(vec!["git".to_string(), "a\"b".to_string(), "c\\\"d".to_string(), "e f".to_string()]);
+    let formatted = allowed_signer.to_string();
+    assert_eq!(formatted, format!("mitchell@confurious.io namespaces=\"git,a\\\"b,c\\\\\"d,e f\" {KEY}"));
+    assert_eq!(AllowedSigner::from_string(&formatted).unwrap(), allowed_signer);
+}
+
+#[test]
+fn display_allowed_signer_leaves_out_key_comment() {
+    let mut allowed_signer = AllowedSigner::from_string(&format!("mitchell@confurious.io {KEY}")).unwrap();
+    allowed_signer.key.comment = Some(format!("comment\nmallory@confurious.io {KEY}"));
+    assert_eq!(allowed_signer.to_string(), format!("mitchell@confurious.io {KEY}"));
+}
+
+// to_line() fails rather than write a field that OpenSSH would read back differently
+#[test]
+fn display_allowed_signer_rejects_unwritable_fields() {
+    use AllowedSignerParsingError::*;
+
+    let allowed_signer = || AllowedSigner::from_string(&format!("mitchell@confurious.io {KEY}")).unwrap();
+    let assert_fails = |allowed_signer: AllowedSigner, expected: AllowedSignerParsingError| {
+        let actual = allowed_signer.to_line().unwrap_err();
+        assert_eq!(format!("{:?}", actual), format!("{:?}", Error::InvalidAllowedSigner(expected)), "{:?}", allowed_signer);
+        assert!(write!(String::new(), "{}", allowed_signer).is_err());
+    };
+
+    // Lists can't hold an empty item, a comma, a line feed or NUL, and a quoted principals field
+    // ends at the next quote
+    for principals in [vec![], vec![""], vec!["a,b"], vec!["a\"b"], vec!["a\nb"], vec!["a\0b"]] {
+        let mut allowed_signer = allowed_signer();
+        allowed_signer.principals = principals.iter().map(|p| p.to_string()).collect();
+        assert_fails(allowed_signer, InvalidPrincipals);
+    }
+    for namespaces in [vec![""], vec!["a,b"], vec!["a\nb"], vec!["a\0b"]] {
+        let mut allowed_signer = allowed_signer();
+        allowed_signer.namespaces = Some(namespaces.iter().map(|n| n.to_string()).collect());
+        assert_fails(allowed_signer, InvalidOption("namespaces".into()));
+    }
+
+    // OpenSSH rejects the epoch and anything before it, and needs a four-digit year
+    for (valid_after, valid_before, name) in [
+        (Some(0), None, "valid-after"),
+        (None, Some(0), "valid-before"),
+        (Some(-86400), None, "valid-after"),
+        (Some(i64::MIN), None, "valid-after"),
+        (None, Some(i64::MAX), "valid-before"),
+        (None, Some(253402300800), "valid-before"),
+    ] {
+        let mut allowed_signer = allowed_signer();
+        allowed_signer.valid_after = valid_after;
+        allowed_signer.valid_before = valid_before;
+        assert_fails(allowed_signer, InvalidOption(name.into()));
+    }
+
+    // valid-before must be later
+    for (valid_after, valid_before) in [(1714867200, 1714867200), (1714867201, 1714867200)] {
+        let mut allowed_signer = allowed_signer();
+        allowed_signer.valid_after = Some(valid_after);
+        allowed_signer.valid_before = Some(valid_before);
+        assert_fails(allowed_signer, InvalidTimestamps);
+    }
+
+    let mut allowed_signer = allowed_signer();
+    allowed_signer.key = sshcerts::PublicKey::from_string(include_str!("certs/ed25519_signed_by_ed25519-cert.pub")).unwrap();
+    assert_fails(allowed_signer, InvalidKey);
 }
