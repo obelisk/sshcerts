@@ -11,6 +11,7 @@ use crate::{error::Error, Result};
 
 /// A type to represent the different kinds of errors.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum AllowedSignerParsingError {
     /// Parsing failed because of double quotes
     InvalidQuotes,
@@ -48,6 +49,9 @@ impl fmt::Display for AllowedSignerParsingError {
 /// A type which represents an allowed signer entry.
 /// Please refer to [ssh-keygen-1.ALLOWED_SIGNERS] for more details about the format.
 /// [ssh-keygen-1.ALLOWED_SIGNERS]: https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS
+///
+/// Every entry returned by [`AllowedSigner::from_string`] can be written with
+/// [`AllowedSigner::to_line`], but an entry built by hand might not be.
 #[derive(Debug, PartialEq, Eq)]
 pub struct AllowedSigner {
     /// A list of principals, each in the format USER@DOMAIN.
@@ -104,7 +108,7 @@ impl AllowedSigner {
         let (principals, rest) = split_field(line).ok_or(Error::InvalidAllowedSigner(InvalidQuotes))?;
 
         let principals: Vec<String> = principals.split(',').map(String::from).collect();
-        if principals.iter().any(|p| p.is_empty()) {
+        if !principals.iter().all(|p| is_list_item(p)) {
             return Err(Error::InvalidAllowedSigner(InvalidPrincipals));
         }
 
@@ -119,6 +123,10 @@ impl AllowedSigner {
                 (options, parse_key(rest).ok_or(Error::InvalidAllowedSigner(InvalidKey))?)
             },
         };
+        // This crate can't read the key out of a certificate yet
+        if key.key_type.is_cert {
+            return Err(Error::InvalidAllowedSigner(InvalidKey));
+        }
 
         let mut cert_authority = false;
         let mut namespaces = None;
@@ -139,7 +147,11 @@ impl AllowedSigner {
                     return Err(Error::InvalidAllowedSigner(DuplicateOptions("namespaces".to_string())));
                 }
                 let (value, after) = split_quoted(after)?;
-                namespaces = Some(value.split(',').filter(|n| !n.is_empty()).map(String::from).collect());
+                let list: Vec<String> = value.split(',').filter(|n| !n.is_empty()).map(String::from).collect();
+                if !list.iter().all(|n| is_list_item(n)) {
+                    return Err(Error::InvalidAllowedSigner(InvalidOption("namespaces".to_string())));
+                }
+                namespaces = Some(list);
                 rest = after;
             } else if let Some(after) = strip_prefix_ignore_case(rest, "valid-after=") {
                 if valid_after.is_some() {

@@ -83,6 +83,11 @@ fn parse_bad_allowed_signer() {
         // Principals
         (format!("\"a b {KEY}"), InvalidQuotes),
         (format!("mitchell@confurious.io,,thanh@timweri.me {KEY}"), InvalidPrincipals),
+        // A line feed would start a new entry, and OpenSSH reads a line as a C string
+        (format!("\"a\nb\" {KEY}"), InvalidPrincipals),
+        (format!("a\0b {KEY}"), InvalidPrincipals),
+        (format!("mitchell@confurious.io namespaces=\"a\nb\" {KEY}"), InvalidOption("namespaces".into())),
+        (format!("mitchell@confurious.io namespaces=\"a\0b\" {KEY}"), InvalidOption("namespaces".into())),
         // The principals field ends at whitespace or at the closing quote, and the rest is read as options
         (format!("mitchell@confurious.io ,thanh@timweri.me {KEY}"), InvalidOption("thanh@timweri.me".into())),
         (format!("a\"b c\"d {KEY}"), InvalidOption("d".into())),
@@ -116,6 +121,8 @@ fn parse_bad_allowed_signer() {
         (format!("mitchell@confurious.io ecdsa-sha2-nistp384 {key_data}"), InvalidKey),
         (format!("mitchell@confurious.io \"ssh-ed25519\" {key_data}"), InvalidKey),
         (format!("mitchell@confurious.io ssh-ed25519 \"{key_data}\""), InvalidKey),
+        // This crate can't read the key out of a certificate
+        (format!("mitchell@confurious.io {}", include_str!("certs/ed25519_signed_by_ed25519-cert.pub").trim()), InvalidKey),
         // A quoted key is read as an options field with no key after it
         (format!("mitchell@confurious.io \"{KEY}\""), MissingKey),
         (String::from("mitchell@confurious.io cert-authority"), MissingKey),
