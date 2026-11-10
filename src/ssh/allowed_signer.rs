@@ -4,7 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use chrono::prelude::Local;
-use chrono::{Duration, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+use chrono::{Duration, LocalResult, NaiveDate, NaiveDateTime, TimeZone};
 
 use super::pubkey::PublicKey;
 use crate::{error::Error, Result};
@@ -26,12 +26,8 @@ pub enum AllowedSignerParsingError {
     InvalidOption(String),
     /// Invalid key
     InvalidKey,
-    /// Invalid timestamp
-    InvalidTimestamp,
     /// valid-before and valid-after are conflicting
     InvalidTimestamps,
-    /// Unexpected end of allowed signer
-    UnexpectedEnd,
 }
 
 impl fmt::Display for AllowedSignerParsingError {
@@ -44,9 +40,7 @@ impl fmt::Display for AllowedSignerParsingError {
             AllowedSignerParsingError::DuplicateOptions(ref v) => write!(f, "option {} specified more than once", v),
             AllowedSignerParsingError::InvalidOption(ref v) => write!(f, "invalid option {}", v),
             AllowedSignerParsingError::InvalidKey => write!(f, "invalid public key"),
-            AllowedSignerParsingError::InvalidTimestamp => write!(f, "invalid timestamp"),
             AllowedSignerParsingError::InvalidTimestamps => write!(f, "conflicting valid-before and valid-after options"),
-            AllowedSignerParsingError::UnexpectedEnd => write!(f, "unexpected data at the end"),
         }
     }
 }
@@ -97,101 +91,89 @@ impl AllowedSigner {
     /// println!("{:?}", allowed_signer);
     /// ```
     pub fn from_string(s: &str) -> Result<AllowedSigner> {
-        let mut tokenizer = AllowedSignerSplitter::new(s);
+        use AllowedSignerParsingError::*;
 
-        let principals = tokenizer.next(true)?
-            .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingPrincipals))?;
-        let principals = principals.trim_matches('"');
-        let principals: Vec<String> = principals.split(',')
-            .map(|s| s.to_string())
-            .collect();
-        if principals.iter().any(|p| p.is_empty()) {
-            return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidPrincipals));
+        // This follows OpenSSH's parse_principals_key_and_options() and sshsigopt_parse() so that
+        // a line means the same thing here as it does to ssh-keygen.
+        let line = s.trim_start_matches(WHITESPACE);
+        if line.is_empty() || line.starts_with('#') {
+            return Err(Error::InvalidAllowedSigner(MissingPrincipals));
         }
+
+        // Format: identity[,identity...] [option[,option...]] key
+        let (principals, rest) = split_field(line).ok_or(Error::InvalidAllowedSigner(InvalidQuotes))?;
+
+        let principals: Vec<String> = principals.split(',').map(String::from).collect();
+        if principals.iter().any(|p| p.is_empty()) {
+            return Err(Error::InvalidAllowedSigner(InvalidPrincipals));
+        }
+
+        // The options field is optional, so first try to read the key
+        let (options, key) = match parse_key(rest) {
+            Some(key) => ("", key),
+            None => {
+                let (options, rest) = split_options(rest).ok_or(Error::InvalidAllowedSigner(InvalidQuotes))?;
+                if rest.is_empty() {
+                    return Err(Error::InvalidAllowedSigner(MissingKey));
+                }
+                (options, parse_key(rest).ok_or(Error::InvalidAllowedSigner(InvalidKey))?)
+            },
+        };
 
         let mut cert_authority = false;
         let mut namespaces = None;
         let mut valid_after = None;
         let mut valid_before = None;
 
-        let kt = loop {
-            let option = tokenizer.next(false)?
-                .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::MissingKey))?;
+        // Mirrors the option loop in sshsigopt_parse(). Option names are case-insensitive, and
+        // cert-authority has no "no-" form.
+        let mut rest = options;
+        while !rest.is_empty() {
+            let option_start = rest;
 
-            let (option_key, option_value) = match option.split_once('=') {
-                Some(v) => v,
-                None => (option.as_str(), ""),
-            };
-            let option_value = option_value.trim_matches('"');
-            if option_value.contains("\"") {
-                return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
+            if let Some(after) = strip_prefix_ignore_case(rest, "cert-authority") {
+                cert_authority = true;
+                rest = after;
+            } else if let Some(after) = strip_prefix_ignore_case(rest, "namespaces=") {
+                if namespaces.is_some() {
+                    return Err(Error::InvalidAllowedSigner(DuplicateOptions("namespaces".to_string())));
+                }
+                let (value, after) = split_quoted(after)?;
+                namespaces = Some(value.split(',').filter(|n| !n.is_empty()).map(String::from).collect());
+                rest = after;
+            } else if let Some(after) = strip_prefix_ignore_case(rest, "valid-after=") {
+                if valid_after.is_some() {
+                    return Err(Error::InvalidAllowedSigner(DuplicateOptions("valid-after".to_string())));
+                }
+                let (value, after) = split_quoted(after)?;
+                valid_after = Some(parse_timestamp(&value).ok_or_else(|| Error::InvalidAllowedSigner(InvalidOption("valid-after".to_string())))?);
+                rest = after;
+            } else if let Some(after) = strip_prefix_ignore_case(rest, "valid-before=") {
+                if valid_before.is_some() {
+                    return Err(Error::InvalidAllowedSigner(DuplicateOptions("valid-before".to_string())));
+                }
+                let (value, after) = split_quoted(after)?;
+                valid_before = Some(parse_timestamp(&value).ok_or_else(|| Error::InvalidAllowedSigner(InvalidOption("valid-before".to_string())))?);
+                rest = after;
             }
 
-            match option_key.to_lowercase().as_str() {
-                "cert-authority" => cert_authority = true,
-                "namespaces" => {
-                    if namespaces.is_some() {
-                        return Err(
-                            Error::InvalidAllowedSigner(AllowedSignerParsingError::DuplicateOptions("namespaces".to_string()))
-                        );
-                    }
-
-                    let namespaces_value: Vec<&str> = option_value.split(',')
-                        .filter(|e| !e.is_empty())
-                        .collect();
-                    namespaces = Some(
-                        namespaces_value.iter()
-                            .map(|s| s.to_string())
-                            .collect()
-                    );
+            // Anything other than a comma means an unknown option. Like OpenSSH, skip an empty
+            // option between two commas, but not a trailing comma.
+            rest = match rest.strip_prefix(',') {
+                Some(after) if !after.is_empty() => after,
+                None if rest.is_empty() => break,
+                _ => {
+                    let name = option_start.split_once(['=', ',']).map_or(option_start, |(name, _)| name);
+                    return Err(Error::InvalidAllowedSigner(InvalidOption(name.to_string())));
                 },
-                "valid-after" => {
-                    if valid_after.is_some() {
-                        return Err(
-                            Error::InvalidAllowedSigner(AllowedSignerParsingError::DuplicateOptions("valid-after".to_string()))
-                        );
-                    }
-                    valid_after = Some(parse_timestamp(option_value)
-                        .map_err(
-                            |_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidOption("valid-after".to_string())))?
-                        );
-                },
-                "valid-before" => {
-                    if valid_before.is_some() {
-                        return Err(
-                            Error::InvalidAllowedSigner(AllowedSignerParsingError::DuplicateOptions("valid-before".to_string()))
-                        );
-                    }
-                    valid_before = Some(parse_timestamp(option_value)
-                        .map_err(
-                            |_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidOption("valid-before".to_string())))?
-                        );
-                },
-                // If option_key does not match any valid option, we test if it's the key data
-                _ => break option,
             };
-        };
-
-        let key_data = tokenizer.next(false)?
-            .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidKey))?;
-
-        let key = PublicKey::from_string(format!("{} {}", kt, key_data).as_str())
-            .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidKey))?;
+        }
 
         // Timestamp sanity check
         if let (Some(valid_before), Some(valid_after)) = (&valid_before, &valid_after) {
             if valid_before <= valid_after {
-                return Err(
-                    Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamps),
-                );
+                return Err(Error::InvalidAllowedSigner(InvalidTimestamps));
             }
-        }
-
-        // After key data, there must be only comment or nothing
-        if !tokenizer.is_empty_after_trim() {
-            return Err(
-                Error::InvalidAllowedSigner(AllowedSignerParsingError::UnexpectedEnd),
-            );
         }
 
         Ok(AllowedSigner{
@@ -293,174 +275,96 @@ impl AllowedSigners {
     }
 }
 
-/// A type used to split the allowed signer segments, abstracting out the handling of double quotes.
-/// The splitter is highly aware of the allowed_signer format and will catch certain invalid
-/// formats.
-///
-/// For example: "principals   option1=\"value1   value2\" option2 option3=value kt key_data" is split into
-/// ["principals", "option1=\"value1   value2\"", "option2", "option3=value", "kt", "key_data"]
-struct AllowedSignerSplitter {
-    /// A buffer of remaining tokens in reverse order.
-    buffer: Vec<String>,
+/// OpenSSH's WHITESPACE (misc.h)
+const WHITESPACE: [char; 4] = [' ', '\t', '\r', '\n'];
+
+/// Split off the first field of a line and skip the whitespace after it. A field ends at
+/// whitespace, or at the closing quote of a quoted section. Returns None if a quote is left open.
+/// Port of OpenSSH's strdelimw() (misc.c).
+fn split_field(s: &str) -> Option<(String, &str)> {
+    let (field, rest) = match s.find(|c| WHITESPACE.contains(&c) || c == '"') {
+        None => (s.to_string(), ""),
+        Some(i) if s[i..].starts_with('"') => {
+            let (quoted, rest) = s[i + 1..].split_once('"')?;
+            (format!("{}{}", &s[..i], quoted), rest)
+        },
+        Some(i) => (s[..i].to_string(), &s[i + 1..]),
+    };
+    Some((field, rest.trim_start_matches(WHITESPACE)))
 }
 
-impl AllowedSignerSplitter {
-    /// Split the string by delimiters but keep the delimiters.
-    fn new(s: &str) -> Self {
-        let mut buffer = Vec::new();
-        let mut last = 0;
+/// Read "keytype base64" the way OpenSSH's sshkey_read() does. Anything after it is a comment.
+fn parse_key(s: &str) -> Option<PublicKey> {
+    let mut fields = s.split([' ', '\t']).filter(|f| !f.is_empty());
+    PublicKey::from_string(&format!("{} {}", fields.next()?, fields.next()?)).ok()
+}
 
-        for (index, matched) in s.match_indices([' ', '"', '#']) {
-            // Push the new text before the delimiter
-            if last != index {
-                buffer.push(s[last..index].to_owned());
-            }
-            // Push the delimiter
-            buffer.push(matched.to_owned());
-            last = index + matched.len();
-        }
-
-        // Push the remaining text
-        if last < s.len() {
-            buffer.push(s[last..].to_owned());
-        }
-
-        // We parse from left to right so reversing allow us to use Vec's last() and pop()
-        buffer.reverse();
-
-        Self { buffer }
-    }
-
-    fn is_empty_after_trim(&mut self) -> bool {
-        self.trim();
-        return self.buffer.is_empty();
-    }
-
-    /// Get the next part that is not an option (principals, key)
-    /// If opening_quotes_allowed is set to false, we reject the next token if it starts with ".
-    fn next(&mut self, opening_quotes_allowed: bool) -> Result<Option<String>> {
-        if self.is_empty_after_trim() {
-            return Ok(None);
-        }
-
-        // If the next token starts with a double quote, then the closing double quote is also
-        // the end of the token
-        if self.buffer[0] == "\"" {
-            if opening_quotes_allowed {
-                return self.split_quote().map(|v| Some(v));
-            } else {
-                return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
-            }
-        }
-
-        // If the next token doesn't start with a double quote, the token can represent an option.
-        // Only an option token can contain double quotes in the middle (e.g. a="b c").
-        // If we don't see any double quote in the token, we greedily parse the token until the
-        // next whitespace.
-        let mut s = String::new();
-        while let Some(last) = self.buffer.pop() {
-            if [" ", "\"", "#"].contains(&last.as_str()) {
-                self.buffer.push(last);
-                break;
-            }
-
-            s.push_str(&last);
-        }
-
-        // This should only apply to options
-        if let Some(last) = self.buffer.last() {
-            if last == "\"" {
-                s.push_str(self.split_quote()?.as_str());
-
-                // After the double quotes in the option token, there can only be nothing, a
-                // whitespace, or a pound
-                if let Some(last) = self.buffer.last() {
-                    if ![" ", "#"].contains(&last.as_str()) {
-                        return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
-                    }
-                }
-            }
-        }
-
-        Ok(Some(s))
-    }
-
-    /// Trim comment and whitespaces
-    fn trim(&mut self) {
-        while let Some(last) = self.buffer.last(){
-            match last.as_str() {
-                " " => {
-                    self.buffer.pop();
-                },
-                // Comment detected
-                "#" => {
-                    self.buffer.clear()
-                },
-                _ => break,
-            };
-        }
-    }
-
-    /// Extract content inside the double quotes.
-    /// This function assumes buffer starst with a ".
-    fn split_quote(&mut self) -> Result<String> {
-        match self.buffer.pop() {
-            Some(v) => {
-                if v != "\"" {
-                    return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes));
-                }
+/// Split the options field off the front of `s`. It ends at the first space or tab outside double
+/// quotes, and `\"` never opens or closes a quote. Returns None if a quote is left open.
+/// Port of OpenSSH's sshkey_advance_past_options() (authfile.c).
+fn split_options(s: &str) -> Option<(&str, &str)> {
+    let mut quoted = false;
+    let mut chars = s.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        match c {
+            ' ' | '\t' if !quoted => return Some(s.split_at(i)),
+            '\\' => {
+                chars.next_if(|&(_, c)| c == '"');
             },
-            None => return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes)),
+            '"' => quoted = !quoted,
+            _ => {},
         }
+    }
+    (!quoted).then_some((s, ""))
+}
 
-        let mut s = String::from("\"");
-        loop {
-            let token = self.buffer.pop()
-                .ok_or(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidQuotes))?;
-            s.push_str(&token);
-            if token == "\"" {
-                break;
-            }
+/// Strip `prefix` off the front of `s`, ignoring ASCII case. This covers OpenSSH's opt_flag() and
+/// opt_match() (misc.c).
+fn strip_prefix_ignore_case<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
+    let head = s.get(..prefix.len())?;
+    head.eq_ignore_ascii_case(prefix).then(|| &s[prefix.len()..])
+}
+
+/// Split a double-quoted value off the front of `s`. Inside it, `\"` is a literal quote.
+/// Port of OpenSSH's opt_dequote() (misc.c).
+fn split_quoted(s: &str) -> Result<(String, &str)> {
+    use AllowedSignerParsingError::*;
+
+    let mut chars = s.strip_prefix('"').ok_or(Error::InvalidAllowedSigner(InvalidQuotes))?.chars();
+    let mut value = String::new();
+    loop {
+        match chars.next().ok_or(Error::InvalidAllowedSigner(InvalidQuotes))? {
+            '"' => return Ok((value, chars.as_str())),
+            '\\' if chars.as_str().starts_with('"') => {
+                chars.next();
+                value.push('"');
+            },
+            c => value.push(c),
         }
-
-        Ok(s)
     }
 }
 
-/// Parse a string into a u64 representing a timestamp.
-/// The timestamp has format YYYYMMDD[HHMM[SS]][Z]
-/// The timestamp can be enclosed by quotation marks.
-fn parse_timestamp(s: &str) -> Result<i64> {
-    let mut s = s.trim_matches('"');
-    let is_utc = s.ends_with('Z');
-    if s.len() % 2 == 1 && !is_utc {
-        return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp));
-    }
-    if is_utc {
-        s = s.trim_end_matches('Z');
-    }
+/// Parse a `YYYYMMDD[HHMM[SS]][Z|UTC]` timestamp (suffix case-insensitive) into a UNIX timestamp.
+/// Like OpenSSH 10.2's parse_absolute_time(), a time with no suffix is local, and the epoch and
+/// anything before it are rejected.
+fn parse_timestamp(s: &str) -> Option<i64> {
+    let s = s.to_ascii_lowercase();
+    let (s, is_utc) = match s.strip_suffix('z').or_else(|| s.strip_suffix("utc")) {
+        Some(s) => (s, true),
+        None => (s.as_str(), false),
+    };
     let datetime = match s.len() {
-        8 => {
-            let date = NaiveDate::parse_from_str(s, "%Y%m%d")
-                .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp))?;
-            date.and_time(NaiveTime::from_hms_opt(0, 0, 0).expect("initializing NaiveTime from constants should not fail"))
-        },
-        12 => {
-            NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M")
-                .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp))?
-        },
-        14 => {
-            NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M%S")
-                .map_err(|_| Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp))?
-        },
-        _ => return Err(Error::InvalidAllowedSigner(AllowedSignerParsingError::InvalidTimestamp)),
+        8 => NaiveDate::parse_from_str(s, "%Y%m%d").ok()?.and_hms_opt(0, 0, 0)?,
+        12 => NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M").ok()?,
+        14 => NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M%S").ok()?,
+        _ => return None,
     };
 
     let timestamp = if is_utc {
         datetime.and_utc()
             .timestamp()
     } else {
-        // Match OpenSSH, which lets mktime resolve DST edge cases.
+        // OpenSSH leaves DST changes to mktime(), which doesn't always agree with this
         match datetime.and_local_timezone(Local) {
             LocalResult::Single(dt) => dt.timestamp(),
             LocalResult::Ambiguous(a, b) => a.timestamp().min(b.timestamp()),
@@ -472,5 +376,33 @@ fn parse_timestamp(s: &str) -> Result<i64> {
         }
     };
 
-    Ok(timestamp)
+    (timestamp > 0).then_some(timestamp)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Cases from OpenSSH's regress/unittests/misc/test_strdelim.c. strdelimw() doesn't split on
+    // '=', so this leaves out the strdelim() cases that do.
+    #[test]
+    fn split_field_matches_openssh() {
+        for (s, expected) in [
+            ("", Some(("", ""))),
+            ("\t", Some(("", ""))),
+            ("blob", Some(("blob", ""))),
+            ("blob   ", Some(("blob", ""))),
+            ("blob1 blob2", Some(("blob1", "blob2"))),
+            ("blob1\t \tblob2  \t \t", Some(("blob1", "blob2  \t \t"))),
+            ("blob1=blob2", Some(("blob1=blob2", ""))),
+            ("\"blob\"", Some(("blob", ""))),
+            ("\"blob1\" blob2", Some(("blob1", "blob2"))),
+            ("blob1 \"blob2\"", Some(("blob1", "\"blob2\""))),
+            ("\"blob", None),
+            ("\"blob\\\"", Some(("blob\\", ""))),
+        ] {
+            let actual = split_field(s);
+            assert_eq!(actual.as_ref().map(|(token, rest)| (token.as_str(), *rest)), expected, "{:?}", s);
+        }
+    }
 }
