@@ -4,7 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use chrono::prelude::Local;
-use chrono::{Duration, LocalResult, NaiveDate, NaiveDateTime, TimeZone};
+use chrono::{DateTime, Duration, LocalResult, NaiveDate, NaiveDateTime, TimeZone};
 
 use super::pubkey::PublicKey;
 use crate::{error::Error, Result};
@@ -185,33 +185,78 @@ impl AllowedSigner {
             key,
         })
     }
-}
 
-impl fmt::Display for AllowedSigner {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut output = String::new();
+    /// Write the entry as a line that OpenSSH reads back as the same entry. The key's comment is
+    /// left out.
+    ///
+    /// Fails when no such line exists:
+    /// - `principals` is empty, or a principal is empty or contains `,`, `"`, a line feed or NUL
+    /// - a namespace is empty or contains `,`, a line feed or NUL
+    /// - `valid_before <= valid_after`, or a timestamp is not after the epoch or is past year 9999
+    /// - the key is a certificate
+    pub fn to_line(&self) -> Result<String> {
+        use AllowedSignerParsingError::*;
 
-        output.push_str(&self.principals.join(","));
-        
+        if self.key.key_type.is_cert {
+            return Err(Error::InvalidAllowedSigner(InvalidKey));
+        }
+
+        // A quoted principals field ends at the next double quote (split_field)
+        if self.principals.is_empty() || !self.principals.iter().all(|p| is_list_item(p) && !p.contains('"')) {
+            return Err(Error::InvalidAllowedSigner(InvalidPrincipals));
+        }
+        let principals = self.principals.join(",");
+        // AllowedSigners trims any leading whitespace off a line
+        let mut line = if principals.contains([' ', '\t', '\r', '#']) || principals.starts_with(char::is_whitespace) {
+            format!("\"{}\"", principals)
+        } else {
+            principals
+        };
+
+        // OpenSSH requires comma-separated options with quoted values
+        let mut options = Vec::new();
+
         if self.cert_authority {
-            output.push_str(" cert-authority");
+            options.push("cert-authority".to_string());
         }
 
-        if let Some(ref namespaces) = self.namespaces {
-            output.push_str(&format!(" namespaces={}", namespaces.join(",")));
+        if let Some(namespaces) = &self.namespaces {
+            if !namespaces.iter().all(|n| is_list_item(n)) {
+                return Err(Error::InvalidAllowedSigner(InvalidOption("namespaces".to_string())));
+            }
+            let mut value = namespaces.join(",").replace('"', "\\\"");
+            // A trailing backslash would escape the closing quote (split_quoted). An empty item after
+            // it is skipped when reading.
+            if value.ends_with('\\') {
+                value.push(',');
+            }
+            options.push(format!("namespaces=\"{}\"", value));
         }
 
-        if let Some(ref valid_after) = self.valid_after {
-            output.push_str(&format!(" valid-after={}", valid_after));
+        // sshsigopt_parse() rejects this pair
+        if let (Some(valid_before), Some(valid_after)) = (self.valid_before, self.valid_after) {
+            if valid_before <= valid_after {
+                return Err(Error::InvalidAllowedSigner(InvalidTimestamps));
+            }
         }
 
-        if let Some(ref valid_before) = self.valid_before {
-            output.push_str(&format!(" valid-before={}", valid_before));
+        for (name, timestamp) in [("valid-after", self.valid_after), ("valid-before", self.valid_before)] {
+            if let Some(timestamp) = timestamp {
+                let timestamp = format_timestamp(timestamp).ok_or_else(|| Error::InvalidAllowedSigner(InvalidOption(name.to_string())))?;
+                options.push(format!("{}=\"{}\"", name, timestamp));
+            }
         }
 
-        output.push_str(&format!(" {}", self.key));
+        if !options.is_empty() {
+            line.push(' ');
+            line.push_str(&options.join(","));
+        }
 
-        write!(f, "{}", output)
+        // encode() writes the plain key type. from_string ignores the comment, and a line break in
+        // it would start a new entry.
+        line.push_str(&format!(" {} {}", self.key.key_type.plain, base64::encode(self.key.encode())));
+
+        Ok(line)
     }
 }
 
@@ -278,6 +323,12 @@ impl AllowedSigners {
 /// OpenSSH's WHITESPACE (misc.h)
 const WHITESPACE: [char; 4] = [' ', '\t', '\r', '\n'];
 
+/// Whether OpenSSH reads `s` back as one item of a comma-separated list. It doesn't escape commas,
+/// a line feed would start a new entry, and it reads a line as a C string.
+fn is_list_item(s: &str) -> bool {
+    !s.is_empty() && !s.contains([',', '\n', '\0'])
+}
+
 /// Split off the first field of a line and skip the whitespace after it. A field ends at
 /// whitespace, or at the closing quote of a quoted section. Returns None if a quote is left open.
 /// Port of OpenSSH's strdelimw() (misc.c).
@@ -342,6 +393,16 @@ fn split_quoted(s: &str) -> Result<(String, &str)> {
             c => value.push(c),
         }
     }
+}
+
+/// Format a UNIX timestamp as YYYYMMDDHHMMSSZ. Returns None if OpenSSH can't read the timestamp
+/// back, since it rejects the epoch and anything before it, and needs a four-digit year.
+fn format_timestamp(timestamp: i64) -> Option<String> {
+    // 99991231235959Z is the last one with a four-digit year
+    if !(1..=253_402_300_799).contains(&timestamp) {
+        return None;
+    }
+    DateTime::from_timestamp(timestamp, 0).map(|datetime| datetime.format("%Y%m%d%H%M%SZ").to_string())
 }
 
 /// Parse a `YYYYMMDD[HHMM[SS]][Z|UTC]` timestamp (suffix case-insensitive) into a UNIX timestamp.
