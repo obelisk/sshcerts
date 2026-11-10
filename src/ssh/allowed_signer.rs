@@ -11,6 +11,7 @@ use crate::{error::Error, Result};
 
 /// A type to represent the different kinds of errors.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum AllowedSignerParsingError {
     /// Parsing failed because of double quotes
     InvalidQuotes,
@@ -53,7 +54,8 @@ impl fmt::Display for AllowedSignerParsingError {
 /// [ssh-keygen-1.ALLOWED_SIGNERS]: https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS
 ///
 /// Display writes the line from [`AllowedSigner::to_line`], so `to_string()` panics when that
-/// fails.
+/// fails. Every entry returned by [`AllowedSigner::from_string`] can be written, but an entry built
+/// by hand might not be.
 #[derive(Debug, PartialEq, Eq)]
 pub struct AllowedSigner {
     /// A list of principals, each in the format USER@DOMAIN.
@@ -113,7 +115,7 @@ impl AllowedSigner {
         let principals: Vec<String> = principals.split(',')
             .map(|s| s.to_string())
             .collect();
-        if principals.iter().any(|p| p.is_empty()) {
+        if !principals.iter().all(|p| is_list_item(p)) {
             return Err(Error::InvalidAllowedSigner(InvalidPrincipals));
         }
 
@@ -132,6 +134,10 @@ impl AllowedSigner {
                 (options, key)
             },
         };
+        // This crate can't read the key out of a certificate yet
+        if key.key_type.is_cert {
+            return Err(Error::InvalidAllowedSigner(InvalidKey));
+        }
 
         let mut cert_authority = false;
         let mut namespaces = None;
@@ -149,13 +155,15 @@ impl AllowedSigner {
                 if namespaces.is_some() {
                     return Err(Error::InvalidAllowedSigner(DuplicateOptions("namespaces".to_string())));
                 }
-                namespaces = Some(
-                    opt_dequote(&mut opts)?
-                        .split(',')
-                        .filter(|e| !e.is_empty())
-                        .map(|s| s.to_string())
-                        .collect()
-                );
+                let value: Vec<String> = opt_dequote(&mut opts)?
+                    .split(',')
+                    .filter(|e| !e.is_empty())
+                    .map(|s| s.to_string())
+                    .collect();
+                if !value.iter().all(|n| is_list_item(n)) {
+                    return Err(Error::InvalidAllowedSigner(InvalidOption("namespaces".to_string())));
+                }
+                namespaces = Some(value);
             } else if opt_match(&mut opts, "valid-after") {
                 if valid_after.is_some() {
                     return Err(Error::InvalidAllowedSigner(DuplicateOptions("valid-after".to_string())));
